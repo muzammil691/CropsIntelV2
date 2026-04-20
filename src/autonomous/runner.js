@@ -1,12 +1,14 @@
-// CropsIntelV2 — Autonomous Runner
+// CropsIntelV2 — Autonomous Runner v3.0.0
 // The brain that orchestrates all autonomous operations:
 //   1. Scrape ABC data on schedule
-//   2. Process new data (YoY, trends, anomalies)
-//   3. Generate AI insights
-//   4. Self-monitor and log everything
+//   2. Generate shipment data (by destination)
+//   3. Generate receipt data (by variety)
+//   4. Process data (YoY, trends, anomalies, trade signals)
+//   5. Generate AI insights (Claude API + template fallback)
+//   6. Self-monitor and log everything
 //
 // Run: node src/autonomous/runner.js
-// This process stays alive and runs tasks on cron schedules
+// Run now: node src/autonomous/runner.js --now
 
 import { config } from 'dotenv';
 config();
@@ -14,9 +16,12 @@ config();
 import cron from 'node-cron';
 import supabaseAdmin from '../lib/supabase-admin.js';
 import { scrapeABC } from '../scrapers/abc-scraper.js';
+import { runShipmentParser } from '../scrapers/shipment-parser.js';
+import { runReceiptsParser } from '../scrapers/receipts-parser.js';
 import { processData } from '../processors/data-processor.js';
+import { runAIAnalysis } from '../processors/ai-analyst.js';
 
-const RUNNER_VERSION = '1.0.0';
+const RUNNER_VERSION = '3.0.0';
 
 // ============================================================
 // Health check — log that the runner is alive
@@ -38,7 +43,7 @@ async function healthCheck() {
 }
 
 // ============================================================
-// Full autonomous cycle: scrape -> process -> analyze
+// Full autonomous cycle: scrape -> shipments -> receipts -> process -> analyze
 // ============================================================
 async function runAutonomousCycle() {
   const startTime = Date.now();
@@ -47,23 +52,50 @@ async function runAutonomousCycle() {
   console.log(`Time: ${new Date().toISOString()}`);
   console.log('================================================\n');
 
+  // Log pipeline run
+  const { data: run } = await supabaseAdmin
+    .from('pipeline_runs')
+    .insert({ run_type: 'autonomous_cycle', status: 'running', trigger_source: 'scheduled', steps_completed: [] })
+    .select().single();
+  const runId = run?.id;
+  const steps = [];
+
   try {
     // Step 1: Scrape ABC data
     console.log('--- STEP 1: Scraping ABC Data ---');
     const scrapeResult = await scrapeABC();
+    steps.push({ step: 'scrape', found: scrapeResult.found, inserted: scrapeResult.inserted });
 
-    // Step 2: Process data (YoY, anomalies, signals)
-    console.log('\n--- STEP 2: Processing Data ---');
+    // Step 2: Generate shipment data (from PDFs or position reports)
+    console.log('\n--- STEP 2: Shipment Data ---');
+    const shipmentResult = await runShipmentParser();
+    steps.push({ step: 'shipments', derived: shipmentResult.derived });
+
+    // Step 3: Generate receipt data (from PDFs or position reports)
+    console.log('\n--- STEP 3: Receipt Data ---');
+    const receiptResult = await runReceiptsParser();
+    steps.push({ step: 'receipts', derived: receiptResult.derived });
+
+    // Step 4: Process data (YoY, anomalies, signals)
+    console.log('\n--- STEP 4: Processing Data ---');
     const processResult = await processData();
+    steps.push({ step: 'process', anomalies: processResult.anomalies?.length || 0, signal: processResult.tradeSignal?.data_context?.signal || 'none' });
 
-    // Step 3: Generate monthly brief if we have new data
-    if (scrapeResult.inserted > 0) {
-      console.log('\n--- STEP 3: Generating Insights ---');
-      await generateMonthlyBrief();
-    }
+    // Step 5: Run AI analysis (Claude API + template fallback)
+    console.log('\n--- STEP 5: AI Analysis ---');
+    const aiResult = await runAIAnalysis();
+    steps.push({ step: 'ai_analysis', monthly_brief: aiResult.monthlyBrief ? 'generated' : 'skipped', yoy_insight: aiResult.yoyInsight ? 'generated' : 'skipped' });
 
     const duration = Date.now() - startTime;
     console.log(`\nAUTONOMOUS CYCLE COMPLETE (${duration}ms)`);
+
+    // Update pipeline run
+    if (runId) {
+      await supabaseAdmin.from('pipeline_runs').update({
+        status: 'completed', completed_at: new Date().toISOString(), steps_completed: steps,
+        summary: `Cycle complete in ${duration}ms: ${scrapeResult.inserted} new reports, ${shipmentResult.derived} shipments, ${receiptResult.derived} receipts`
+      }).eq('id', runId);
+    }
 
     await supabaseAdmin.from('scraping_logs').insert({
       scraper_name: 'autonomous-cycle',
@@ -72,14 +104,25 @@ async function runAutonomousCycle() {
       records_inserted: scrapeResult.inserted,
       duration_ms: duration,
       metadata: {
-        anomalies: processResult.anomalies.length,
-        trade_signal: processResult.tradeSignal?.data_context?.signal || 'none'
+        version: RUNNER_VERSION,
+        shipments_derived: shipmentResult.derived || 0,
+        receipts_derived: receiptResult.derived || 0,
+        anomalies: processResult.anomalies?.length || 0,
+        trade_signal: processResult.tradeSignal?.data_context?.signal || 'none',
+        ai_monthly_brief: aiResult.monthlyBrief ? 'generated' : 'skipped',
+        ai_yoy_insight: aiResult.yoyInsight ? 'generated' : 'skipped'
       },
       completed_at: new Date().toISOString()
     });
 
   } catch (error) {
     console.error('AUTONOMOUS CYCLE FAILED:', error.message);
+    if (runId) {
+      await supabaseAdmin.from('pipeline_runs').update({
+        status: 'failed', completed_at: new Date().toISOString(), steps_completed: steps,
+        errors: [{ message: error.message }]
+      }).eq('id', runId);
+    }
     await supabaseAdmin.from('scraping_logs').insert({
       scraper_name: 'autonomous-cycle',
       status: 'failed',
@@ -88,43 +131,6 @@ async function runAutonomousCycle() {
       completed_at: new Date().toISOString()
     });
   }
-}
-
-// ============================================================
-// Generate a monthly market brief
-// ============================================================
-async function generateMonthlyBrief() {
-  const { data: latest } = await supabaseAdmin
-    .from('abc_position_reports')
-    .select('*')
-    .order('report_year', { ascending: false })
-    .order('report_month', { ascending: false })
-    .limit(1);
-
-  if (!latest?.length) return;
-
-  const report = latest[0];
-  const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-                       'July', 'August', 'September', 'October', 'November', 'December'];
-
-  const brief = {
-    analysis_type: 'monthly_brief',
-    title: `${monthNames[report.report_month]} ${report.report_year} — Almond Market Brief`,
-    summary: [
-      `Total shipments: ${(report.total_shipped_lbs || 0).toLocaleString()} lbs`,
-      `(Domestic: ${(report.domestic_shipped_lbs || 0).toLocaleString()}, Export: ${(report.export_shipped_lbs || 0).toLocaleString()})`,
-      `New commitments: ${(report.total_new_commitments_lbs || 0).toLocaleString()} lbs`,
-      `Uncommitted inventory: ${(report.uncommitted_lbs || 0).toLocaleString()} lbs`,
-      `Total supply: ${(report.total_supply_lbs || 0).toLocaleString()} lbs`
-    ].join('\n'),
-    data_context: report,
-    confidence: 1.0,
-    is_actionable: false,
-    tags: ['monthly_brief', `${report.report_year}-${report.report_month}`]
-  };
-
-  await supabaseAdmin.from('ai_analyses').insert(brief);
-  console.log(`Monthly brief generated for ${monthNames[report.report_month]} ${report.report_year}`);
 }
 
 // ============================================================
@@ -137,22 +143,20 @@ function startRunner() {
   console.log(`  Started: ${new Date().toISOString()}`);
   console.log('================================================\n');
 
-  // Immediate health check
   healthCheck();
 
-  // Schedule: Run full cycle on the 15th of each month at 8 AM UTC
-  // (ABC reports are typically published by mid-month)
+  // Monthly: Full cycle on 15th at 8 AM UTC (when ABC publishes)
   cron.schedule('0 8 15 * *', () => {
     console.log('Scheduled trigger: Monthly ABC scrape cycle');
     runAutonomousCycle();
   }, { timezone: 'UTC' });
 
-  // Schedule: Daily health check at midnight UTC
+  // Daily: Health check at midnight UTC
   cron.schedule('0 0 * * *', () => {
     healthCheck();
   }, { timezone: 'UTC' });
 
-  // Schedule: Weekly data reprocess on Mondays at 6 AM UTC
+  // Weekly: Data reprocess on Mondays at 6 AM UTC
   cron.schedule('0 6 * * 1', () => {
     console.log('Scheduled trigger: Weekly data reprocess');
     processData();
@@ -165,12 +169,10 @@ function startRunner() {
   console.log('\nRunner is live. Waiting for scheduled triggers...');
   console.log('Press Ctrl+C to stop.\n');
 
-  // Run an initial cycle right now if --now flag is passed
   if (process.argv.includes('--now')) {
     console.log('--now flag detected, running immediate cycle...\n');
     runAutonomousCycle();
   }
 }
 
-// Start
 startRunner();
