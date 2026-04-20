@@ -464,6 +464,33 @@ export default function Supply() {
 
       {/* Row 4: Crop Year Supply Health Table */}
       <ChartCard title="Supply Health by Crop Year" subtitle="Key supply-demand ratios at latest available month per crop year">
+        <div className="flex justify-end mb-3">
+          <button
+            onClick={() => {
+              const headers = ['Crop Year', 'Supply (lbs)', 'Commit %', 'Ship %', 'Uncommitted %', 'Velocity %', 'Status'];
+              const rows = allCropYears.map(cy => {
+                const cyR = reports.filter(r => r.crop_year === cy);
+                const last = cyR[cyR.length - 1];
+                if (!last) return null;
+                const commitPct = last.total_supply_lbs > 0 ? (last.total_committed_lbs / last.total_supply_lbs * 100).toFixed(1) : '0';
+                const shipPct = last.total_supply_lbs > 0 ? (last.total_shipped_lbs / last.total_supply_lbs * 100).toFixed(1) : '0';
+                const uncommittedPct = last.total_supply_lbs > 0 ? (last.uncommitted_lbs / last.total_supply_lbs * 100).toFixed(1) : '0';
+                const velocity = last.uncommitted_lbs > 0 && last.total_new_commitments_lbs > 0 ? (last.total_new_commitments_lbs / last.uncommitted_lbs * 100).toFixed(1) : '0';
+                const status = parseFloat(uncommittedPct) < 15 ? 'Tight' : parseFloat(uncommittedPct) < 30 ? 'Balanced' : 'Loose';
+                return [cy, last.total_supply_lbs, commitPct, shipPct, uncommittedPct, velocity, status];
+              }).filter(Boolean);
+              const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'cropsintel_supply_health.csv'; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-xs text-gray-500 hover:text-green-400 transition-colors px-2 py-1 rounded border border-gray-800 hover:border-green-500/30"
+          >
+            Export CSV
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
