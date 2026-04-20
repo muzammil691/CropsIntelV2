@@ -1,8 +1,8 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
-import Reports from './pages/Reports';
 import Analysis from './pages/Analysis';
+import Reports from './pages/Reports';
 import Autonomous from './pages/Autonomous';
 
 const NAV_ITEMS = [
@@ -16,54 +16,104 @@ function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col min-h-screen">
-      <div className="p-6 border-b border-gray-800">
-        <h1 className="text-xl font-bold text-green-400">CropsIntelV2</h1>
-        <p className="text-xs text-gray-500 mt-1">Autonomous Intelligence</p>
+    <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col min-h-screen shrink-0">
+      {/* Brand Header */}
+      <div className="p-5 border-b border-gray-800">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm">
+            CI
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-white">CropsIntel</h1>
+            <p className="text-[10px] text-gray-500 tracking-wide">AUTONOMOUS V2</p>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      {/* Navigation */}
+      <nav className="flex-1 p-3 space-y-1">
         {NAV_ITEMS.map(item => {
           const isActive = location.pathname === item.path;
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
                 isActive
                   ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
               }`}
             >
-              <span>{item.icon}</span>
+              <span className="text-base">{item.icon}</span>
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-800">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-gray-500">System Active</span>
+      {/* Data Status Footer */}
+      <div className="p-4 border-t border-gray-800 space-y-2">
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-gray-600">MAXONS Intelligence</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-gray-500">Live</span>
+          </div>
+        </div>
+        <div className="text-[10px] text-gray-600">
+          10-year data | 9 crop years | Self-maintaining
         </div>
       </div>
     </aside>
   );
 }
 
+// Mobile bottom nav
+function MobileNav() {
+  const location = useLocation();
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 flex lg:hidden z-50">
+      {NAV_ITEMS.map(item => {
+        const isActive = location.pathname === item.path;
+        return (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`flex-1 flex flex-col items-center py-2 text-[10px] ${
+              isActive ? 'text-green-400' : 'text-gray-500'
+            }`}
+          >
+            <span className="text-lg mb-0.5">{item.icon}</span>
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function App() {
   return (
     <div className="flex min-h-screen bg-gray-950">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto pb-16 lg:pb-0">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/autonomous" element={<Autonomous />} />
+          {/* Catch-all redirects to dashboard */}
+          <Route path="*" element={<Dashboard />} />
         </Routes>
       </main>
+
+      {/* Mobile bottom nav */}
+      <MobileNav />
     </div>
   );
 }
