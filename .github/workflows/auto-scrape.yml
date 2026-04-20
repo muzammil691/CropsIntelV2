@@ -1,6 +1,8 @@
 name: CropsIntelV2 Auto-Scrape Pipeline
 
 on:
+  push:
+      branches: [main]
   schedule:
     # Run on the 15th of every month at 8:00 AM UTC
     - cron: '0 8 15 * *'
