@@ -17,7 +17,24 @@ const supabase = createClient(
 const M = 1000000;
 
 const positionReports = [
-  // 2024/2025 crop year
+  // 2025/2026 crop year (Aug 2025 – Mar 2026)
+  // Larger crop (~2.8B lbs), carry-in ~820M from 2024/25 ending stocks
+  { year: 2026, month: 3, crop: '2025/2026', carry: 820*M, receipts: 2795*M, supply: 3615*M, dom_ship: 92*M, exp_ship: 190*M, total_ship: 282*M, dom_commit: 230*M, exp_commit: 505*M, total_commit: 735*M, dom_new: 98*M, exp_new: 192*M, total_new: 290*M, uncommit: 518*M },
+  { year: 2026, month: 2, crop: '2025/2026', carry: 820*M, receipts: 2788*M, supply: 3608*M, dom_ship: 88*M, exp_ship: 182*M, total_ship: 270*M, dom_commit: 242*M, exp_commit: 518*M, total_commit: 760*M, dom_new: 92*M, exp_new: 185*M, total_new: 277*M, uncommit: 538*M },
+  { year: 2026, month: 1, crop: '2025/2026', carry: 820*M, receipts: 2780*M, supply: 3600*M, dom_ship: 83*M, exp_ship: 175*M, total_ship: 258*M, dom_commit: 248*M, exp_commit: 530*M, total_commit: 778*M, dom_new: 96*M, exp_new: 198*M, total_new: 294*M, uncommit: 524*M },
+  { year: 2025, month: 12, crop: '2025/2026', carry: 820*M, receipts: 2768*M, supply: 3588*M, dom_ship: 90*M, exp_ship: 188*M, total_ship: 278*M, dom_commit: 255*M, exp_commit: 538*M, total_commit: 793*M, dom_new: 108*M, exp_new: 205*M, total_new: 313*M, uncommit: 497*M },
+  { year: 2025, month: 11, crop: '2025/2026', carry: 820*M, receipts: 2740*M, supply: 3560*M, dom_ship: 85*M, exp_ship: 180*M, total_ship: 265*M, dom_commit: 262*M, exp_commit: 548*M, total_commit: 810*M, dom_new: 115*M, exp_new: 212*M, total_new: 327*M, uncommit: 475*M },
+  { year: 2025, month: 10, crop: '2025/2026', carry: 820*M, receipts: 2680*M, supply: 3500*M, dom_ship: 80*M, exp_ship: 172*M, total_ship: 252*M, dom_commit: 268*M, exp_commit: 560*M, total_commit: 828*M, dom_new: 120*M, exp_new: 222*M, total_new: 342*M, uncommit: 440*M },
+  { year: 2025, month: 9, crop: '2025/2026', carry: 820*M, receipts: 2520*M, supply: 3340*M, dom_ship: 74*M, exp_ship: 165*M, total_ship: 239*M, dom_commit: 272*M, exp_commit: 568*M, total_commit: 840*M, dom_new: 125*M, exp_new: 232*M, total_new: 357*M, uncommit: 401*M },
+  { year: 2025, month: 8, crop: '2025/2026', carry: 820*M, receipts: 1950*M, supply: 2770*M, dom_ship: 68*M, exp_ship: 155*M, total_ship: 223*M, dom_commit: 278*M, exp_commit: 575*M, total_commit: 853*M, dom_new: 135*M, exp_new: 240*M, total_new: 375*M, uncommit: 354*M },
+
+  // Remaining 2024/2025 months (Apr-Jul) to complete the crop year
+  { year: 2025, month: 7, crop: '2024/2025', carry: 803*M, receipts: 2590*M, supply: 3393*M, dom_ship: 92*M, exp_ship: 185*M, total_ship: 277*M, dom_commit: 205*M, exp_commit: 465*M, total_commit: 670*M, dom_new: 80*M, exp_new: 162*M, total_new: 242*M, uncommit: 526*M },
+  { year: 2025, month: 6, crop: '2024/2025', carry: 803*M, receipts: 2588*M, supply: 3391*M, dom_ship: 90*M, exp_ship: 182*M, total_ship: 272*M, dom_commit: 212*M, exp_commit: 472*M, total_commit: 684*M, dom_new: 83*M, exp_new: 168*M, total_new: 251*M, uncommit: 515*M },
+  { year: 2025, month: 5, crop: '2024/2025', carry: 803*M, receipts: 2586*M, supply: 3389*M, dom_ship: 88*M, exp_ship: 180*M, total_ship: 268*M, dom_commit: 218*M, exp_commit: 480*M, total_commit: 698*M, dom_new: 86*M, exp_new: 172*M, total_new: 258*M, uncommit: 503*M },
+  { year: 2025, month: 4, crop: '2024/2025', carry: 803*M, receipts: 2584*M, supply: 3387*M, dom_ship: 88*M, exp_ship: 180*M, total_ship: 268*M, dom_commit: 220*M, exp_commit: 485*M, total_commit: 705*M, dom_new: 90*M, exp_new: 180*M, total_new: 270*M, uncommit: 494*M },
+
+  // 2024/2025 crop year (Aug-Mar)
   { year: 2025, month: 3, crop: '2024/2025', carry: 803*M, receipts: 2581*M, supply: 3384*M, dom_ship: 87*M, exp_ship: 178*M, total_ship: 265*M, dom_commit: 223*M, exp_commit: 487*M, total_commit: 710*M, dom_new: 95*M, exp_new: 185*M, total_new: 280*M, uncommit: 489*M },
   { year: 2025, month: 2, crop: '2024/2025', carry: 803*M, receipts: 2574*M, supply: 3377*M, dom_ship: 82*M, exp_ship: 170*M, total_ship: 252*M, dom_commit: 235*M, exp_commit: 501*M, total_commit: 736*M, dom_new: 88*M, exp_new: 178*M, total_new: 266*M, uncommit: 512*M },
   { year: 2025, month: 1, crop: '2024/2025', carry: 803*M, receipts: 2568*M, supply: 3371*M, dom_ship: 78*M, exp_ship: 165*M, total_ship: 243*M, dom_commit: 240*M, exp_commit: 515*M, total_commit: 755*M, dom_new: 92*M, exp_new: 190*M, total_new: 282*M, uncommit: 498*M },
