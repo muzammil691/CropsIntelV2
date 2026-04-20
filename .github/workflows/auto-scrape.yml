@@ -1,29 +1,29 @@
-name: Autonomous Scrape & Process
+name: CropsIntelV2 Auto-Scrape Pipeline
 
 on:
   schedule:
+    # Run on the 15th of every month at 8:00 AM UTC
     - cron: '0 8 15 * *'
+    # Also run every Monday at 6:00 AM UTC for weekly updates
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
 jobs:
   scrape-and-process:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Run autonomous scrape cycle
+      - name: Run ABC scraper
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -37,20 +37,23 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node src/processors/data-processor.js
 
+      - name: Run AI analyst
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node src/processors/ai-analyst.js
+
       - name: Rebuild and deploy to gh-pages
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           npm run build
-          cd dist
-          touch .nojekyll
-          echo "cropsintel.net" > CNAME
-          cp index.html 404.html
-          git init
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git checkout -b gh-pages
-          git add -A
-          git commit -m "Auto-deploy: $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/muzammil691/CropsIntelV2.git
-          git push -f origin gh-pages
+          echo "cropsintel.net" > dist/CNAME
+          touch dist/.nojekyll
+          cp dist/index.html dist/404.html
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npx gh-pages -d dist --dotfiles
