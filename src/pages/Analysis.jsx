@@ -304,6 +304,23 @@ export default function Analysis() {
 
       {/* Row 4: Crop Year Summary Table */}
       <ChartCard title="Crop Year Summary" subtitle="Key metrics by crop year">
+        <div className="flex justify-end mb-3">
+          <button
+            onClick={() => {
+              const headers = ['Crop Year', 'Total Supply', 'Carry-In', 'Receipts', 'Cum Shipped', 'Avg Ship/Mo', 'Peak Ship', 'Months'];
+              const rows = cropSummaries.map(cs => [cs.cropYear, cs.supply, cs.carryIn, cs.receipts, cs.totalShipped, Math.round(cs.avgMonthlyShip), cs.peakShip, cs.months]);
+              const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'cropsintel_crop_year_summary.csv'; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-xs text-gray-500 hover:text-green-400 transition-colors px-2 py-1 rounded border border-gray-800 hover:border-green-500/30"
+          >
+            Export CSV
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

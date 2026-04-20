@@ -186,11 +186,33 @@ export default function Destinations() {
 
   const top5Countries = topDestinations.slice(0, 5).map(d => d.country);
 
+  const exportDestCSV = () => {
+    const headers = ['Rank', 'Country', 'Total Volume (lbs)', 'Months Active', 'Avg/Month', 'Share %'];
+    const totalVol = topDestinations.reduce((s, d) => s + d.total, 0);
+    const rows = topDestinations.map((d, i) => [
+      i + 1, d.country, d.total, d.months, Math.round(d.total / d.months), (d.total / totalVol * 100).toFixed(1)
+    ]);
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `cropsintel_destinations_${selectedCropYear?.replace('/', '-')}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white">Destinations & Trade Flow</h2>
-        <p className="text-gray-500 text-sm mt-1">Export destinations, domestic vs international split, and country-level trends</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Destinations & Trade Flow</h2>
+          <p className="text-gray-500 text-sm mt-1">Export destinations, domestic vs international split, and country-level trends</p>
+        </div>
+        <button
+          onClick={exportDestCSV}
+          className="bg-green-600 hover:bg-green-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+        >
+          Export CSV
+        </button>
       </div>
 
       {/* Crop Year Selector */}
