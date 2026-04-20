@@ -1,5 +1,74 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+
+// Simple markdown-to-JSX renderer for AI-generated briefs
+function MarkdownText({ text, className = '' }) {
+  if (!text) return null;
+
+  const renderLine = (line, i) => {
+    // Strip heading markers and render as bold
+    if (line.startsWith('## ')) {
+      return <span key={i} className="block text-white font-semibold mt-3 mb-1 text-sm">{renderInline(line.slice(3))}</span>;
+    }
+    if (line.startsWith('# ')) {
+      return <span key={i} className="block text-white font-bold mt-3 mb-1">{renderInline(line.slice(2))}</span>;
+    }
+    // Horizontal rules become spacing
+    if (line.trim() === '---' || line.trim() === '***') {
+      return <span key={i} className="block my-2" />;
+    }
+    // Empty line
+    if (!line.trim()) return <span key={i} className="block h-2" />;
+    // Normal paragraph
+    return <span key={i} className="block mb-1">{renderInline(line)}</span>;
+  };
+
+  const renderInline = (str) => {
+    // Replace **bold** and *italic* with styled spans
+    const parts = [];
+    let remaining = str;
+    let key = 0;
+
+    while (remaining.length > 0) {
+      // Bold: **text**
+      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+      if (boldMatch) {
+        const idx = remaining.indexOf(boldMatch[0]);
+        if (idx > 0) parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
+        parts.push(<span key={key++} className="text-white font-semibold">{boldMatch[1]}</span>);
+        remaining = remaining.slice(idx + boldMatch[0].length);
+        continue;
+      }
+      // Italic: *text*
+      const italicMatch = remaining.match(/\*(.+?)\*/);
+      if (italicMatch) {
+        const idx = remaining.indexOf(italicMatch[0]);
+        if (idx > 0) parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
+        parts.push(<span key={key++} className="italic text-gray-300">{italicMatch[1]}</span>);
+        remaining = remaining.slice(idx + italicMatch[0].length);
+        continue;
+      }
+      // No more matches
+      parts.push(<span key={key++}>{remaining}</span>);
+      break;
+    }
+    return parts;
+  };
+
+  const lines = text.split(/\n|---/).flatMap((segment, i, arr) => {
+    if (i < arr.length - 1) return [segment, '---'];
+    return [segment];
+  });
+
+  // Split on actual newlines first
+  const actualLines = text.split('\n');
+
+  return (
+    <div className={className}>
+      {actualLines.map((line, i) => renderLine(line.trim(), i))}
+    </div>
+  );
+}
 
 function StatCard({ title, value, subtitle, trend, color = 'green' }) {
   const colorMap = {
@@ -273,9 +342,9 @@ export default function Dashboard() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-300 leading-relaxed">{brief?.summary || signal?.summary}</p>
+                <MarkdownText text={brief?.summary || signal?.summary} className="text-sm text-gray-300 leading-relaxed" />
                 {brief && signal && brief.id !== signal.id && (
-                  <p className="text-xs text-gray-500 mt-2 leading-relaxed">{signal.summary}</p>
+                  <MarkdownText text={signal.summary} className="text-xs text-gray-500 mt-2 leading-relaxed" />
                 )}
               </div>
             </div>
