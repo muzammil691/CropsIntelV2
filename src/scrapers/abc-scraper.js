@@ -331,16 +331,22 @@ export async function scrapeABC() {
   }
 
   // 4. Update last scrape timestamp
-  await supabaseAdmin
-    .from('system_config')
-    .update({
-      value: JSON.stringify({
-        ...JSON.parse((await supabaseAdmin.from('system_config').select('value').eq('key', 'last_scrape_dates').single()).data?.value || '{}'),
-        abc_position: new Date().toISOString()
-      }),
-      updated_at: new Date().toISOString()
-    })
-    .eq('key', 'last_scrape_dates');
+  try {
+    const { data: configRow } = await supabaseAdmin.from('system_config').select('value').eq('key', 'last_scrape_dates').single();
+    let existing = {};
+    if (configRow?.value) {
+      existing = typeof configRow.value === 'string' ? JSON.parse(configRow.value) : configRow.value;
+    }
+    await supabaseAdmin
+      .from('system_config')
+      .update({
+        value: JSON.stringify({ ...existing, abc_position: new Date().toISOString() }),
+        updated_at: new Date().toISOString()
+      })
+      .eq('key', 'last_scrape_dates');
+  } catch (configErr) {
+    console.warn('Failed to update last_scrape_dates:', configErr.message);
+  }
 
   const duration = Date.now() - startTime;
 
