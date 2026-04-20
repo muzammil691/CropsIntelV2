@@ -5,10 +5,12 @@ import Analysis from './pages/Analysis';
 import Reports from './pages/Reports';
 import Autonomous from './pages/Autonomous';
 import Supply from './pages/Supply';
+import Destinations from './pages/Destinations';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/supply', label: 'Supply & Demand', icon: '⚖️' },
+  { path: '/destinations', label: 'Destinations', icon: '🌍' },
   { path: '/analysis', label: 'Analysis', icon: '📈' },
   { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/autonomous', label: 'Autonomous', icon: '🤖' }
@@ -107,6 +109,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/supply" element={<Supply />} />
+          <Route path="/destinations" element={<Destinations />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/autonomous" element={<Autonomous />} />
