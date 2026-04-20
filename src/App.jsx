@@ -2,10 +2,12 @@ import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
+import Analysis from './pages/Analysis';
 import Autonomous from './pages/Autonomous';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: '📊' },
+  { path: '/analysis', label: 'Analysis', icon: '📈' },
   { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/autonomous', label: 'Autonomous', icon: '🤖' }
 ];
@@ -57,6 +59,7 @@ export default function App() {
       <main className="flex-1 overflow-auto">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/analysis" element={<Analysis />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/autonomous" element={<Autonomous />} />
         </Routes>
