@@ -1,24 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Use service role key for admin operations (write access bypasses RLS)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5d3NmbWl4enJkZmN5d21kYWF3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjYyMTQ4NSwiZXhwIjoyMDkyMTk3NDg1fQ.6s173gnIEGCCxyEz9c3q3dnQ4EJuVIUTNywtyJKn3s4';
-
-async function adminFetch(path, options = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_KEY,
-      'Authorization': `Bearer ${SERVICE_KEY}`,
-      'Prefer': options.prefer || 'return=minimal',
-      ...options.headers,
-    }
-  });
-  return res;
-}
-
 function StatusBadge({ status }) {
   const colors = {
     success: 'bg-green-500/20 text-green-400',
@@ -66,56 +48,47 @@ export default function Autonomous() {
 
   const log = (msg) => setRunLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
 
-  // Browser-based autonomous cycle
+  // Browser-based autonomous cycle (reads via anon key, writes via supabase client)
   const runCycle = async () => {
     setRunning(true);
     setRunLog([]);
     const startTime = Date.now();
 
     try {
-      // Log start
       log('Starting autonomous cycle...');
-      await adminFetch('scraping_logs', {
-        method: 'POST',
-        body: JSON.stringify({ scraper_name: 'browser-autonomous', status: 'started', metadata: { trigger: 'manual' } })
-      });
+      await supabase.from('scraping_logs').insert({ scraper_name: 'browser-autonomous', status: 'started', metadata: { trigger: 'manual' } });
 
       // Step 1: Try to scrape ABC
-      log('Step 1: Fetching ABC industry data page...');
+      log('Step 1: Checking ABC industry data page...');
       let pdfCount = 0;
       try {
-        const pageRes = await fetch('https://www.almonds.org/processors/industry-reports', {
-          headers: { 'Accept': 'text/html' }
-        });
+        const pageRes = await fetch('https://www.almonds.org/processors/industry-reports', { headers: { 'Accept': 'text/html' } });
         if (pageRes.ok) {
           const html = await pageRes.text();
-          const pdfRegex = /href="([^"]*\.pdf[^"]*)"/gi;
-          let match;
-          const pdfs = [];
-          while ((match = pdfRegex.exec(html)) !== null) {
-            pdfs.push(match[1]);
-          }
+          const pdfs = [...html.matchAll(/href="([^"]*\.pdf[^"]*)"/gi)].map(m => m[1]);
           pdfCount = pdfs.filter(u => /position/i.test(u)).length;
           log(`Found ${pdfs.length} PDFs (${pdfCount} position reports)`);
         } else {
-          log(`ABC page returned HTTP ${pageRes.status} — will retry with fallback URLs`);
+          log(`ABC page returned HTTP ${pageRes.status}`);
         }
       } catch (err) {
-        log(`ABC fetch failed: ${err.message} (CORS likely — scraping works via GitHub Actions)`);
+        log(`ABC fetch skipped (CORS) — scraping runs via GitHub Actions`);
       }
 
       // Step 2: Process existing data
       log('Step 2: Processing data — calculating YoY, anomalies, trade signals...');
 
-      // Fetch all reports
-      const rRes = await fetch(`${SUPABASE_URL}/rest/v1/abc_position_reports?order=report_year.asc,report_month.asc&select=*`, {
-        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
-      });
-      const allReports = await rRes.json();
+      const { data: allReports } = await supabase
+        .from('abc_position_reports')
+        .select('*')
+        .order('report_year', { ascending: true })
+        .order('report_month', { ascending: true });
+
+      if (!allReports?.length) { log('No reports found — run scraper first'); return; }
       log(`Loaded ${allReports.length} position reports`);
 
       // Clear old analyses
-      await adminFetch('ai_analyses?id=gt.0', { method: 'DELETE' });
+      await supabase.from('ai_analyses').delete().gt('id', 0);
       log('Cleared old analyses');
 
       const M = 1e6;
@@ -137,20 +110,19 @@ export default function Autonomous() {
       }
       log(`Generated ${analyses.length} YoY comparisons`);
 
-      // Trade signal
+      // Trade signal from latest data
       const latest = allReports[allReports.length - 1];
       const prev = allReports[allReports.length - 2];
       if (latest && prev) {
         const shipUp = latest.total_shipped_lbs > prev.total_shipped_lbs;
         const commitDown = latest.total_committed_lbs < prev.total_committed_lbs;
         const newCommitUp = latest.total_new_commitments_lbs > prev.total_new_commitments_lbs;
-        let signal = 'neutral', reason = '';
-        let conf = 0.55;
+        let signal = 'neutral', reason = '', conf = 0.55;
         if (shipUp && !commitDown) { signal = 'bullish'; reason = 'Shipments and commitments both trending up. Strong demand.'; conf = 0.72; }
         else if (!shipUp && commitDown) { signal = 'bearish'; reason = 'Shipments down and commitments declining. Weakening demand.'; conf = 0.70; }
         else if (shipUp && commitDown) { signal = 'bearish'; reason = 'Shipments up but commitments declining — may be peaking.'; conf = 0.65; }
         else { reason = 'Mixed signals across key metrics.'; }
-        if (newCommitUp) { conf = Math.min(0.95, conf + 0.08); }
+        if (newCommitUp) conf = Math.min(0.95, conf + 0.08);
         analyses.push({ analysis_type: 'trade_signal', title: `Trade Signal: ${signal.toUpperCase()} — ${latest.crop_year}`, summary: reason, confidence: conf, data_context: { signal, report_year: latest.report_year, report_month: latest.report_month }, tags: ['signal', 'actionable'], is_actionable: true });
         log(`Trade signal: ${signal.toUpperCase()}`);
       }
@@ -170,7 +142,7 @@ export default function Autonomous() {
         analyses.push({ analysis_type: 'monthly_brief', title: `Crop Summary: ${cy}`, summary: `Final supply: ${(last.total_supply_lbs / M).toFixed(0)}M lbs (carry-in ${(last.carry_in_lbs / M).toFixed(0)}M + receipts ${(last.receipts_lbs / M).toFixed(0)}M). Peak shipments: ${Math.max(...cyR.map(r => r.total_shipped_lbs / M)).toFixed(0)}M/mo. ${cyR.length} months reported.`, confidence: 0.98, data_context: { crop_year: cy }, tags: ['summary', 'crop-year'], is_actionable: false });
       }
 
-      // Anomalies
+      // Anomaly detection
       const shipments = allReports.map(r => r.total_shipped_lbs);
       const mean = shipments.reduce((a, b) => a + b, 0) / shipments.length;
       const std = Math.sqrt(shipments.reduce((a, b) => a + (b - mean) ** 2, 0) / shipments.length);
@@ -188,37 +160,31 @@ export default function Autonomous() {
       let inserted = 0;
       for (let i = 0; i < analyses.length; i += 50) {
         const batch = analyses.slice(i, i + 50);
-        const r = await adminFetch('ai_analyses', { method: 'POST', body: JSON.stringify(batch) });
-        if (r.status === 201) inserted += batch.length;
+        const { error } = await supabase.from('ai_analyses').insert(batch);
+        if (!error) inserted += batch.length;
+        else log(`Batch insert error: ${error.message}`);
       }
       log(`Inserted ${inserted} analyses total`);
 
       const duration = Date.now() - startTime;
       log(`Autonomous cycle complete in ${(duration / 1000).toFixed(1)}s`);
 
-      // Log completion
-      await adminFetch('scraping_logs', {
-        method: 'POST',
-        body: JSON.stringify({
-          scraper_name: 'browser-autonomous',
-          status: 'success',
-          records_found: allReports.length,
-          records_inserted: inserted,
-          duration_ms: duration,
-          metadata: { trigger: 'manual', analyses: inserted, anomalies: anomalyCount, pdfs_found: pdfCount },
-          completed_at: new Date().toISOString()
-        })
+      await supabase.from('scraping_logs').insert({
+        scraper_name: 'browser-autonomous', status: 'success',
+        records_found: allReports.length, records_inserted: inserted,
+        duration_ms: duration, metadata: { trigger: 'manual', analyses: inserted, anomalies: anomalyCount, pdfs_found: pdfCount },
+        completed_at: new Date().toISOString()
       });
 
     } catch (err) {
       log(`ERROR: ${err.message}`);
-      await adminFetch('scraping_logs', {
-        method: 'POST',
-        body: JSON.stringify({ scraper_name: 'browser-autonomous', status: 'failed', error_message: err.message, completed_at: new Date().toISOString() })
+      await supabase.from('scraping_logs').insert({
+        scraper_name: 'browser-autonomous', status: 'failed',
+        error_message: err.message, completed_at: new Date().toISOString()
       });
     } finally {
       setRunning(false);
-      loadData(); // Refresh
+      loadData();
     }
   };
 
