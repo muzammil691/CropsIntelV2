@@ -152,18 +152,105 @@ async function parsePositionReport(pdfBuffer, sourceUrl) {
     const year = parseInt(dateMatch[2]);
     const reportDate = `${year}-${String(month).padStart(2, '0')}-01`;
 
-    // Extract numbers from the report (simplified pattern matching)
-    // Real implementation would use more sophisticated table parsing
-    const extractNumber = (pattern) => {
-      const m = text.match(pattern);
-      return m ? parseInt(m[1].replace(/,/g, '')) : 0;
+    // Extract numbers using multiple patterns for each field
+    // ABC Position Reports use consistent labeling across years
+    const extractNumber = (patterns) => {
+      for (const pattern of (Array.isArray(patterns) ? patterns : [patterns])) {
+        const m = text.match(pattern);
+        if (m) {
+          const raw = m[1].replace(/,/g, '').replace(/\s/g, '');
+          const num = parseInt(raw);
+          if (!isNaN(num) && num > 0) return num;
+        }
+      }
+      return 0;
     };
+
+    // Normalize text for more reliable matching (collapse whitespace)
+    const norm = text.replace(/\s+/g, ' ');
+
+    const carry_in = extractNumber([
+      /Carry[\s-]*[Ii]n[:\s]*\(?\s*([\d,]+)/,
+      /Beginning[\s]*Inventory[:\s]*([\d,]+)/,
+      /Carry[\s-]*[Ff]orward[:\s]*([\d,]+)/
+    ]);
+
+    const receipts = extractNumber([
+      /Crop Receipts[^:]*?[:\s]*([\d,]+)/i,
+      /Total Receipts[:\s]*([\d,]+)/i,
+      /Receipts to Date[:\s]*([\d,]+)/i
+    ]);
+
+    const total_supply = extractNumber([
+      /Total Supply[:\s]*([\d,]+)/i,
+      /Marketable Supply[:\s]*([\d,]+)/i
+    ]);
+
+    const domestic_shipped = extractNumber([
+      /Domestic Shipments?[:\s]*([\d,]+)/i
+    ]);
+
+    const export_shipped = extractNumber([
+      /Export Shipments?[:\s]*([\d,]+)/i
+    ]);
+
+    const total_shipped = extractNumber([
+      /Total Shipments?[:\s]*([\d,]+)/i
+    ]) || (domestic_shipped + export_shipped);
+
+    const domestic_committed = extractNumber([
+      /Domestic Committed[:\s]*([\d,]+)/i,
+      /Domestic[\s]*\(Committed\)[:\s]*([\d,]+)/i
+    ]);
+
+    const export_committed = extractNumber([
+      /Export Committed[:\s]*([\d,]+)/i,
+      /Export[\s]*\(Committed\)[:\s]*([\d,]+)/i
+    ]);
+
+    const total_committed = extractNumber([
+      /Total Committed[:\s]*([\d,]+)/i
+    ]) || (domestic_committed + export_committed);
+
+    const domestic_new = extractNumber([
+      /Domestic New Commitments?[:\s]*([\d,]+)/i,
+      /Domestic[\s]*\(New\)[:\s]*([\d,]+)/i
+    ]);
+
+    const export_new = extractNumber([
+      /Export New Commitments?[:\s]*([\d,]+)/i,
+      /Export[\s]*\(New\)[:\s]*([\d,]+)/i
+    ]);
+
+    const total_new = extractNumber([
+      /Total New Commitments?[:\s]*([\d,]+)/i
+    ]) || (domestic_new + export_new);
+
+    const uncommitted = extractNumber([
+      /Uncommitted Inventory[:\s]*([\d,]+)/i,
+      /Uncommitted[:\s]*([\d,]+)/i
+    ]);
+
+    console.log(`Extracted: supply=${total_supply}, shipped=${total_shipped}, committed=${total_committed}, uncommitted=${uncommitted}`);
 
     return {
       report_date: reportDate,
       report_year: year,
       report_month: month,
       crop_year: month >= 8 ? `${year}/${year + 1}` : `${year - 1}/${year}`,
+      carry_in_lbs: carry_in,
+      receipts_lbs: receipts,
+      domestic_committed_lbs: domestic_committed,
+      export_committed_lbs: export_committed,
+      total_committed_lbs: total_committed,
+      domestic_shipped_lbs: domestic_shipped,
+      export_shipped_lbs: export_shipped,
+      total_shipped_lbs: total_shipped,
+      domestic_new_commitments_lbs: domestic_new,
+      export_new_commitments_lbs: export_new,
+      total_new_commitments_lbs: total_new,
+      uncommitted_lbs: uncommitted,
+      total_supply_lbs: total_supply || (carry_in + receipts),
       raw_data: { text: text.substring(0, 5000), pages: data.numpages },
       source_pdf: sourceUrl
     };
