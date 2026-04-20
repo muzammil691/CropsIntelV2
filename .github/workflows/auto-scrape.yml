@@ -1,0 +1,56 @@
+name: Autonomous Scrape & Process
+
+on:
+  schedule:
+    - cron: '0 8 15 * *'
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  scrape-and-process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run autonomous scrape cycle
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node src/scrapers/abc-scraper.js
+
+      - name: Run data processor
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node src/processors/data-processor.js
+
+      - name: Rebuild and deploy to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npm run build
+          cd dist
+          touch .nojekyll
+          echo "cropsintel.net" > CNAME
+          cp index.html 404.html
+          git init
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git checkout -b gh-pages
+          git add -A
+          git commit -m "Auto-deploy: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git remote add origin https://x-access-token:${GITHUB_TOKEN}@github.com/muzammil691/CropsIntelV2.git
+          git push -f origin gh-pages
