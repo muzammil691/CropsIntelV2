@@ -4,9 +4,11 @@ import Dashboard from './pages/Dashboard';
 import Analysis from './pages/Analysis';
 import Reports from './pages/Reports';
 import Autonomous from './pages/Autonomous';
+import Supply from './pages/Supply';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: '📊' },
+  { path: '/supply', label: 'Supply & Demand', icon: '⚖️' },
   { path: '/analysis', label: 'Analysis', icon: '📈' },
   { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/autonomous', label: 'Autonomous', icon: '🤖' }
@@ -104,6 +106,7 @@ export default function App() {
       <main className="flex-1 overflow-auto pb-16 lg:pb-0">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/supply" element={<Supply />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/autonomous" element={<Autonomous />} />
