@@ -106,6 +106,97 @@ CREATE TABLE IF NOT EXISTS abc_crop_receipts (
 );
 
 -- ============================================================
+-- ABC Forecasts (Subjective + Objective, annual)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS abc_forecasts (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  forecast_type TEXT NOT NULL,  -- 'subjective' (May) or 'objective' (July)
+  forecast_year INT NOT NULL,
+  crop_year TEXT NOT NULL,
+  forecast_lbs BIGINT DEFAULT 0,
+  report_month INT,            -- 5 for subjective, 7 for objective
+  source_pdf TEXT,
+  raw_text TEXT,
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(forecast_type, forecast_year)
+);
+
+-- ============================================================
+-- ABC Acreage Reports (USDA-NASS + Land IQ)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS abc_acreage_reports (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  report_year INT NOT NULL,
+  source_type TEXT NOT NULL,  -- 'usda_nass' or 'land_iq'
+  bearing_acres INT DEFAULT 0,
+  non_bearing_acres INT DEFAULT 0,
+  total_acres INT DEFAULT 0,
+  county_data JSONB DEFAULT '{}',  -- per-county breakdown if available
+  source_pdf TEXT,
+  raw_text TEXT,
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(report_year, source_type)
+);
+
+-- ============================================================
+-- ABC Almond Almanac (annual year-end reports)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS abc_almanac (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  almanac_year INT NOT NULL UNIQUE,
+  crop_year TEXT NOT NULL,
+  num_pages INT DEFAULT 0,
+  source_pdf TEXT,
+  summary_text TEXT,
+  key_stats JSONB DEFAULT '{}',  -- extracted key statistics
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- Strata Market Pricing (live + historical almond prices)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS strata_prices (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  price_date DATE NOT NULL,
+  variety TEXT NOT NULL,        -- 'Nonpareil', 'Carmel', 'Butte/Padres', etc.
+  grade TEXT,                   -- '23/25', '25/27', 'Extra #1', etc.
+  form TEXT,                   -- 'Whole Natural', 'Blanched', 'Sliced', etc.
+  price_usd_per_lb DECIMAL(10,4),
+  maxons_price_per_lb DECIMAL(10,4),  -- price * 1.03 (3% margin)
+  bid_price DECIMAL(10,4),
+  ask_price DECIMAL(10,4),
+  volume_lbs BIGINT,
+  source TEXT DEFAULT 'strata',
+  metadata JSONB DEFAULT '{}',
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(price_date, variety, grade, form)
+);
+
+-- ============================================================
+-- Industry News & Articles
+-- ============================================================
+CREATE TABLE IF NOT EXISTS industry_news (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title TEXT NOT NULL,
+  source TEXT NOT NULL,         -- 'abc_press', 'abc_industry', 'abc_byte', 'abc_podcast', 'external'
+  source_url TEXT,
+  published_date DATE,
+  category TEXT,               -- 'trade', 'regulatory', 'crop', 'market', 'health', 'sustainability'
+  summary TEXT,
+  full_text TEXT,
+  ai_market_impact TEXT,       -- AI-generated market impact analysis
+  ai_sentiment TEXT,           -- 'bullish', 'bearish', 'neutral'
+  tags TEXT[] DEFAULT '{}',
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(source, source_url)
+);
+
+-- ============================================================
 -- Market Data (pricing, futures, signals)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS market_data (
@@ -206,6 +297,11 @@ CREATE INDEX IF NOT EXISTS idx_receipts_variety ON abc_crop_receipts(variety);
 CREATE INDEX IF NOT EXISTS idx_market_date ON market_data(data_date, data_type);
 CREATE INDEX IF NOT EXISTS idx_scraping_status ON scraping_logs(status, started_at);
 CREATE INDEX IF NOT EXISTS idx_analysis_type ON ai_analyses(analysis_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_forecast_type ON abc_forecasts(forecast_type, forecast_year);
+CREATE INDEX IF NOT EXISTS idx_acreage_year ON abc_acreage_reports(report_year);
+CREATE INDEX IF NOT EXISTS idx_strata_date ON strata_prices(price_date, variety);
+CREATE INDEX IF NOT EXISTS idx_news_source ON industry_news(source, published_date);
+CREATE INDEX IF NOT EXISTS idx_news_category ON industry_news(category, published_date);
 
 -- ============================================================
 -- RLS Policies (enable for frontend, bypass with service_role)
@@ -213,6 +309,11 @@ CREATE INDEX IF NOT EXISTS idx_analysis_type ON ai_analyses(analysis_type, creat
 ALTER TABLE abc_position_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE abc_shipment_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE abc_crop_receipts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE abc_forecasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE abc_acreage_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE abc_almanac ENABLE ROW LEVEL SECURITY;
+ALTER TABLE strata_prices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE industry_news ENABLE ROW LEVEL SECURITY;
 ALTER TABLE market_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_analyses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
@@ -222,6 +323,11 @@ ALTER TABLE scraping_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read position reports" ON abc_position_reports FOR SELECT USING (true);
 CREATE POLICY "Public read shipment reports" ON abc_shipment_reports FOR SELECT USING (true);
 CREATE POLICY "Public read crop receipts" ON abc_crop_receipts FOR SELECT USING (true);
+CREATE POLICY "Public read forecasts" ON abc_forecasts FOR SELECT USING (true);
+CREATE POLICY "Public read acreage" ON abc_acreage_reports FOR SELECT USING (true);
+CREATE POLICY "Public read almanac" ON abc_almanac FOR SELECT USING (true);
+CREATE POLICY "Public read strata prices" ON strata_prices FOR SELECT USING (true);
+CREATE POLICY "Public read news" ON industry_news FOR SELECT USING (true);
 CREATE POLICY "Public read market data" ON market_data FOR SELECT USING (true);
 CREATE POLICY "Public read analyses" ON ai_analyses FOR SELECT USING (true);
 

@@ -15,13 +15,14 @@ config();
 
 import cron from 'node-cron';
 import supabaseAdmin from '../lib/supabase-admin.js';
-import { scrapeABC } from '../scrapers/abc-scraper.js';
+import { scrapeABC, scrapeAllReportTypes } from '../scrapers/abc-scraper.js';
+import { scrapeStrata } from '../scrapers/strata-scraper.js';
 import { runShipmentParser } from '../scrapers/shipment-parser.js';
 import { runReceiptsParser } from '../scrapers/receipts-parser.js';
 import { processData } from '../processors/data-processor.js';
 import { runAIAnalysis } from '../processors/ai-analyst.js';
 
-const RUNNER_VERSION = '3.0.0';
+const RUNNER_VERSION = '4.0.0';
 
 // ============================================================
 // Health check — log that the runner is alive
@@ -61,10 +62,22 @@ async function runAutonomousCycle() {
   const steps = [];
 
   try {
-    // Step 1: Scrape ABC data
-    console.log('--- STEP 1: Scraping ABC Data ---');
-    const scrapeResult = await scrapeABC();
-    steps.push({ step: 'scrape', found: scrapeResult.found, inserted: scrapeResult.inserted });
+    // Step 1: Scrape ALL ABC report types (position, forecasts, acreage, almanac)
+    console.log('--- STEP 1: Scraping ALL ABC Report Types ---');
+    const scrapeResult = await scrapeAllReportTypes();
+    const totalInserted = Object.values(scrapeResult).reduce((s, r) => s + r.inserted, 0);
+    const totalFound = Object.values(scrapeResult).reduce((s, r) => s + r.found, 0);
+    steps.push({ step: 'scrape_all', found: totalFound, inserted: totalInserted, breakdown: scrapeResult });
+
+    // Step 1B: Scrape Strata Markets pricing
+    console.log('\n--- STEP 1B: Scraping Strata Pricing ---');
+    try {
+      const strataResult = await scrapeStrata();
+      steps.push({ step: 'strata', found: strataResult.found, inserted: strataResult.inserted });
+    } catch (strataErr) {
+      console.warn('Strata scrape failed (non-fatal):', strataErr.message);
+      steps.push({ step: 'strata', error: strataErr.message });
+    }
 
     // Step 2: Generate shipment data (from PDFs or position reports)
     console.log('\n--- STEP 2: Shipment Data ---');
@@ -93,15 +106,15 @@ async function runAutonomousCycle() {
     if (runId) {
       await supabaseAdmin.from('pipeline_runs').update({
         status: 'completed', completed_at: new Date().toISOString(), steps_completed: steps,
-        summary: `Cycle complete in ${duration}ms: ${scrapeResult.inserted} new reports, ${shipmentResult.derived} shipments, ${receiptResult.derived} receipts`
+        summary: `Cycle complete in ${duration}ms: ${totalInserted} new reports, ${shipmentResult.derived} shipments, ${receiptResult.derived} receipts`
       }).eq('id', runId);
     }
 
     await supabaseAdmin.from('scraping_logs').insert({
       scraper_name: 'autonomous-cycle',
       status: 'success',
-      records_found: scrapeResult.found,
-      records_inserted: scrapeResult.inserted,
+      records_found: totalFound,
+      records_inserted: totalInserted,
       duration_ms: duration,
       metadata: {
         version: RUNNER_VERSION,

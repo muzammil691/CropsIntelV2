@@ -1,9 +1,15 @@
 // CropsIntelV2 — ABC Auto-Scraper
 // Scrapes Almond Board of California (almonds.org) for:
-//   - Position Reports (monthly supply/demand)
+//   - Position Reports (monthly supply/demand) ✅ ACTIVE
 //   - Shipment Reports (by destination)
 //   - Crop Receipt Reports (by variety)
+//   - Subjective Forecasts (May, annual)
+//   - Objective Forecasts (July, annual)
+//   - USDA-NASS Acreage Reports
+//   - Almond Almanac (annual year-end)
+//   - Nursery Reports (leading indicator)
 //
+// URL updated 2026-04-21: /processors/industry-reports → /tools-and-resources/crop-reports/
 // Runs autonomously on schedule or manually: node src/scrapers/abc-scraper.js
 
 import { config } from 'dotenv';
@@ -12,14 +18,25 @@ config();
 import supabaseAdmin from '../lib/supabase-admin.js';
 
 const ABC_BASE_URL = 'https://www.almonds.org';
-// ABC publishes reports under /processors/industry-reports
-// Position reports, shipment reports, and receipt reports are all linked here
-const ABC_DATA_URL = `${ABC_BASE_URL}/processors/industry-reports`;
-// Fallback paths to try if primary URL changes
+// ABC publishes reports under /tools-and-resources/crop-reports/
+// As of 2026-04: old URL /processors/industry-reports returns 404
+// Position reports, shipment reports, forecasts, acreage — all linked from crop-reports hub
+const ABC_DATA_URL = `${ABC_BASE_URL}/tools-and-resources/crop-reports`;
+// Sub-pages for specific report types
+const ABC_REPORT_URLS = {
+  position: `${ABC_BASE_URL}/tools-and-resources/crop-reports/position-reports`,
+  subjective: `${ABC_BASE_URL}/tools-and-resources/crop-reports/subjective-forecasts`,
+  objective: `${ABC_BASE_URL}/tools-and-resources/crop-reports/objective-forecasts`,
+  acreage_usda: `${ABC_BASE_URL}/tools-and-resources/crop-reports/usda-nass-acreage-reports`,
+  acreage_landiq: `${ABC_BASE_URL}/tools-and-resources/crop-reports/land-iq-acreage-reports`,
+  nursery: `${ABC_BASE_URL}/tools-and-resources/crop-reports/nursery-report`,
+  almanac: `${ABC_BASE_URL}/tools-and-resources/crop-reports/almond-almanac`,
+  fruit_weight: `${ABC_BASE_URL}/tools-and-resources/crop-reports/fruit-weight-report`,
+};
+// Fallback paths to try if primary URL changes again
 const ABC_FALLBACK_URLS = [
-  `${ABC_BASE_URL}/industry/industry-data`,
-  `${ABC_BASE_URL}/data/position-reports`,
-  `${ABC_BASE_URL}/industry-data`,
+  `${ABC_BASE_URL}/tools-and-resources/crop-reports`,
+  `${ABC_BASE_URL}/processors/industry-reports`,
 ];
 
 // ============================================================
@@ -42,46 +59,27 @@ async function logScrape(scraperName, status, details = {}) {
 }
 
 // ============================================================
-// Fetch ABC industry data page and find PDF links
+// Fetch a page from almonds.org and extract PDF links
 // ============================================================
-async function fetchABCDataPage() {
-  const urlsToTry = [ABC_DATA_URL, ...ABC_FALLBACK_URLS];
-  let html = null;
-  let usedUrl = null;
-
-  for (const url of urlsToTry) {
-    console.log(`Trying ABC data page: ${url}`);
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'CropsIntelV2/1.0 (Market Intelligence Platform)',
-          'Accept': 'text/html'
-        },
-        redirect: 'follow'
-      });
-
-      if (response.ok) {
-        html = await response.text();
-        usedUrl = url;
-        console.log(`Success! Fetched ${html.length} bytes from ${url}`);
-        break;
-      } else {
-        console.log(`HTTP ${response.status} from ${url}, trying next...`);
-      }
-    } catch (err) {
-      console.log(`Failed to reach ${url}: ${err.message}`);
-    }
-  }
-
-  if (!html) {
-    console.error('All ABC URLs failed');
-    await logScrape('abc-page-fetch', 'failed', { error: 'All URLs unreachable' });
-    return { positionPDFs: [], shipmentPDFs: [], receiptPDFs: [], allPDFs: [] };
-  }
-
+async function fetchPagePDFs(pageUrl) {
+  console.log(`Fetching page: ${pageUrl}`);
   try {
+    const response = await fetch(pageUrl, {
+      headers: {
+        'User-Agent': 'CropsIntelV2/1.0 (Market Intelligence Platform)',
+        'Accept': 'text/html'
+      },
+      redirect: 'follow'
+    });
 
-    // Extract PDF links from the page
+    if (!response.ok) {
+      console.log(`HTTP ${response.status} from ${pageUrl}`);
+      return [];
+    }
+
+    const html = await response.text();
+    console.log(`Fetched ${html.length} bytes from ${pageUrl}`);
+
     const pdfLinks = [];
     const pdfRegex = /href="([^"]*\.pdf[^"]*)"/gi;
     let match;
@@ -89,20 +87,61 @@ async function fetchABCDataPage() {
       const url = match[1].startsWith('http') ? match[1] : `${ABC_BASE_URL}${match[1]}`;
       pdfLinks.push(url);
     }
+    console.log(`Found ${pdfLinks.length} PDF links on ${pageUrl}`);
+    return pdfLinks;
+  } catch (err) {
+    console.error(`Failed to fetch ${pageUrl}:`, err.message);
+    return [];
+  }
+}
 
-    console.log(`Found ${pdfLinks.length} PDF links`);
+// ============================================================
+// Fetch ABC crop reports hub + specific report pages for PDFs
+// ============================================================
+async function fetchABCDataPage() {
+  // Fetch the main crop-reports hub page
+  const urlsToTry = [ABC_DATA_URL, ...ABC_FALLBACK_URLS];
+  let allPDFs = [];
 
-    // Categorize PDFs
-    const positionPDFs = pdfLinks.filter(u => /position/i.test(u));
-    const shipmentPDFs = pdfLinks.filter(u => /shipment/i.test(u));
-    const receiptPDFs = pdfLinks.filter(u => /receipt/i.test(u));
+  for (const url of urlsToTry) {
+    const pdfs = await fetchPagePDFs(url);
+    if (pdfs.length > 0) {
+      allPDFs = pdfs;
+      console.log(`Success! Found ${pdfs.length} PDFs from hub page`);
+      break;
+    }
+  }
 
-    return { positionPDFs, shipmentPDFs, receiptPDFs, allPDFs: pdfLinks };
-  } catch (error) {
-    console.error('Failed to fetch ABC data page:', error.message);
-    await logScrape('abc-page-fetch', 'failed', { error: error.message });
+  // Also fetch the dedicated Position Reports page (has archive back to 1990)
+  const positionPagePDFs = await fetchPagePDFs(ABC_REPORT_URLS.position);
+  allPDFs = [...new Set([...allPDFs, ...positionPagePDFs])]; // deduplicate
+
+  if (allPDFs.length === 0) {
+    console.error('No PDFs found on any ABC page');
+    await logScrape('abc-page-fetch', 'failed', { error: 'No PDFs found' });
     return { positionPDFs: [], shipmentPDFs: [], receiptPDFs: [], allPDFs: [] };
   }
+
+  // Categorize PDFs by type
+  const positionPDFs = allPDFs.filter(u => /position/i.test(u));
+  const shipmentPDFs = allPDFs.filter(u => /shipment/i.test(u));
+  const receiptPDFs = allPDFs.filter(u => /receipt/i.test(u));
+
+  console.log(`Categorized: ${positionPDFs.length} position, ${shipmentPDFs.length} shipment, ${receiptPDFs.length} receipt`);
+
+  return { positionPDFs, shipmentPDFs, receiptPDFs, allPDFs };
+}
+
+// ============================================================
+// Fetch PDFs from a specific report type page
+// ============================================================
+async function fetchReportTypePDFs(reportType) {
+  const url = ABC_REPORT_URLS[reportType];
+  if (!url) {
+    console.error(`Unknown report type: ${reportType}`);
+    return [];
+  }
+  return await fetchPagePDFs(url);
 }
 
 // ============================================================
@@ -365,9 +404,261 @@ export async function scrapeABC() {
   return { found: totalFound, inserted: totalInserted, duration };
 }
 
+// ============================================================
+// Scrape Subjective Forecasts (May each year)
+// ============================================================
+export async function scrapeSubjectiveForecasts() {
+  console.log('\n--- Scraping Subjective Forecasts ---');
+  const pdfs = await fetchReportTypePDFs('subjective');
+  console.log(`Found ${pdfs.length} subjective forecast PDFs`);
+
+  let inserted = 0;
+  for (const pdfUrl of pdfs) {
+    const buffer = await downloadPDF(pdfUrl);
+    if (!buffer) continue;
+
+    try {
+      const pdfParse = (await import('pdf-parse')).default;
+      const data = await pdfParse(buffer);
+      const text = data.text;
+
+      // Extract year from text
+      const yearMatch = text.match(/(\d{4})\s*(?:California\s+)?Almond\s+(?:Subjective|Forecast)/i)
+        || text.match(/(20\d{2})/);
+      if (!yearMatch) continue;
+
+      const year = parseInt(yearMatch[1]);
+      const cropYear = `${year}/${year + 1}`;
+
+      // Extract forecast number (billion lbs or million lbs)
+      const forecastMatch = text.match(/([\d,.]+)\s*(?:billion|million)\s*(?:meat-?weight)?/i);
+      let forecastLbs = 0;
+      if (forecastMatch) {
+        const num = parseFloat(forecastMatch[1].replace(/,/g, ''));
+        forecastLbs = forecastMatch[0].toLowerCase().includes('billion')
+          ? Math.round(num * 1e9) : Math.round(num * 1e6);
+      }
+
+      const { error } = await supabaseAdmin.from('abc_forecasts').upsert({
+        forecast_type: 'subjective',
+        forecast_year: year,
+        crop_year: cropYear,
+        forecast_lbs: forecastLbs,
+        report_month: 5, // May
+        source_pdf: pdfUrl,
+        raw_text: text.substring(0, 3000),
+      }, { onConflict: 'forecast_type,forecast_year' });
+
+      if (!error) {
+        inserted++;
+        console.log(`Stored subjective forecast: ${cropYear} → ${forecastLbs.toLocaleString()} lbs`);
+      }
+    } catch (err) {
+      console.error(`Parse error for ${pdfUrl}:`, err.message);
+    }
+  }
+
+  await logScrape('abc-subjective-forecasts', inserted > 0 ? 'success' : 'skipped', { found: pdfs.length, inserted });
+  return { found: pdfs.length, inserted };
+}
+
+// ============================================================
+// Scrape Objective Forecasts (July each year)
+// ============================================================
+export async function scrapeObjectiveForecasts() {
+  console.log('\n--- Scraping Objective Forecasts ---');
+  const pdfs = await fetchReportTypePDFs('objective');
+  console.log(`Found ${pdfs.length} objective forecast PDFs`);
+
+  let inserted = 0;
+  for (const pdfUrl of pdfs) {
+    // Skip presentation PDFs — only parse the actual forecast reports
+    if (/presentation/i.test(pdfUrl)) continue;
+
+    const buffer = await downloadPDF(pdfUrl);
+    if (!buffer) continue;
+
+    try {
+      const pdfParse = (await import('pdf-parse')).default;
+      const data = await pdfParse(buffer);
+      const text = data.text;
+
+      const yearMatch = text.match(/(20\d{2})\s*(?:California\s+)?Almond\s+(?:Objective|Forecast)/i)
+        || text.match(/(20\d{2})/);
+      if (!yearMatch) continue;
+
+      const year = parseInt(yearMatch[1]);
+      const cropYear = `${year}/${year + 1}`;
+
+      const forecastMatch = text.match(/([\d,.]+)\s*(?:billion|million)\s*(?:meat-?weight)?/i);
+      let forecastLbs = 0;
+      if (forecastMatch) {
+        const num = parseFloat(forecastMatch[1].replace(/,/g, ''));
+        forecastLbs = forecastMatch[0].toLowerCase().includes('billion')
+          ? Math.round(num * 1e9) : Math.round(num * 1e6);
+      }
+
+      const { error } = await supabaseAdmin.from('abc_forecasts').upsert({
+        forecast_type: 'objective',
+        forecast_year: year,
+        crop_year: cropYear,
+        forecast_lbs: forecastLbs,
+        report_month: 7, // July
+        source_pdf: pdfUrl,
+        raw_text: text.substring(0, 3000),
+      }, { onConflict: 'forecast_type,forecast_year' });
+
+      if (!error) {
+        inserted++;
+        console.log(`Stored objective forecast: ${cropYear} → ${forecastLbs.toLocaleString()} lbs`);
+      }
+    } catch (err) {
+      console.error(`Parse error for ${pdfUrl}:`, err.message);
+    }
+  }
+
+  await logScrape('abc-objective-forecasts', inserted > 0 ? 'success' : 'skipped', { found: pdfs.length, inserted });
+  return { found: pdfs.length, inserted };
+}
+
+// ============================================================
+// Scrape USDA-NASS Acreage Reports
+// ============================================================
+export async function scrapeAcreageReports() {
+  console.log('\n--- Scraping Acreage Reports ---');
+  const pdfs = await fetchReportTypePDFs('acreage_usda');
+  console.log(`Found ${pdfs.length} acreage report PDFs`);
+
+  let inserted = 0;
+  for (const pdfUrl of pdfs) {
+    const buffer = await downloadPDF(pdfUrl);
+    if (!buffer) continue;
+
+    try {
+      const pdfParse = (await import('pdf-parse')).default;
+      const data = await pdfParse(buffer);
+      const text = data.text;
+
+      const yearMatch = text.match(/(20\d{2})/);
+      if (!yearMatch) continue;
+      const year = parseInt(yearMatch[1]);
+
+      // Extract bearing and total acreage
+      const bearingMatch = text.match(/bearing[:\s]*([\d,]+)\s*(?:acres)?/i);
+      const totalMatch = text.match(/total[:\s]*([\d,]+)\s*(?:acres)?/i);
+      const nonBearingMatch = text.match(/non[\s-]*bearing[:\s]*([\d,]+)\s*(?:acres)?/i);
+
+      const bearingAcres = bearingMatch ? parseInt(bearingMatch[1].replace(/,/g, '')) : 0;
+      const totalAcres = totalMatch ? parseInt(totalMatch[1].replace(/,/g, '')) : 0;
+      const nonBearingAcres = nonBearingMatch ? parseInt(nonBearingMatch[1].replace(/,/g, '')) : 0;
+
+      const { error } = await supabaseAdmin.from('abc_acreage_reports').upsert({
+        report_year: year,
+        source_type: 'usda_nass',
+        bearing_acres: bearingAcres,
+        non_bearing_acres: nonBearingAcres,
+        total_acres: totalAcres || (bearingAcres + nonBearingAcres),
+        source_pdf: pdfUrl,
+        raw_text: text.substring(0, 3000),
+      }, { onConflict: 'report_year,source_type' });
+
+      if (!error) {
+        inserted++;
+        console.log(`Stored acreage: ${year} → ${(totalAcres || bearingAcres).toLocaleString()} acres`);
+      }
+    } catch (err) {
+      console.error(`Parse error for ${pdfUrl}:`, err.message);
+    }
+  }
+
+  await logScrape('abc-acreage-reports', inserted > 0 ? 'success' : 'skipped', { found: pdfs.length, inserted });
+  return { found: pdfs.length, inserted };
+}
+
+// ============================================================
+// Scrape Almond Almanac (annual year-end reports)
+// ============================================================
+export async function scrapeAlmanac() {
+  console.log('\n--- Scraping Almond Almanac ---');
+  const pdfs = await fetchReportTypePDFs('almanac');
+  console.log(`Found ${pdfs.length} almanac PDFs`);
+
+  let inserted = 0;
+  for (const pdfUrl of pdfs) {
+    const buffer = await downloadPDF(pdfUrl);
+    if (!buffer) continue;
+
+    try {
+      const pdfParse = (await import('pdf-parse')).default;
+      const data = await pdfParse(buffer);
+      const text = data.text;
+
+      const yearMatch = text.match(/(?:Almanac|Annual Report)[^0-9]*(20\d{2})/i)
+        || text.match(/(20\d{2})\s*Almanac/i)
+        || text.match(/(20\d{2})/);
+      if (!yearMatch) continue;
+      const year = parseInt(yearMatch[1]);
+
+      const { error } = await supabaseAdmin.from('abc_almanac').upsert({
+        almanac_year: year,
+        crop_year: `${year - 1}/${year}`,
+        num_pages: data.numpages,
+        source_pdf: pdfUrl,
+        summary_text: text.substring(0, 5000),
+      }, { onConflict: 'almanac_year' });
+
+      if (!error) {
+        inserted++;
+        console.log(`Stored almanac: ${year} (${data.numpages} pages)`);
+      }
+    } catch (err) {
+      console.error(`Parse error for ${pdfUrl}:`, err.message);
+    }
+  }
+
+  await logScrape('abc-almanac', inserted > 0 ? 'success' : 'skipped', { found: pdfs.length, inserted });
+  return { found: pdfs.length, inserted };
+}
+
+// ============================================================
+// Scrape ALL report types (full cycle)
+// ============================================================
+export async function scrapeAllReportTypes() {
+  console.log('\n========================================');
+  console.log('CropsIntelV2 — FULL ABC Report Scrape');
+  console.log(`Started: ${new Date().toISOString()}`);
+  console.log('========================================\n');
+
+  const results = {
+    position: await scrapeABC(),
+    subjective: await scrapeSubjectiveForecasts(),
+    objective: await scrapeObjectiveForecasts(),
+    acreage: await scrapeAcreageReports(),
+    almanac: await scrapeAlmanac(),
+  };
+
+  const totalFound = Object.values(results).reduce((s, r) => s + r.found, 0);
+  const totalInserted = Object.values(results).reduce((s, r) => s + r.inserted, 0);
+
+  console.log('\n========================================');
+  console.log(`FULL SCRAPE COMPLETE: ${totalInserted} new records from ${totalFound} PDFs found`);
+  console.log('========================================');
+
+  return results;
+}
+
 // Run if called directly
 if (process.argv[1] && process.argv[1].includes('abc-scraper')) {
-  scrapeABC().then(result => {
+  const mode = process.argv[2] || 'position';
+  const fn = mode === 'all' ? scrapeAllReportTypes
+    : mode === 'subjective' ? scrapeSubjectiveForecasts
+    : mode === 'objective' ? scrapeObjectiveForecasts
+    : mode === 'acreage' ? scrapeAcreageReports
+    : mode === 'almanac' ? scrapeAlmanac
+    : scrapeABC;
+
+  console.log(`Running scraper: ${mode}`);
+  fn().then(result => {
     console.log('\nResult:', result);
     process.exit(0);
   }).catch(err => {
