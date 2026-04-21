@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { smartQuery, getAIStatus, loadAPIKeys, textToSpeech } from '../lib/ai-engine';
+import { askClaude, smartQuery, getAIStatus, loadAPIKeys, textToSpeech } from '../lib/ai-engine';
 
 // ─── Sample AI analyses when table is empty ────────────────────
 const SAMPLE_ANALYSES = [
@@ -95,11 +95,42 @@ export default function Intelligence() {
   const audioRef = useRef(null);
   const chatEndRef = useRef(null);
 
-  // Load API keys and AI status on mount
+  const [marketContext, setMarketContext] = useState('');
+
+  // Load API keys, AI status, and market context on mount
   useEffect(() => {
     (async () => {
       await loadAPIKeys();
       setAiStatus(getAIStatus());
+
+      // Build market context for Zyra system prompt
+      try {
+        const { data: reports } = await supabase
+          .from('abc_position_reports')
+          .select('*')
+          .order('report_year', { ascending: false })
+          .order('report_month', { ascending: false })
+          .limit(2);
+
+        const { data: prices } = await supabase
+          .from('strata_prices')
+          .select('variety,grade,price_usd_per_lb,maxons_price_per_lb')
+          .order('price_date', { ascending: false })
+          .limit(10);
+
+        let ctx = '';
+        if (reports?.length) {
+          const r = reports[0];
+          const soldPct = r.total_supply_lbs > 0 ? (((r.total_supply_lbs - (r.uncommitted_lbs || 0)) / r.total_supply_lbs) * 100).toFixed(1) : 0;
+          ctx += `ABC POSITION (${r.crop_year}, ${r.report_year}/${String(r.report_month).padStart(2,'0')}): Supply ${(r.total_supply_lbs/1e6).toFixed(0)}M | Shipped ${(r.total_shipped_lbs/1e6).toFixed(0)}M | Committed ${(r.total_committed_lbs/1e6).toFixed(0)}M | Uncommitted ${(r.uncommitted_lbs/1e6).toFixed(0)}M | ${soldPct}% sold\n`;
+        }
+        if (prices?.length) {
+          const byV = {};
+          prices.forEach(p => { if (!byV[p.variety]) byV[p.variety] = p; });
+          ctx += 'PRICES: ' + Object.values(byV).map(p => `${p.variety} $${parseFloat(p.price_usd_per_lb).toFixed(2)}`).join(', ') + '\n';
+        }
+        setMarketContext(ctx);
+      } catch (e) { /* graceful */ }
     })();
   }, []);
 
@@ -138,9 +169,26 @@ export default function Intelligence() {
     setChatInput('');
     setChatLoading(true);
 
+    // Build conversation history for multi-turn
+    const history = chatMessages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .slice(-6)
+      .map(m => ({ role: m.role, content: m.text }));
+
+    const zyraSystem = `You are Zyra, MAXONS' AI trading intelligence. You specialize in California almond markets. Be concise, data-driven, actionable. Use trading terminology.\n\nMARKET DATA:\n${marketContext || 'Loading...'}`;
+
     try {
-      const mode = councilMode ? 'council' : 'auto';
-      const result = await smartQuery(userMsg, { mode });
+      let result;
+      if (councilMode) {
+        result = await smartQuery(userMsg, { mode: 'council' });
+      } else {
+        // Use askClaude directly with system prompt and history
+        result = await askClaude(userMsg, {
+          system: zyraSystem,
+          history,
+          maxTokens: 600,
+        });
+      }
 
       // Check if we got a real response
       const text = result.consensus || result.text;
