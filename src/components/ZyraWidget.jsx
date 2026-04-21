@@ -377,7 +377,7 @@ export default function ZyraWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25 flex items-center justify-center transition-all hover:scale-110 hover:shadow-green-500/40 ${
+          className={`fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25 flex items-center justify-center transition-all hover:scale-110 hover:shadow-green-500/40 ${
             pulseAnimation ? 'animate-pulse' : ''
           }`}
           title="Ask Zyra"
@@ -392,8 +392,8 @@ export default function ZyraWidget() {
 
       {/* Expanded chat panel */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[400px] max-h-[600px] flex flex-col bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden"
-          style={{ maxHeight: 'calc(100vh - 100px)' }}>
+        <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-[400px] max-h-[100vh] sm:max-h-[600px] flex flex-col bg-gray-950 border border-gray-800 sm:rounded-2xl shadow-2xl shadow-black/50 overflow-hidden"
+          style={{ maxHeight: 'calc(100vh - 60px)' }}>
 
           {/* Header */}
           <div className="bg-gradient-to-r from-green-500/10 via-emerald-500/5 to-transparent border-b border-gray-800 px-4 py-3 flex items-center justify-between shrink-0">

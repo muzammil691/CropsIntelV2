@@ -118,7 +118,7 @@ export default function Trading() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Volume (MT)</label>
                 <input type="number" value={volumeMT} onChange={e => setVolumeMT(Number(e.target.value))} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
