@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { smartQuery, getAIStatus, loadAPIKeys } from '../lib/ai-engine';
+import { smartQuery, getAIStatus, loadAPIKeys, textToSpeech } from '../lib/ai-engine';
 
 // ─── Sample AI analyses when table is empty ────────────────────
 const SAMPLE_ANALYSES = [
@@ -91,6 +91,8 @@ export default function Intelligence() {
   const [aiStatus, setAiStatus] = useState(null);
   const [councilMode, setCouncilMode] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
+  const [playingVoice, setPlayingVoice] = useState(null); // index of message being played
+  const audioRef = useRef(null);
   const chatEndRef = useRef(null);
 
   // Load API keys and AI status on mount
@@ -176,6 +178,32 @@ export default function Intelligence() {
     // Refresh AI status after each query
     setAiStatus(getAIStatus());
     setChatLoading(false);
+  }
+
+  async function playVoice(text, msgIndex) {
+    // Stop if already playing
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      if (playingVoice === msgIndex) {
+        setPlayingVoice(null);
+        return;
+      }
+    }
+    setPlayingVoice(msgIndex);
+    try {
+      const result = await textToSpeech(text);
+      if (result.audio) {
+        const audio = new Audio(result.audio);
+        audioRef.current = audio;
+        audio.onended = () => { setPlayingVoice(null); audioRef.current = null; };
+        audio.play();
+      } else {
+        setPlayingVoice(null);
+      }
+    } catch {
+      setPlayingVoice(null);
+    }
   }
 
   const types = [...new Set(analyses.map(a => a.analysis_type))].filter(Boolean);
@@ -315,12 +343,12 @@ export default function Intelligence() {
                       : 'bg-gray-800/80 text-gray-300 border border-gray-700/50'
                 }`}>
                   {msg.text}
-                  {/* Provider badge */}
-                  {msg.role === 'assistant' && msg.provider && msg.provider !== 'zyra' && (
+                  {/* Provider badge + voice button */}
+                  {msg.role === 'assistant' && (
                     <div className="mt-1.5 pt-1.5 border-t border-gray-700/30 flex items-center gap-1.5">
                       {msg.provider === 'zyra-offline' ? (
                         <span className="text-[9px] text-amber-500/60">Offline mode — sample response</span>
-                      ) : (
+                      ) : msg.provider && msg.provider !== 'zyra' ? (
                         <>
                           <span className={`text-[9px] ${msg.isCouncil ? 'text-purple-400' : 'text-green-500/60'}`}>
                             {msg.isCouncil ? 'Council' : msg.provider}
@@ -333,7 +361,19 @@ export default function Intelligence() {
                             </span>
                           )}
                         </>
-                      )}
+                      ) : null}
+                      {/* Voice play button */}
+                      <button
+                        onClick={() => playVoice(msg.text, i)}
+                        className={`ml-auto text-[9px] px-1.5 py-0.5 rounded transition-colors ${
+                          playingVoice === i
+                            ? 'bg-purple-500/20 text-purple-400'
+                            : 'text-gray-600 hover:text-gray-400'
+                        }`}
+                        title={playingVoice === i ? 'Stop' : 'Listen (Zyra voice)'}
+                      >
+                        {playingVoice === i ? 'Stop' : 'Listen'}
+                      </button>
                     </div>
                   )}
                 </div>
