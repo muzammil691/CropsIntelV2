@@ -305,10 +305,10 @@ function isHighStakes(query) {
 // ─── Status check — which AIs are connected ─────────────────────
 export function getAIStatus() {
   return {
-    claude: { connected: !!apiKeys.anthropic, role: 'Primary Brain' },
-    gpt: { connected: !!apiKeys.openai, role: 'Fast Factual' },
-    gemini: { connected: !!apiKeys.gemini, role: 'Third Perspective' },
-    elevenlabs: { connected: !!apiKeys.elevenlabs, role: 'Voice Layer' },
+    anthropic: { connected: !!apiKeys.anthropic, role: 'Primary Brain', label: 'Claude' },
+    openai: { connected: !!apiKeys.openai, role: 'Fast Factual', label: 'Gpt' },
+    gemini: { connected: !!apiKeys.gemini, role: 'Third Perspective', label: 'Gemini' },
+    elevenlabs: { connected: !!apiKeys.elevenlabs, role: 'Voice Layer', label: 'Elevenlabs' },
     council: {
       connected: [apiKeys.anthropic, apiKeys.openai, apiKeys.gemini].filter(Boolean).length >= 2,
       role: 'Multi-Model Consensus',

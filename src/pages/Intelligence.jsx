@@ -312,7 +312,7 @@ export default function Intelligence() {
                 {Object.entries(aiStatus).filter(([k]) => k !== 'council').map(([key, val]) => (
                   <div key={key} className="flex items-center gap-1.5 bg-gray-800/50 rounded px-2 py-1">
                     <div className={`w-1.5 h-1.5 rounded-full ${val.connected ? 'bg-green-500' : 'bg-gray-600'}`} />
-                    <span className="text-[9px] text-gray-400 capitalize">{key}</span>
+                    <span className="text-[9px] text-gray-400 capitalize">{val.label || key}</span>
                     <span className={`text-[9px] ml-auto ${val.connected ? 'text-green-500' : 'text-gray-600'}`}>
                       {val.connected ? 'Ready' : 'No Key'}
                     </span>

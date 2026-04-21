@@ -532,7 +532,7 @@ export default function Dashboard() {
                   {Object.entries(aiStatus).filter(([k]) => k !== 'council').map(([key, val]) => (
                     <div key={key} className="flex items-center gap-1">
                       <div className={`w-1.5 h-1.5 rounded-full ${val.connected ? 'bg-green-500' : 'bg-gray-600'}`} />
-                      <span className="text-[10px] text-gray-500 capitalize">{key}</span>
+                      <span className="text-[10px] text-gray-500 capitalize">{val.label || key}</span>
                     </div>
                   ))}
                 </div>
