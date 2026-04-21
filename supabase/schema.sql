@@ -458,7 +458,8 @@ INSERT INTO system_config (key, value, description) VALUES
   ('abc_base_url', '"https://www.almondboard.com"', 'Almond Board of California base URL'),
   ('last_scrape_dates', '{}', 'Tracks when each scraper last ran'),
   ('auto_analysis_enabled', 'true', 'Whether to auto-generate AI analyses after new data'),
-  ('notification_email', '"muzammil.akhtar@me.com"', 'Where to send autonomous alerts')
+  ('notification_email', '"muzammil.akhtar@me.com"', 'Where to send autonomous alerts'),
+  ('ai_api_keys', '{"anthropic": null, "openai": null, "gemini": null, "elevenlabs": null}', '4 AI system API keys — set values here to enable live AI')
 ON CONFLICT (key) DO NOTHING;
 
 -- ============================================================
