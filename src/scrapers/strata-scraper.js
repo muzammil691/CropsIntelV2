@@ -185,11 +185,19 @@ async function fetchStrataPrices(session) {
     headers['Authorization'] = `Bearer ${session.token}`;
   }
 
-  // Try common API endpoints for pricing data
+  // Real endpoints discovered from live Strata site (2026-04-21)
+  // Strata uses /d/almond with product query params
+  // Tabs: Daily Prices, Data Portal, New Crop Weekly Reports, News and Analysis, Weekly Reports
   const endpoints = [
+    '/d/almond?page=1&product=almond-daily-prices',
+    '/d/almond?product=almond-daily-prices',
+    '/api/d/almond/daily-prices',
+    '/api/almond/daily-prices',
     '/api/prices',
     '/api/market/prices',
     '/api/almonds/prices',
+    '/d/almond?product=new-crop-weekly-reports',
+    '/d/almond?product=weekly-reports',
     '/api/commodities',
     '/api/quotes',
     '/api/market-data',
@@ -391,14 +399,108 @@ async function storePrices(rawPrices) {
 }
 
 // ============================================================
+// Fetch historical prices across multiple pages
+// Strata uses paginated reports: /d/almond?page=N&product=almond-daily-prices
+// Discovered 111 pages of historical data (2026-04-21)
+// ============================================================
+async function fetchHistoricalPrices(session, maxPages = 5) {
+  if (!session) return [];
+
+  const headers = {
+    'User-Agent': 'CropsIntelV2/1.0',
+    'Accept': 'application/json, text/html',
+    'Cookie': session.cookies || '',
+  };
+  if (session.token) headers['Authorization'] = `Bearer ${session.token}`;
+
+  const allPrices = [];
+
+  for (let page = 1; page <= maxPages; page++) {
+    const url = `${STRATA_BASE}/d/almond?page=${page}&product=almond-daily-prices`;
+    console.log(`Fetching page ${page}/${maxPages}: ${url}`);
+
+    try {
+      const resp = await fetch(url, { headers, redirect: 'follow' });
+      if (!resp.ok) {
+        console.log(`Page ${page}: HTTP ${resp.status} — stopping`);
+        break;
+      }
+
+      const contentType = resp.headers.get('content-type') || '';
+
+      if (contentType.includes('json')) {
+        const data = await resp.json();
+        const items = Array.isArray(data) ? data : (data.data || data.items || data.results || []);
+        allPrices.push(...items);
+        console.log(`Page ${page}: ${items.length} items (JSON)`);
+        if (items.length === 0) break; // No more data
+      } else if (contentType.includes('html')) {
+        const html = await resp.text();
+
+        // Extract individual report links from the page listing
+        const reportLinks = [];
+        const linkRegex = /href="([^"]*(?:report|view)[^"]*)"/gi;
+        let linkMatch;
+        while ((linkMatch = linkRegex.exec(html)) !== null) {
+          reportLinks.push(linkMatch[1]);
+        }
+
+        // Also try extracting prices directly from the listing page
+        const prices = extractPricesFromHTML(html);
+        if (prices.length > 0) {
+          allPrices.push(...prices);
+          console.log(`Page ${page}: ${prices.length} prices from HTML`);
+        }
+
+        // Follow report links to get detailed price data
+        for (const link of reportLinks.slice(0, 3)) { // Limit to 3 reports per page
+          const reportUrl = link.startsWith('http') ? link : `${STRATA_BASE}${link}`;
+          try {
+            const reportResp = await fetch(reportUrl, { headers, redirect: 'follow' });
+            if (reportResp.ok) {
+              const reportHtml = await reportResp.text();
+              const reportPrices = extractPricesFromHTML(reportHtml);
+              if (reportPrices.length > 0) {
+                // Try to extract date from URL or page
+                const dateMatch = reportUrl.match(/(\w+-\d{1,2}-\d{4}|\d{4}-\d{2}-\d{2})/);
+                const reportDate = dateMatch ? dateMatch[1] : null;
+                reportPrices.forEach(p => { if (reportDate && !p.date) p.date = reportDate; });
+                allPrices.push(...reportPrices);
+                console.log(`  Report: ${reportPrices.length} prices from ${reportUrl.split('/').pop()}`);
+              }
+            }
+          } catch (err) {
+            console.log(`  Report fetch failed: ${err.message}`);
+          }
+        }
+
+        if (reportLinks.length === 0 && prices.length === 0) break;
+      }
+
+      // Rate limit: 1 second between page requests
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (err) {
+      console.log(`Page ${page} failed: ${err.message}`);
+      break;
+    }
+  }
+
+  console.log(`Total historical prices collected: ${allPrices.length}`);
+  return allPrices;
+}
+
+// ============================================================
 // Main scrape function
 // ============================================================
-export async function scrapeStrata() {
+export async function scrapeStrata(options = {}) {
   const startTime = Date.now();
+  const maxPages = options.maxPages || 3; // Default to 3 pages for regular cycles
+
   console.log('\n========================================');
   console.log('CropsIntelV2 — Strata Markets Scraper');
   console.log(`Started: ${new Date().toISOString()}`);
   console.log(`MAXONS margin: ${MAXONS_MARGIN * 100}%`);
+  console.log(`Max pages: ${maxPages}`);
   console.log('========================================\n');
 
   await logScrape('strata-scraper', 'started');
@@ -410,9 +512,17 @@ export async function scrapeStrata() {
     return { found: 0, inserted: 0, error: 'Login failed' };
   }
 
-  // Step 2: Fetch prices
-  const rawPrices = await fetchStrataPrices(session);
-  const found = Array.isArray(rawPrices) ? rawPrices.length : (rawPrices ? 1 : 0);
+  // Step 2: Fetch prices (try main endpoint first, then historical pages)
+  let rawPrices = await fetchStrataPrices(session);
+  let found = Array.isArray(rawPrices) ? rawPrices.length : (rawPrices ? 1 : 0);
+
+  // If main endpoint returned nothing, try historical page crawl
+  if (found === 0) {
+    console.log('\nMain endpoints returned no data, trying historical page crawl...');
+    rawPrices = await fetchHistoricalPrices(session, maxPages);
+    found = rawPrices.length;
+  }
+
   console.log(`\nRaw prices found: ${found}`);
 
   // Step 3: Store in database
@@ -427,7 +537,8 @@ export async function scrapeStrata() {
     metadata: {
       login_status: session.status,
       has_token: !!session.token,
-      maxons_margin: `${MAXONS_MARGIN * 100}%`
+      maxons_margin: `${MAXONS_MARGIN * 100}%`,
+      pages_crawled: maxPages
     }
   });
 
