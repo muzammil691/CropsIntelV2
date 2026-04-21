@@ -109,7 +109,7 @@ function SupplyPositionWidget({ current, prior }) {
     <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
       <h3 className="text-lg font-semibold text-white mb-1">Crop Sold Progress</h3>
       <p className="text-[10px] text-gray-500 mb-4">
-        {current.crop_year} — sold (shipped + committed) as % of total supply
+        {current.crop_year} — total sold as % of total supply
         {prior && <span className="ml-1">vs {prior.crop_year}</span>}
       </p>
 
