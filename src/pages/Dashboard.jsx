@@ -256,12 +256,14 @@ function ShipmentTrend({ reports }) {
   if (!reports || reports.length < 2) return null;
 
   // Build annual cumulative shipments by crop year (sum of monthly totals = final shipped)
+  // NOTE: BIGINT columns come from Supabase as strings — must parse to Number
   const byCropYear = {};
   reports.forEach(r => {
+    const shipped = Number(r.total_shipped_lbs) || 0;
     if (!byCropYear[r.crop_year]) byCropYear[r.crop_year] = 0;
     // Use max shipped per crop year (cumulative field = highest month is the final number)
-    if (r.total_shipped_lbs > byCropYear[r.crop_year]) {
-      byCropYear[r.crop_year] = r.total_shipped_lbs;
+    if (shipped > byCropYear[r.crop_year]) {
+      byCropYear[r.crop_year] = shipped;
     }
   });
 
