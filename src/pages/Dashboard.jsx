@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getAIStatus, loadAPIKeys } from '../lib/ai-engine';
 import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
+} from 'recharts';
 
 // Strip markdown markers, section labels, and truncate text for card previews
 function truncateText(text, maxLen = 150) {
@@ -251,31 +254,57 @@ function SupplyPositionWidget({ current, prior }) {
 
 function ShipmentTrend({ reports }) {
   if (!reports || reports.length < 2) return null;
-  const sorted = [...reports].sort((a, b) => a.report_year - b.report_year || a.report_month - b.report_month);
-  const maxShip = Math.max(...sorted.map(r => r.total_shipped_lbs));
+
+  // Build annual cumulative shipments by crop year (sum of monthly totals = final shipped)
+  const byCropYear = {};
+  reports.forEach(r => {
+    if (!byCropYear[r.crop_year]) byCropYear[r.crop_year] = 0;
+    // Use max shipped per crop year (cumulative field = highest month is the final number)
+    if (r.total_shipped_lbs > byCropYear[r.crop_year]) {
+      byCropYear[r.crop_year] = r.total_shipped_lbs;
+    }
+  });
+
+  const chartData = Object.entries(byCropYear)
+    .map(([cy, lbs]) => ({ crop_year: cy, shipped: lbs }))
+    .sort((a, b) => a.crop_year.localeCompare(b.crop_year));
+
+  // Determine the current crop year (last one)
+  const currentCY = chartData.length > 0 ? chartData[chartData.length - 1].crop_year : null;
 
   return (
     <div>
-      <h3 className="text-lg font-semibold text-white mb-4">Shipment Trend</h3>
-      <div className="flex items-end gap-[1px] h-32">
-        {sorted.map((r, i) => {
-          const h = maxShip > 0 ? (r.total_shipped_lbs / maxShip * 100) : 0;
-          const isLatest = i === sorted.length - 1;
-          return (
-            <div key={r.id} className="flex-1 flex flex-col items-center" title={`${r.report_year}/${String(r.report_month).padStart(2,'0')}: ${(r.total_shipped_lbs / 1e6).toFixed(0)}M lbs`}>
-              <div
-                className={`w-full rounded-t transition-all ${isLatest ? 'bg-green-500' : 'bg-green-500/30'}`}
-                style={{ height: `${h}%`, minHeight: '2px' }}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex justify-between mt-1">
-        {sorted.filter((r, i) => i === 0 || r.report_year !== sorted[i-1].report_year).map(r => (
-          <span key={r.report_year} className="text-[10px] text-gray-600">{r.report_year}</span>
-        ))}
-      </div>
+      <h3 className="text-lg font-semibold text-white mb-1">Shipment Trend</h3>
+      <p className="text-[10px] text-gray-500 mb-3">Cumulative shipments by crop year (Aug–Jul)</p>
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+          <XAxis
+            dataKey="crop_year"
+            tick={{ fill: '#9ca3af', fontSize: 10 }}
+            axisLine={{ stroke: '#374151' }}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: '#9ca3af', fontSize: 10 }}
+            tickFormatter={v => `${(v / 1e9).toFixed(1)}B`}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip
+            contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px', fontSize: '12px' }}
+            labelStyle={{ color: '#9ca3af' }}
+            formatter={v => [`${(v / 1e9).toFixed(2)}B lbs`, 'Shipped']}
+          />
+          <Bar
+            dataKey="shipped"
+            radius={[4, 4, 0, 0]}
+            fill="#22c55e"
+            fillOpacity={0.6}
+            activeBar={{ fillOpacity: 1 }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
