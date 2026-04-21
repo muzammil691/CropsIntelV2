@@ -18,6 +18,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const CRM = lazy(() => import('./pages/CRM'));
 const Intelligence = lazy(() => import('./pages/Intelligence'));
+const Trading = lazy(() => import('./pages/Trading'));
 
 function PageLoader() {
   return (
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { path: '/analysis', label: 'Analysis', icon: '📈' },
   { path: '/crm', label: 'CRM & Deals', icon: '🤝' },
   { path: '/intelligence', label: 'AI Intelligence', icon: '🧠' },
+  { path: '/trading', label: 'Trading Portal', icon: '💼' },
   { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/autonomous', label: 'Autonomous', icon: '🤖' }
 ];
@@ -276,6 +278,7 @@ const PAGE_TITLES = {
   '/analysis': 'Market Analysis',
   '/crm': 'CRM & Trade Pipeline',
   '/intelligence': 'AI Intelligence',
+  '/trading': 'Trading Portal',
   '/reports': 'Position Reports',
   '/autonomous': 'Autonomous Systems',
   '/welcome': 'Welcome',
@@ -335,6 +338,7 @@ export default function App() {
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/crm" element={<CRM />} />
               <Route path="/intelligence" element={<Intelligence />} />
+              <Route path="/trading" element={<Trading />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/autonomous" element={<Autonomous />} />
               <Route path="*" element={<Dashboard />} />
