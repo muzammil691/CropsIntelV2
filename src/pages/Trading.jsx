@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
+import { sendOfferNotification } from '../lib/whatsapp';
 
 // ─── Almond varieties and grades for offer builder ─────────────
 const VARIETIES = ['Nonpareil', 'Carmel', 'Butte/Padres', 'California', 'Mission', 'Monterey', 'Independence', 'Fritz'];
@@ -29,8 +32,13 @@ const STATUS_COLORS = {
 function fmtUSD(n) { return '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 export default function Trading() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('builder');
-  const [offers] = useState([]);
+  const [offers, setOffers] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
 
   // Offer builder state
   const [variety, setVariety] = useState('Nonpareil');
@@ -42,6 +50,8 @@ export default function Trading() {
   const [packaging, setPackaging] = useState('25 kg cartons');
   const [notes, setNotes] = useState('');
   const [buyer, setBuyer] = useState('');
+  const [contactId, setContactId] = useState('');
+  const [shipDate, setShipDate] = useState('');
 
   const key = `${variety}-${grade}`;
   const basePrice = BASE_PRICES[key] || 3.50;
@@ -49,6 +59,122 @@ export default function Trading() {
   const volumeLbs = Math.round(volumeMT * 2204.62);
   const totalValue = maxonsPrice * volumeLbs;
   const marginValue = (maxonsPrice - basePrice) * volumeLbs;
+
+  // Load existing offers and contacts
+  useEffect(() => { loadData(); }, []);
+
+  async function loadData() {
+    setLoading(true);
+    try {
+      const [dealsRes, contactsRes] = await Promise.all([
+        supabase.from('crm_deals').select('*, crm_contacts(company_name, contact_name, country)').order('created_at', { ascending: false }).limit(50),
+        supabase.from('crm_contacts').select('id, company_name, contact_name, country, contact_type').eq('contact_type', 'buyer').order('relationship_score', { ascending: false }),
+      ]);
+      if (!dealsRes.error && dealsRes.data) setOffers(dealsRes.data);
+      if (!contactsRes.error && contactsRes.data) setContacts(contactsRes.data);
+    } catch (err) {
+      console.warn('Load trading data error:', err.message);
+    }
+    setLoading(false);
+  }
+
+  async function generateOffer() {
+    setSaving(true);
+    setSaveMsg('');
+    try {
+      const dealData = {
+        contact_id: contactId || null,
+        deal_type: 'sell',
+        stage: 'draft',
+        variety,
+        grade,
+        form: grade.includes('Blanched') || grade.includes('Sliced') || grade.includes('Diced') ? grade : 'Whole Natural',
+        volume_lbs: volumeLbs,
+        volume_mt: volumeMT,
+        strata_base_price: basePrice,
+        maxons_price: maxonsPrice,
+        margin_pct: marginPct,
+        total_value_usd: Math.round(totalValue),
+        incoterm,
+        destination_port: destination || null,
+        estimated_ship_date: shipDate || null,
+        notes: [buyer ? `Buyer: ${buyer}` : '', packaging ? `Packaging: ${packaging}` : '', notes].filter(Boolean).join('. '),
+        created_by: user?.id || null,
+      };
+
+      const { data, error } = await supabase
+        .from('crm_deals')
+        .insert(dealData)
+        .select('*, crm_contacts(company_name, contact_name, country)')
+        .single();
+
+      if (error) throw error;
+
+      setOffers(prev => [data, ...prev]);
+      setSaveMsg('Offer created! Switch to Recent Offers to view.');
+      setActiveTab('offers');
+
+      // Reset form
+      setBuyer(''); setDestination(''); setNotes(''); setContactId(''); setShipDate('');
+    } catch (err) {
+      setSaveMsg('Error: ' + err.message);
+    }
+    setSaving(false);
+    setTimeout(() => setSaveMsg(''), 5000);
+  }
+
+  async function updateOfferStatus(offerId, newStage) {
+    try {
+      const { error } = await supabase
+        .from('crm_deals')
+        .update({ stage: newStage, updated_at: new Date().toISOString() })
+        .eq('id', offerId);
+      if (error) throw error;
+      setOffers(prev => prev.map(o => o.id === offerId ? { ...o, stage: newStage } : o));
+    } catch (err) {
+      console.warn('Update stage error:', err.message);
+    }
+  }
+
+  async function sendViaWhatsApp(offer) {
+    // Find contact's WhatsApp number
+    if (!offer.contact_id) {
+      setSaveMsg('No contact linked — add a buyer to send via WhatsApp');
+      setTimeout(() => setSaveMsg(''), 3000);
+      return;
+    }
+    try {
+      const { data: contact } = await supabase
+        .from('crm_contacts')
+        .select('phone')
+        .eq('id', offer.contact_id)
+        .single();
+
+      if (!contact?.phone) {
+        setSaveMsg('Contact has no phone number');
+        setTimeout(() => setSaveMsg(''), 3000);
+        return;
+      }
+
+      await sendOfferNotification(contact.phone, {
+        offer_id: offer.id,
+        variety: offer.variety,
+        grade: offer.grade,
+        form: offer.form,
+        price: offer.maxons_price,
+        quantity: `${offer.volume_mt} MT`,
+        incoterm: offer.incoterm,
+        validity: '7 days',
+      });
+
+      await updateOfferStatus(offer.id, 'sent');
+      setSaveMsg('Offer sent via WhatsApp!');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch (err) {
+      setSaveMsg('WhatsApp send failed: ' + err.message);
+      setTimeout(() => setSaveMsg(''), 5000);
+    }
+  }
 
   // Portal view tabs
   const portalViews = [
@@ -128,12 +254,32 @@ export default function Trading() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] text-gray-500 mb-1">Buyer / Company</label>
+                <label className="block text-[10px] text-gray-500 mb-1">CRM Contact (Buyer)</label>
+                <select value={contactId} onChange={e => {
+                  setContactId(e.target.value);
+                  const c = contacts.find(x => x.id === e.target.value);
+                  if (c) setBuyer(`${c.contact_name} — ${c.company_name}`);
+                }} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                  <option value="">Select from CRM...</option>
+                  {contacts.map(c => (
+                    <option key={c.id} value={c.id}>{c.company_name} — {c.contact_name} ({c.country})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1">Or Type Buyer Name</label>
                 <input type="text" value={buyer} onChange={e => setBuyer(e.target.value)} placeholder="Contact or company name" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600" />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Destination Port</label>
                 <input type="text" value={destination} onChange={e => setDestination(e.target.value)} placeholder="e.g. Jebel Ali, Mumbai" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1">Estimated Ship Date</label>
+                <input type="date" value={shipDate} onChange={e => setShipDate(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
               </div>
             </div>
 
@@ -150,9 +296,20 @@ export default function Trading() {
               </div>
             </div>
 
-            <button className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-sm font-semibold transition-all">
-              Generate Offer
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={generateOffer}
+                disabled={saving}
+                className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Generate Offer'}
+              </button>
+              {saveMsg && (
+                <span className={`text-xs ${saveMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                  {saveMsg}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Price Calculator Sidebar */}
@@ -207,7 +364,12 @@ export default function Trading() {
       {/* ─── Recent Offers ─── */}
       {activeTab === 'offers' && (
         <div className="space-y-2">
-          {offers.length === 0 && (
+          {loading && (
+            <div className="flex items-center justify-center h-48">
+              <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          {!loading && offers.length === 0 && (
             <div className="flex items-center justify-center h-48 text-gray-600">
               <div className="text-center">
                 <p className="text-sm">No offers yet</p>
@@ -215,26 +377,75 @@ export default function Trading() {
               </div>
             </div>
           )}
-          {offers.map(offer => (
+          {!loading && offers.map(offer => (
             <div key={offer.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] border ${STATUS_COLORS[offer.status]}`}>
-                      {offer.status}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] border ${STATUS_COLORS[offer.stage] || STATUS_COLORS.draft}`}>
+                      {offer.stage}
                     </span>
-                    <span className="text-[10px] text-gray-600">{offer.created}</span>
+                    <span className="text-[10px] text-gray-600">
+                      {offer.created_at ? new Date(offer.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+                    </span>
                   </div>
                   <h4 className="text-sm font-medium text-white">
-                    {offer.variety} {offer.grade} — {offer.volume_mt} MT {offer.incoterm} {offer.destination}
+                    {offer.variety} {offer.grade} — {offer.volume_mt?.toFixed(1)} MT {offer.incoterm} {offer.destination_port || ''}
                   </h4>
-                  <p className="text-xs text-gray-500">{offer.buyer} ({offer.country})</p>
+                  <p className="text-xs text-gray-500">
+                    {offer.crm_contacts?.company_name || offer.notes?.match(/Buyer: ([^.]+)/)?.[1] || 'No buyer linked'}
+                    {offer.crm_contacts?.country ? ` (${offer.crm_contacts.country})` : ''}
+                  </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-white">{fmtUSD(offer.maxons)}/lb</p>
-                  <p className="text-[10px] text-gray-500">Base: {fmtUSD(offer.base)}</p>
-                  <p className="text-[10px] text-green-400">Margin: {fmtUSD(offer.maxons - offer.base)}/lb</p>
+                  <p className="text-sm font-bold text-white">{fmtUSD(offer.maxons_price)}/lb</p>
+                  <p className="text-[10px] text-gray-500">Base: {fmtUSD(offer.strata_base_price)}</p>
+                  <p className="text-[10px] text-green-400">Margin: {fmtUSD((offer.maxons_price || 0) - (offer.strata_base_price || 0))}/lb</p>
+                  <p className="text-[10px] text-gray-600 mt-1">${((offer.total_value_usd || 0) / 1000).toFixed(0)}K total</p>
                 </div>
+              </div>
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-800/50">
+                {offer.stage === 'draft' && (
+                  <>
+                    <button onClick={() => updateOfferStatus(offer.id, 'quoted')}
+                      className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded text-[10px] hover:bg-blue-500/30 transition-colors">
+                      Mark Quoted
+                    </button>
+                    <button onClick={() => sendViaWhatsApp(offer)}
+                      className="px-3 py-1 bg-green-500/20 text-green-400 rounded text-[10px] hover:bg-green-500/30 transition-colors">
+                      Send via WhatsApp
+                    </button>
+                  </>
+                )}
+                {offer.stage === 'sent' && (
+                  <button onClick={() => updateOfferStatus(offer.id, 'pending')}
+                    className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded text-[10px] hover:bg-amber-500/30 transition-colors">
+                    Awaiting Response
+                  </button>
+                )}
+                {(offer.stage === 'quoted' || offer.stage === 'pending') && (
+                  <>
+                    <button onClick={() => updateOfferStatus(offer.id, 'accepted')}
+                      className="px-3 py-1 bg-green-500/20 text-green-400 rounded text-[10px] hover:bg-green-500/30 transition-colors">
+                      Accepted
+                    </button>
+                    <button onClick={() => updateOfferStatus(offer.id, 'rejected')}
+                      className="px-3 py-1 bg-red-500/20 text-red-400 rounded text-[10px] hover:bg-red-500/30 transition-colors">
+                      Rejected
+                    </button>
+                    <button onClick={() => updateOfferStatus(offer.id, 'negotiation')}
+                      className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded text-[10px] hover:bg-amber-500/30 transition-colors">
+                      Negotiating
+                    </button>
+                  </>
+                )}
+                {offer.stage === 'accepted' && (
+                  <button onClick={() => updateOfferStatus(offer.id, 'contracted')}
+                    className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded text-[10px] hover:bg-emerald-500/30 transition-colors">
+                    Contract Signed
+                  </button>
+                )}
               </div>
             </div>
           ))}
