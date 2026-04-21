@@ -3,6 +3,7 @@ import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './lib/auth';
 import GuestOverlay from './components/GuestOverlay';
 import ProfileCompletionBanner from './components/ProfileCompletionBanner';
+import ProtectedRoute, { AdminRoute, TeamRoute, AuthRoute } from './components/ProtectedRoute';
 import ZyraWidget from './components/ZyraWidget';
 import CommandPalette from './components/CommandPalette';
 
@@ -359,12 +360,12 @@ export default function App() {
               <Route path="/forecasts" element={<Forecasts />} />
               <Route path="/news" element={<News />} />
               <Route path="/analysis" element={<Analysis />} />
-              <Route path="/crm" element={<CRM />} />
+              <Route path="/crm" element={<TeamRoute><CRM /></TeamRoute>} />
               <Route path="/intelligence" element={<Intelligence />} />
-              <Route path="/trading" element={<Trading />} />
+              <Route path="/trading" element={<TeamRoute><Trading /></TeamRoute>} />
               <Route path="/reports" element={<Reports />} />
-              <Route path="/autonomous" element={<Autonomous />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/autonomous" element={<AdminRoute><Autonomous /></AdminRoute>} />
+              <Route path="/settings" element={<AuthRoute><Settings /></AuthRoute>} />
               <Route path="*" element={<Dashboard />} />
             </Routes>
           </Suspense>
