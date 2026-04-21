@@ -200,9 +200,9 @@ export default function CRM() {
   const totalPipelineValue = activeDeals.reduce((s, d) => s + (d.total_value_usd || 0), 0);
   const totalVolumeLbs = activeDeals.reduce((s, d) => s + (d.volume_lbs || 0), 0);
   const avgConfidence = activeDeals.length > 0
-    ? Math.round(activeDeals.reduce((s, d) => s + (d.confidence_pct || 0), 0) / activeDeals.length)
+    ? Math.round(activeDeals.reduce((s, d) => s + ((d.ai_win_probability || 0) * 100), 0) / activeDeals.length)
     : 0;
-  const weightedValue = activeDeals.reduce((s, d) => s + (d.total_value_usd || 0) * (d.confidence_pct || 0) / 100, 0);
+  const weightedValue = activeDeals.reduce((s, d) => s + (d.total_value_usd || 0) * (d.ai_win_probability || 0), 0);
 
   // Stage pipeline counts
   const stageCounts = {};
@@ -342,9 +342,9 @@ export default function CRM() {
                       <div className="flex items-center gap-1 text-[10px] text-gray-500">
                         <span>Confidence:</span>
                         <div className="w-12 h-1 bg-gray-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${deal.confidence_pct}%` }} />
+                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${Math.round((deal.ai_win_probability || 0) * 100)}%` }} />
                         </div>
-                        <span>{deal.confidence_pct}%</span>
+                        <span>{Math.round((deal.ai_win_probability || 0) * 100)}%</span>
                       </div>
                     </div>
                     <span className="text-[10px] text-gray-600">{fmtDate(deal.updated_at)}</span>
