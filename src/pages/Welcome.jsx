@@ -10,23 +10,32 @@ function useCounter(end, duration = 2000, startDelay = 0) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    const runCounter = () => {
+      if (started.current) return;
+      started.current = true;
+      setTimeout(() => {
+        const start = performance.now();
+        const step = (now) => {
+          const progress = Math.min((now - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setCount(Math.floor(eased * end));
+          if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }, startDelay);
+    };
+
+    // Check if already in viewport on mount
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      runCounter();
+      return;
+    }
+
     const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true;
-          setTimeout(() => {
-            const start = performance.now();
-            const step = (now) => {
-              const progress = Math.min((now - start) / duration, 1);
-              const eased = 1 - Math.pow(1 - progress, 3);
-              setCount(Math.floor(eased * end));
-              if (progress < 1) requestAnimationFrame(step);
-            };
-            requestAnimationFrame(step);
-          }, startDelay);
-        }
-      },
-      { threshold: 0.05 }
+      ([entry]) => { if (entry.isIntersecting) { runCounter(); obs.disconnect(); } },
+      { threshold: 0.01 }
     );
     obs.observe(el);
     return () => obs.disconnect();

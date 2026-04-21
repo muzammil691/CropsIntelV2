@@ -272,7 +272,7 @@ function MobileNav() {
 }
 
 const PAGE_TITLES = {
-  '/': 'CropsIntel — Autonomous Almond Market Intelligence',
+  '/': 'Autonomous Almond Market Intelligence',
   '/dashboard': 'Dashboard',
   '/supply': 'Supply & Demand',
   '/destinations': 'Destinations & Trade Flow',
