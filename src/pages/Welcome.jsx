@@ -33,7 +33,7 @@ function useCounter(end, duration = 2000) {
   return [count, ref];
 }
 
-/* ── Fade-in on scroll ── */
+/* ── Fade-in on scroll (below-the-fold sections) ── */
 function FadeIn({ children, className = '', delay = 0 }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -54,6 +54,18 @@ function FadeIn({ children, className = '', delay = 0 }) {
       ref={ref}
       className={`transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${className}`}
       style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ── Hero entrance animation (fires on mount, no scroll needed) ── */
+function HeroReveal({ children, className = '', delay = 0 }) {
+  return (
+    <div
+      className={`animate-heroReveal ${className}`}
+      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
     >
       {children}
     </div>
@@ -160,7 +172,7 @@ export default function Welcome() {
 
         <div className="relative max-w-6xl mx-auto px-5 pt-12 sm:pt-16 pb-16 sm:pb-24">
           {/* Nav bar */}
-          <FadeIn>
+          <HeroReveal>
             <div className="flex items-center justify-between mb-10 sm:mb-14">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-base shadow-lg shadow-green-500/20">
@@ -178,18 +190,18 @@ export default function Welcome() {
                 </Link>
               </div>
             </div>
-          </FadeIn>
+          </HeroReveal>
 
           {/* Hero content */}
           <div className="text-center max-w-4xl mx-auto">
-            <FadeIn delay={100}>
+            <HeroReveal delay={100}>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-[11px] text-green-400 font-medium">BETA — Now Live at cropsintel.net</span>
               </div>
-            </FadeIn>
+            </HeroReveal>
 
-            <FadeIn delay={200}>
+            <HeroReveal delay={200}>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-[1.1] tracking-tight">
                 The World's Most Complete{' '}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
@@ -197,17 +209,17 @@ export default function Welcome() {
                 </span>{' '}
                 Intelligence
               </h2>
-            </FadeIn>
+            </HeroReveal>
 
-            <FadeIn delay={350}>
+            <HeroReveal delay={350}>
               <p className="text-base sm:text-lg text-gray-400 mt-5 sm:mt-6 max-w-2xl mx-auto leading-relaxed">
                 Real verified data. Real verified people. Powered by MAXONS' decade-plus
                 global trading expertise — combined with AI that speaks, thinks, and advises
                 like a senior trader on your team.
               </p>
-            </FadeIn>
+            </HeroReveal>
 
-            <FadeIn delay={450}>
+            <HeroReveal delay={450}>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
                 <Link
                   to="/"
@@ -222,10 +234,10 @@ export default function Welcome() {
                   Create Free Account
                 </Link>
               </div>
-            </FadeIn>
+            </HeroReveal>
 
             {/* Animated stats */}
-            <FadeIn delay={550}>
+            <HeroReveal delay={550}>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-12 sm:mt-16 max-w-3xl mx-auto">
                 <div ref={yearsRef} className="bg-gray-900/60 border border-gray-800/60 rounded-xl p-4 sm:p-5">
                   <p className="text-2xl sm:text-3xl font-bold text-white">{yearsCount}+</p>
@@ -244,7 +256,7 @@ export default function Welcome() {
                   <p className="text-[11px] text-gray-500 mt-1">Countries Tracked</p>
                 </div>
               </div>
-            </FadeIn>
+            </HeroReveal>
           </div>
         </div>
       </div>
@@ -561,6 +573,13 @@ export default function Welcome() {
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes heroReveal {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-heroReveal {
+          animation: heroReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
     </div>
