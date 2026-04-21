@@ -13,6 +13,19 @@ const ZYRA_RESPONSES = {
   maxons: "For MAXONS specifically, I recommend: (1) Secure 200-300 MT Carmel 25/27 at current $3.20/lb levels for Gulf region orders — prices likely to firm in Q3. (2) Follow up with Al Rayyan Foods on the Q3 Nonpareil commitment — they're your highest-scoring contact at 85/100. (3) Send updated pricing to Delhi Dry Fruits — India demand surge creates urgency. (4) Lock supply agreements with Blue Diamond for 2025/26 before crop estimate release.",
 };
 
+/* Strip markdown formatting for clean card display */
+function stripMd(text) {
+  if (!text) return '';
+  return text
+    .replace(/#{1,6}\s+/g, '')      // headings
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
+    .replace(/\*([^*]+)\*/g, '$1')     // italic
+    .replace(/`([^`]+)`/g, '$1')       // inline code
+    .replace(/\n{2,}/g, ' ')           // double newlines → space
+    .replace(/\n/g, ' ')              // single newlines → space
+    .trim();
+}
+
 function getZyraResponse(msg) {
   const lower = msg.toLowerCase();
   if (lower.includes('price') || lower.includes('cost') || lower.includes('strata')) return ZYRA_RESPONSES.price;
@@ -481,7 +494,9 @@ export default function Intelligence() {
                         )}
                       </div>
                       <h4 className="text-sm font-medium text-white">{a.title}</h4>
-                      <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{a.summary}</p>
+                      <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+                        {(() => { const s = stripMd(a.summary); return s.length > 200 ? s.slice(0, 200) + '...' : s; })()}
+                      </p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-[10px] text-gray-600">{fmtDate(a.created_at)}</p>
