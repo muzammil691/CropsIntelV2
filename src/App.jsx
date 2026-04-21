@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 
 // Lazy-load pages for code splitting
@@ -178,7 +178,28 @@ function MobileNav() {
   );
 }
 
+const PAGE_TITLES = {
+  '/': 'Dashboard',
+  '/supply': 'Supply & Demand',
+  '/destinations': 'Destinations & Trade Flow',
+  '/pricing': 'Live Pricing',
+  '/forecasts': 'Crop Forecasts',
+  '/news': 'News & Intelligence',
+  '/analysis': 'Market Analysis',
+  '/reports': 'Position Reports',
+  '/autonomous': 'Autonomous Systems',
+};
+
+function usePageTitle() {
+  const location = useLocation();
+  useEffect(() => {
+    const name = PAGE_TITLES[location.pathname] || 'Dashboard';
+    document.title = `${name} — CropsIntel`;
+  }, [location.pathname]);
+}
+
 export default function App() {
+  usePageTitle();
   return (
     <div className="flex min-h-screen bg-gray-950">
       {/* Desktop sidebar */}
