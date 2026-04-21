@@ -3,6 +3,7 @@ import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './lib/auth';
 import GuestOverlay from './components/GuestOverlay';
 import ZyraWidget from './components/ZyraWidget';
+import CommandPalette from './components/CommandPalette';
 
 // Lazy-load pages for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -161,6 +162,20 @@ function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Quick search hint */}
+      <div className="px-3 pb-2">
+        <button
+          onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-400 hover:bg-gray-800/50 transition-colors border border-gray-800/50"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span>Quick search</span>
+          <kbd className="ml-auto text-[9px] px-1 py-0.5 bg-gray-800 rounded border border-gray-700">&#8984;K</kbd>
+        </button>
+      </div>
 
       {/* User section */}
       <div className="p-4 border-t border-gray-800">
@@ -362,6 +377,9 @@ export default function App() {
 
       {/* Zyra AI Assistant — floating widget on all pages */}
       <ZyraWidget />
+
+      {/* Command palette — Cmd+K quick navigation */}
+      <CommandPalette />
     </div>
   );
 }
