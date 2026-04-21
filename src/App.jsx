@@ -31,7 +31,7 @@ function PageLoader() {
 }
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Dashboard', icon: '📊' },
+  { path: '/dashboard', label: 'Dashboard', icon: '📊' },
   { path: '/supply', label: 'Supply & Demand', icon: '⚖️' },
   { path: '/destinations', label: 'Destinations', icon: '🌍' },
   { path: '/pricing', label: 'Pricing', icon: '💰' },
@@ -272,7 +272,8 @@ function MobileNav() {
 }
 
 const PAGE_TITLES = {
-  '/': 'Dashboard',
+  '/': 'CropsIntel — Autonomous Almond Market Intelligence',
+  '/dashboard': 'Dashboard',
   '/supply': 'Supply & Demand',
   '/destinations': 'Destinations & Trade Flow',
   '/pricing': 'Live Pricing',
@@ -299,7 +300,7 @@ function usePageTitle() {
 }
 
 // Full-page routes (no sidebar/nav chrome)
-const STANDALONE_ROUTES = ['/welcome', '/login', '/register'];
+const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register'];
 
 export default function App() {
   usePageTitle();
@@ -311,6 +312,7 @@ export default function App() {
     return (
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          <Route path="/" element={<Welcome />} />
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -333,7 +335,7 @@ export default function App() {
         <main className="flex-1 pb-16 lg:pb-0">
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/supply" element={<Supply />} />
               <Route path="/destinations" element={<Destinations />} />
               <Route path="/pricing" element={<Pricing />} />

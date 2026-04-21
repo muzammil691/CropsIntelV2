@@ -224,7 +224,7 @@ export default function Welcome() {
             <HeroReveal delay={450}>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
                 <Link
-                  to="/"
+                  to="/dashboard"
                   className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-green-500/20 hover:shadow-green-500/30"
                 >
                   Enter Dashboard — Free Preview
@@ -334,7 +334,7 @@ export default function Welcome() {
                 </div>
 
                 <Link
-                  to="/"
+                  to="/dashboard"
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg text-sm font-medium transition-colors border border-green-500/20"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -528,7 +528,7 @@ export default function Welcome() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                to="/"
+                to="/dashboard"
                 className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-green-500/20"
               >
                 Enter Dashboard
@@ -559,7 +559,7 @@ export default function Welcome() {
             <div className="flex items-center gap-4 text-xs text-gray-600">
               <Link to="/login" className="hover:text-gray-400 transition-colors">Sign In</Link>
               <Link to="/register" className="hover:text-gray-400 transition-colors">Register</Link>
-              <Link to="/" className="hover:text-gray-400 transition-colors">Dashboard</Link>
+              <Link to="/dashboard" className="hover:text-gray-400 transition-colors">Dashboard</Link>
             </div>
           </div>
           <p className="text-center text-[10px] text-gray-700 mt-4">

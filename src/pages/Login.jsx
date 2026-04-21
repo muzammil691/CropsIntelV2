@@ -21,7 +21,7 @@ export default function Login() {
     setLoading(true);
     try {
       await signIn(email, password);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Invalid email or password');
     } finally {
@@ -100,7 +100,7 @@ export default function Login() {
         {/* Guest access */}
         <div className="text-center mt-6">
           <Link
-            to="/"
+            to="/dashboard"
             className="text-sm text-gray-600 hover:text-gray-400 transition-colors"
           >
             Continue as guest (5-minute preview)
