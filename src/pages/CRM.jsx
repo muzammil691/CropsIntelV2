@@ -89,6 +89,9 @@ export default function CRM() {
   const [inviteMsg, setInviteMsg] = useState(null);
   const [bulkInviting, setBulkInviting] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [addingNote, setAddingNote] = useState(false);
+  const [noteText, setNoteText] = useState('');
 
   useEffect(() => { loadCRM(); loadUsers(); }, []);
 
@@ -251,6 +254,22 @@ export default function CRM() {
     }
     setBulkResult({ sent, failed, skipped });
     setBulkInviting(false);
+  }
+
+  async function addNote(contactId) {
+    if (!noteText.trim()) return;
+    setAddingNote(true);
+    try {
+      await supabase.from('crm_activities').insert({
+        contact_id: contactId,
+        activity_type: 'note',
+        subject: noteText.trim(),
+        outcome: 'neutral',
+      });
+      setNoteText('');
+      loadCRM(); // Refresh activities
+    } catch { /* ignore */ }
+    setAddingNote(false);
   }
 
   async function handleCSVImport(e) {
@@ -429,7 +448,7 @@ export default function CRM() {
             {deals.filter(d => d.stage !== 'completed' && d.stage !== 'lost').map(deal => {
               const contact = contactMap[deal.contact_id];
               return (
-                <div key={deal.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
+                <div key={deal.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors cursor-pointer" onClick={() => contact && setSelectedContact(contact)}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -509,7 +528,7 @@ export default function CRM() {
             const hasWhatsApp = !!(contact.whatsapp || contact.phone);
             const hasEmail = !!contact.email;
             return (
-              <div key={contact.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
+              <div key={contact.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors cursor-pointer" onClick={() => setSelectedContact(contact)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -541,7 +560,7 @@ export default function CRM() {
                     <p className="text-[10px] text-gray-600">{contact.total_interactions} interactions</p>
                     <p className="text-[10px] text-gray-600">Last: {fmtDate(contact.last_interaction_at)}</p>
                     {/* Invite buttons */}
-                    <div className="flex items-center gap-1.5 mt-2 justify-end">
+                    <div className="flex items-center gap-1.5 mt-2 justify-end" onClick={e => e.stopPropagation()}>
                       {hasWhatsApp && status !== 'sent' && (
                         <button
                           onClick={() => sendInviteWhatsApp(contact)}
@@ -738,15 +757,218 @@ export default function CRM() {
       )}
 
       {/* How This CRM Works */}
-      <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-white mb-2">How This CRM Works</h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          This CRM is built specifically for almond trading. Every contact is scored by relationship health (0-100),
-          deals track from initial inquiry through shipment with real Strata pricing + MAXONS margin.
-          AI analyzes each relationship and suggests next actions. As the platform grows,
-          emails, WhatsApp messages, and trade documents will auto-feed into the activity log.
-        </p>
-      </div>
+      {!selectedContact && (
+        <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-white mb-2">How This CRM Works</h3>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            This CRM is built specifically for almond trading. Every contact is scored by relationship health (0-100),
+            deals track from initial inquiry through shipment with real Strata pricing + MAXONS margin.
+            AI analyzes each relationship and suggests next actions. As the platform grows,
+            emails, WhatsApp messages, and trade documents will auto-feed into the activity log.
+          </p>
+        </div>
+      )}
+
+      {/* Contact Detail Panel (Slide-over) */}
+      {selectedContact && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60" onClick={() => setSelectedContact(null)} />
+          {/* Panel */}
+          <div className="relative w-full max-w-lg bg-gray-950 border-l border-gray-800 overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800 px-6 py-4 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-600/30 flex items-center justify-center">
+                    <span className="text-sm font-bold text-green-400">
+                      {(selectedContact.company_name || '?').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-white">{selectedContact.company_name}</h3>
+                    <p className="text-xs text-gray-500">{selectedContact.contact_name} — {selectedContact.country}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedContact(null)} className="text-gray-500 hover:text-white transition-colors text-lg">
+                  &times;
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* Contact Info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                  <p className="text-[10px] text-gray-500 uppercase">Type</p>
+                  <p className={`text-sm font-medium capitalize ${CONTACT_TYPE_COLORS[selectedContact.contact_type] || 'text-gray-400'}`}>
+                    {selectedContact.contact_type}
+                  </p>
+                </div>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                  <p className="text-[10px] text-gray-500 uppercase">Score</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <ScoreBar score={selectedContact.relationship_score} />
+                  </div>
+                </div>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                  <p className="text-[10px] text-gray-500 uppercase">Lifetime Volume</p>
+                  <p className="text-sm font-medium text-white">{fmtLbs(selectedContact.total_volume_lbs)}</p>
+                </div>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                  <p className="text-[10px] text-gray-500 uppercase">Interactions</p>
+                  <p className="text-sm font-medium text-white">{selectedContact.total_interactions || 0}</p>
+                </div>
+              </div>
+
+              {/* Contact Details */}
+              <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 space-y-2">
+                {selectedContact.email && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 text-xs w-20">Email</span>
+                    <span className="text-xs text-gray-300">{selectedContact.email}</span>
+                  </div>
+                )}
+                {(selectedContact.phone || selectedContact.whatsapp) && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 text-xs w-20">Phone</span>
+                    <span className="text-xs text-gray-300">{selectedContact.whatsapp || selectedContact.phone}</span>
+                  </div>
+                )}
+                {selectedContact.city && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 text-xs w-20">City</span>
+                    <span className="text-xs text-gray-300">{selectedContact.city}</span>
+                  </div>
+                )}
+                {selectedContact.notes && (
+                  <div className="flex items-start gap-2 pt-2 border-t border-gray-800">
+                    <span className="text-gray-500 text-xs w-20 mt-0.5">Notes</span>
+                    <span className="text-xs text-gray-400 leading-relaxed">{selectedContact.notes}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* AI Next Action */}
+              {selectedContact.ai_next_action && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                  <p className="text-[10px] text-amber-400 uppercase font-medium mb-1">AI Recommended Action</p>
+                  <p className="text-xs text-amber-300">{selectedContact.ai_next_action}</p>
+                </div>
+              )}
+
+              {/* Quick Actions */}
+              <div className="flex flex-wrap gap-2">
+                {(selectedContact.whatsapp || selectedContact.phone) && inviting[selectedContact.id] !== 'sent' && (
+                  <button
+                    onClick={() => sendInviteWhatsApp(selectedContact)}
+                    disabled={inviting[selectedContact.id] === 'sending'}
+                    className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                  >
+                    Send WhatsApp Invite
+                  </button>
+                )}
+                {selectedContact.email && inviting[selectedContact.id] !== 'sent' && (
+                  <button
+                    onClick={() => sendInviteEmail(selectedContact)}
+                    disabled={inviting[selectedContact.id] === 'sending'}
+                    className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                  >
+                    Send Email Invite
+                  </button>
+                )}
+                {inviting[selectedContact.id] === 'sent' && (
+                  <span className="px-3 py-1.5 bg-green-500/10 text-green-400 rounded-lg text-xs">Invitation Sent</span>
+                )}
+              </div>
+
+              {/* Linked Deals */}
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-2">
+                  Deals ({deals.filter(d => d.contact_id === selectedContact.id).length})
+                </h4>
+                {deals.filter(d => d.contact_id === selectedContact.id).length > 0 ? (
+                  <div className="space-y-2">
+                    {deals.filter(d => d.contact_id === selectedContact.id).map(deal => (
+                      <div key={deal.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <StageBadge stage={deal.stage} />
+                          <span className="text-xs font-bold text-white">{fmtUSD(deal.total_value_usd)}</span>
+                        </div>
+                        <p className="text-xs text-gray-300">{deal.variety} {deal.grade} — {deal.destination_country}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          {deal.volume_mt} MT | ${deal.maxons_price}/lb | {deal.incoterm}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-600 bg-gray-900/50 rounded-lg p-3 text-center">No deals linked</p>
+                )}
+              </div>
+
+              {/* Activity Timeline */}
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-2">
+                  Activity ({activities.filter(a => a.contact_id === selectedContact.id).length})
+                </h4>
+                {activities.filter(a => a.contact_id === selectedContact.id).length > 0 ? (
+                  <div className="space-y-1.5">
+                    {activities.filter(a => a.contact_id === selectedContact.id).slice(0, 10).map(act => (
+                      <div key={act.id} className="flex items-start gap-2 bg-gray-900/50 rounded-lg p-2.5">
+                        <ActivityIcon type={act.activity_type} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-300">{act.subject}</p>
+                          <p className="text-[10px] text-gray-600">{fmtDate(act.created_at)}</p>
+                        </div>
+                        {act.outcome && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                            act.outcome === 'positive' ? 'bg-green-500/10 text-green-400' :
+                            act.outcome === 'negative' ? 'bg-red-500/10 text-red-400' :
+                            'bg-gray-500/10 text-gray-400'
+                          }`}>
+                            {act.outcome}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-600 bg-gray-900/50 rounded-lg p-3 text-center">No activity yet</p>
+                )}
+
+                {/* Add Note */}
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Add a note..."
+                    value={noteText}
+                    onChange={e => setNoteText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addNote(selectedContact.id)}
+                    className="flex-1 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30"
+                  />
+                  <button
+                    onClick={() => addNote(selectedContact.id)}
+                    disabled={!noteText.trim() || addingNote}
+                    className="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs transition-colors disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Tags */}
+              {selectedContact.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedContact.tags.map(tag => (
+                    <span key={tag} className="text-[10px] px-2 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700">{tag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
