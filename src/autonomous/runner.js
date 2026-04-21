@@ -21,8 +21,10 @@ import { runShipmentParser } from '../scrapers/shipment-parser.js';
 import { runReceiptsParser } from '../scrapers/receipts-parser.js';
 import { processData } from '../processors/data-processor.js';
 import { runAIAnalysis } from '../processors/ai-analyst.js';
+import { scrapeBountiful } from '../scrapers/bountiful-scraper.js';
+import { scrapeNews } from '../scrapers/news-scraper.js';
 
-const RUNNER_VERSION = '4.0.0';
+const RUNNER_VERSION = '5.0.0';
 
 // ============================================================
 // Health check — log that the runner is alive
@@ -77,6 +79,26 @@ async function runAutonomousCycle() {
     } catch (strataErr) {
       console.warn('Strata scrape failed (non-fatal):', strataErr.message);
       steps.push({ step: 'strata', error: strataErr.message });
+    }
+
+    // Step 1C: Scrape Bountiful.ag crop estimates
+    console.log('\n--- STEP 1C: Bountiful.ag Crop Estimates ---');
+    try {
+      const bountifulResult = await scrapeBountiful();
+      steps.push({ step: 'bountiful', found: bountifulResult.found, inserted: bountifulResult.inserted });
+    } catch (bountifulErr) {
+      console.warn('Bountiful scrape failed (non-fatal):', bountifulErr.message);
+      steps.push({ step: 'bountiful', error: bountifulErr.message });
+    }
+
+    // Step 1D: Scrape industry news
+    console.log('\n--- STEP 1D: Industry News ---');
+    try {
+      const newsResult = await scrapeNews();
+      steps.push({ step: 'news', found: newsResult.found, inserted: newsResult.inserted });
+    } catch (newsErr) {
+      console.warn('News scrape failed (non-fatal):', newsErr.message);
+      steps.push({ step: 'news', error: newsErr.message });
     }
 
     // Step 2: Generate shipment data (from PDFs or position reports)

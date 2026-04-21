@@ -8,6 +8,9 @@ const Reports = lazy(() => import('./pages/Reports'));
 const Autonomous = lazy(() => import('./pages/Autonomous'));
 const Supply = lazy(() => import('./pages/Supply'));
 const Destinations = lazy(() => import('./pages/Destinations'));
+const Forecasts = lazy(() => import('./pages/Forecasts'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const News = lazy(() => import('./pages/News'));
 
 function PageLoader() {
   return (
@@ -21,6 +24,9 @@ const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/supply', label: 'Supply & Demand', icon: '⚖️' },
   { path: '/destinations', label: 'Destinations', icon: '🌍' },
+  { path: '/pricing', label: 'Pricing', icon: '💰' },
+  { path: '/forecasts', label: 'Forecasts', icon: '🔮' },
+  { path: '/news', label: 'News & Intel', icon: '📰' },
   { path: '/analysis', label: 'Analysis', icon: '📈' },
   { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/autonomous', label: 'Autonomous', icon: '🤖' }
@@ -144,6 +150,9 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/supply" element={<Supply />} />
               <Route path="/destinations" element={<Destinations />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/forecasts" element={<Forecasts />} />
+              <Route path="/news" element={<News />} />
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/autonomous" element={<Autonomous />} />

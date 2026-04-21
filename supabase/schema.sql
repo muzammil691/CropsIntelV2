@@ -267,6 +267,98 @@ CREATE TABLE IF NOT EXISTS ai_analyses (
 );
 
 -- ============================================================
+-- Pipeline Runs (track each autonomous cycle execution)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS pipeline_runs (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_type TEXT NOT NULL DEFAULT 'autonomous_cycle',
+  status TEXT NOT NULL DEFAULT 'running',  -- 'running', 'completed', 'failed'
+  trigger_source TEXT DEFAULT 'scheduled',  -- 'scheduled', 'manual', 'webhook'
+  steps_completed JSONB DEFAULT '[]',
+  summary TEXT,
+  errors JSONB DEFAULT '[]',
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+-- ============================================================
+-- Email Subscriptions (autonomous email monitoring)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_subscriptions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  email_address TEXT NOT NULL,         -- which app email to use
+  service_name TEXT NOT NULL,          -- 'abc_alerts', 'bountiful', 'usda', etc.
+  service_url TEXT,                    -- website the subscription is on
+  subscription_type TEXT DEFAULT 'newsletter', -- 'newsletter', 'report', 'alert', 'price_update'
+  frequency TEXT DEFAULT 'as_published',       -- 'daily', 'weekly', 'monthly', 'as_published'
+  is_active BOOLEAN DEFAULT TRUE,
+  last_received_at TIMESTAMPTZ,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(email_address, service_name)
+);
+
+-- ============================================================
+-- Email Inbox (received emails for auto-processing)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_inbox (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  email_address TEXT NOT NULL,         -- which inbox received it
+  from_address TEXT,
+  from_name TEXT,
+  subject TEXT,
+  body_text TEXT,
+  body_html TEXT,
+  received_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Processing state
+  is_processed BOOLEAN DEFAULT FALSE,
+  processing_type TEXT,                -- 'report_pdf', 'price_update', 'news', 'crm_inquiry', 'logistics'
+  extracted_data JSONB DEFAULT '{}',   -- structured data extracted by AI
+
+  -- Attachments (stored as references)
+  attachments JSONB DEFAULT '[]',      -- [{filename, size, content_type, storage_path}]
+
+  -- Routing (CRM/BRM/SRM)
+  routed_to TEXT,                      -- 'crm', 'brm', 'srm', 'intelligence', 'ignored'
+  ai_summary TEXT,                     -- AI-generated summary
+  ai_action_required BOOLEAN DEFAULT FALSE,
+  ai_priority TEXT DEFAULT 'normal',   -- 'urgent', 'high', 'normal', 'low'
+
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- CRM Contacts (buyers, suppliers, logistics partners)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS crm_contacts (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  contact_type TEXT NOT NULL,          -- 'buyer', 'supplier', 'logistics', 'broker', 'industry'
+  company_name TEXT,
+  contact_name TEXT,
+  email TEXT,
+  phone TEXT,
+  country TEXT,
+  region TEXT,                         -- 'middle_east', 'europe', 'asia', 'americas'
+
+  -- Relationship intelligence
+  relationship_score INT DEFAULT 50,   -- 0-100
+  last_interaction_at TIMESTAMPTZ,
+  total_interactions INT DEFAULT 0,
+  total_volume_lbs BIGINT DEFAULT 0,   -- lifetime trade volume
+
+  -- AI insights
+  ai_notes TEXT,                       -- AI-generated relationship notes
+  ai_next_action TEXT,                 -- suggested next engagement
+
+  tags TEXT[] DEFAULT '{}',
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- System Config (scraping schedules, API keys, settings)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS system_config (
@@ -302,6 +394,11 @@ CREATE INDEX IF NOT EXISTS idx_acreage_year ON abc_acreage_reports(report_year);
 CREATE INDEX IF NOT EXISTS idx_strata_date ON strata_prices(price_date, variety);
 CREATE INDEX IF NOT EXISTS idx_news_source ON industry_news(source, published_date);
 CREATE INDEX IF NOT EXISTS idx_news_category ON industry_news(category, published_date);
+CREATE INDEX IF NOT EXISTS idx_pipeline_status ON pipeline_runs(status, started_at);
+CREATE INDEX IF NOT EXISTS idx_email_inbox_processed ON email_inbox(is_processed, received_at);
+CREATE INDEX IF NOT EXISTS idx_email_inbox_routing ON email_inbox(routed_to, ai_priority);
+CREATE INDEX IF NOT EXISTS idx_crm_contacts_type ON crm_contacts(contact_type, country);
+CREATE INDEX IF NOT EXISTS idx_crm_contacts_score ON crm_contacts(relationship_score DESC);
 
 -- ============================================================
 -- RLS Policies (enable for frontend, bypass with service_role)
@@ -319,6 +416,11 @@ ALTER TABLE ai_analyses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scraping_logs ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE pipeline_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_inbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crm_contacts ENABLE ROW LEVEL SECURITY;
+
 -- Public read for anon (dashboard data)
 CREATE POLICY "Public read position reports" ON abc_position_reports FOR SELECT USING (true);
 CREATE POLICY "Public read shipment reports" ON abc_shipment_reports FOR SELECT USING (true);
@@ -331,5 +433,9 @@ CREATE POLICY "Public read news" ON industry_news FOR SELECT USING (true);
 CREATE POLICY "Public read market data" ON market_data FOR SELECT USING (true);
 CREATE POLICY "Public read analyses" ON ai_analyses FOR SELECT USING (true);
 
+CREATE POLICY "Public read pipeline runs" ON pipeline_runs FOR SELECT USING (true);
+CREATE POLICY "Public read crm contacts" ON crm_contacts FOR SELECT USING (true);
+
 -- service_role bypasses RLS for insert/update from scrapers
 -- No insert/update policy needed for anon — scrapers use service_role key
+-- email_inbox and email_subscriptions are NOT public — service_role only
