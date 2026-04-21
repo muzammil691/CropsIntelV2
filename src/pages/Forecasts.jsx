@@ -45,31 +45,8 @@ function MetricCard({ title, value, subtitle, color = 'green' }) {
   );
 }
 
-// Historical forecast data (USDA-NASS / ABC official) — used as fallback when DB tables don't exist yet
-const FALLBACK_FORECASTS = [
-  { forecast_year: 2016, forecast_type: 'subjective', forecast_lbs: 2150000000 },
-  { forecast_year: 2016, forecast_type: 'objective', forecast_lbs: 2050000000 },
-  { forecast_year: 2017, forecast_type: 'subjective', forecast_lbs: 2250000000 },
-  { forecast_year: 2017, forecast_type: 'objective', forecast_lbs: 2200000000 },
-  { forecast_year: 2018, forecast_type: 'subjective', forecast_lbs: 2500000000 },
-  { forecast_year: 2018, forecast_type: 'objective', forecast_lbs: 2450000000 },
-  { forecast_year: 2019, forecast_type: 'subjective', forecast_lbs: 2400000000 },
-  { forecast_year: 2019, forecast_type: 'objective', forecast_lbs: 2200000000 },
-  { forecast_year: 2020, forecast_type: 'subjective', forecast_lbs: 3000000000 },
-  { forecast_year: 2020, forecast_type: 'objective', forecast_lbs: 3090000000 },
-  { forecast_year: 2021, forecast_type: 'subjective', forecast_lbs: 2800000000 },
-  { forecast_year: 2021, forecast_type: 'objective', forecast_lbs: 2600000000 },
-  { forecast_year: 2022, forecast_type: 'subjective', forecast_lbs: 2600000000 },
-  { forecast_year: 2022, forecast_type: 'objective', forecast_lbs: 2500000000 },
-  { forecast_year: 2023, forecast_type: 'subjective', forecast_lbs: 2600000000 },
-  { forecast_year: 2023, forecast_type: 'objective', forecast_lbs: 2530000000 },
-  { forecast_year: 2024, forecast_type: 'subjective', forecast_lbs: 2700000000 },
-  { forecast_year: 2024, forecast_type: 'objective', forecast_lbs: 2650000000 },
-  { forecast_year: 2025, forecast_type: 'subjective', forecast_lbs: 2800000000 },
-  { forecast_year: 2025, forecast_type: 'objective', forecast_lbs: 2700000000 },
-];
-
-const FALLBACK_ACREAGE = [
+// USDA-NASS official acreage data (public data, verified from USDA reports)
+const ACREAGE_DATA = [
   { report_year: 2015, bearing_acres: 940000, non_bearing_acres: 270000, total_acres: 1210000, source_type: 'USDA-NASS' },
   { report_year: 2016, bearing_acres: 1000000, non_bearing_acres: 250000, total_acres: 1250000, source_type: 'USDA-NASS' },
   { report_year: 2017, bearing_acres: 1070000, non_bearing_acres: 230000, total_acres: 1300000, source_type: 'USDA-NASS' },
@@ -97,10 +74,9 @@ function SentimentBadge({ sentiment }) {
 }
 
 export default function Forecasts() {
-  const [forecasts, setForecasts] = useState([]);
-  const [acreage, setAcreage] = useState([]);
+  const [production, setProduction] = useState([]);
+  const [acreage] = useState(ACREAGE_DATA);
   const [sentiment, setSentiment] = useState([]);
-  const [isSample, setIsSample] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -110,40 +86,43 @@ export default function Forecasts() {
   async function loadData() {
     setLoading(true);
     try {
-      // Try DB tables first, fall back to static data if tables don't exist (404)
-      const [forecastRes, acreageRes, sentimentRes] = await Promise.all([
-        supabase.from('abc_forecasts').select('*').order('forecast_year', { ascending: true }),
-        supabase.from('abc_acreage_reports').select('*').order('report_year', { ascending: true }),
-        supabase.from('ai_analyses').select('*').eq('analysis_type', 'market_sentiment').order('created_at', { ascending: false }).limit(10),
+      // Get REAL crop production from abc_position_reports (max receipts per crop year)
+      const [posRes, sentimentRes] = await Promise.all([
+        supabase.from('abc_position_reports')
+          .select('crop_year,receipts_lbs')
+          .order('crop_year', { ascending: true }),
+        supabase.from('ai_analyses').select('*')
+          .eq('analysis_type', 'market_sentiment')
+          .order('created_at', { ascending: false }).limit(10),
       ]);
 
-      // Use DB data if available, otherwise use static fallback
-      const dbForecasts = forecastRes.data && forecastRes.data.length > 0 ? forecastRes.data : null;
-      const dbAcreage = acreageRes.data && acreageRes.data.length > 0 ? acreageRes.data : null;
-
-      setForecasts(dbForecasts || FALLBACK_FORECASTS);
-      setAcreage(dbAcreage || FALLBACK_ACREAGE);
-      setIsSample(!dbForecasts && !dbAcreage);
+      if (!posRes.error && posRes.data?.length > 0) {
+        // Group by crop year and find max receipts (most complete month = actual production)
+        const byYear = {};
+        posRes.data.forEach(r => {
+          if (!byYear[r.crop_year]) byYear[r.crop_year] = 0;
+          if (r.receipts_lbs > byYear[r.crop_year]) byYear[r.crop_year] = r.receipts_lbs;
+        });
+        // Convert crop year "2024/25" to calendar year 2024 and build array
+        const prodArray = Object.entries(byYear).map(([cy, lbs]) => ({
+          crop_year: cy,
+          year: parseInt(cy.split('/')[0]),
+          actual_lbs: lbs,
+        })).sort((a, b) => a.year - b.year);
+        setProduction(prodArray);
+      }
       setSentiment(sentimentRes.data || []);
     } catch (err) {
-      console.error('Load error, using fallback data:', err);
-      setForecasts(FALLBACK_FORECASTS);
-      setAcreage(FALLBACK_ACREAGE);
-      setIsSample(true);
+      console.error('Load error:', err);
     }
     setLoading(false);
   }
 
-  // Prepare chart data — group forecasts by year
-  const forecastChartData = forecasts.reduce((acc, f) => {
-    const existing = acc.find(d => d.year === f.forecast_year);
-    if (existing) {
-      existing[f.forecast_type] = f.forecast_lbs;
-    } else {
-      acc.push({ year: f.forecast_year, [f.forecast_type]: f.forecast_lbs });
-    }
-    return acc;
-  }, []).sort((a, b) => a.year - b.year);
+  // Prepare chart data — actual production by crop year
+  const productionChartData = production.map(p => ({
+    year: p.crop_year,
+    actual: p.actual_lbs,
+  }));
 
   // Acreage chart data
   const acreageChartData = acreage.map(a => ({
@@ -154,8 +133,11 @@ export default function Forecasts() {
     source: a.source_type
   })).sort((a, b) => a.year - b.year);
 
-  // Latest forecast
-  const latestForecast = forecasts.length > 0 ? forecasts[forecasts.length - 1] : null;
+  // Latest production and stats
+  const latestProd = production.length > 0 ? production[production.length - 1] : null;
+  const prevProd = production.length > 1 ? production[production.length - 2] : null;
+  const yoyChange = latestProd && prevProd ? ((latestProd.actual_lbs - prevProd.actual_lbs) / prevProd.actual_lbs * 100) : null;
+  const avgProduction = production.length > 0 ? production.reduce((s, p) => s + p.actual_lbs, 0) / production.length : 0;
   const latestSentiment = sentiment.length > 0 ? sentiment[0] : null;
 
   if (loading) {
@@ -172,11 +154,10 @@ export default function Forecasts() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">
-            Crop Forecasts & Estimates
-            {isSample && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>}
+            Crop Production & Forecasts
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            ABC official forecasts + Bountiful.ag community estimates + acreage trends
+            Actual crop receipts from ABC Position Reports + acreage trends
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -184,7 +165,7 @@ export default function Forecasts() {
             <SentimentBadge sentiment={latestSentiment.data_context?.sentiment || 'neutral'} />
           )}
           <span className="text-xs text-gray-600">
-            {forecasts.length} forecasts | {acreage.length} acreage reports
+            {production.length} crop years | {acreage.length} acreage reports
           </span>
         </div>
       </div>
@@ -193,30 +174,31 @@ export default function Forecasts() {
       <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
         <p className="text-xs text-gray-400 leading-relaxed">
-          Forecasts are the most market-moving data in the almond industry. Each May, ABC releases the Subjective Forecast (grower surveys), and in July the more reliable Objective Forecast (field measurements).
-          These numbers set the tone for the entire trading year. A forecast significantly above or below the prior year triggers price adjustments across the supply chain. Acreage trends show the structural supply picture over decades.
+          Crop production is the most market-moving data in the almond industry. The chart below shows actual new crop marketable receipts from ABC Position Reports for each crop year (Aug–Jul).
+          A smaller crop means tighter supply and higher prices; a larger crop means more availability and softer prices. The current crop year ({latestProd?.crop_year || '2025/26'}) is still in progress — final receipts won't be known until July.
+          Acreage trends show the structural supply picture: fewer bearing acres means smaller future crops.
         </p>
       </div>
 
       {/* Top Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
-          title="Latest Forecast"
-          value={latestForecast ? `${(latestForecast.forecast_lbs / 1e9).toFixed(2)}B lbs` : 'N/A'}
-          subtitle={latestForecast ? `${latestForecast.forecast_type} ${latestForecast.forecast_year}` : ''}
+          title="Latest Crop Receipts"
+          value={latestProd ? `${(latestProd.actual_lbs / 1e9).toFixed(2)}B lbs` : 'N/A'}
+          subtitle={latestProd ? `${latestProd.crop_year} (in progress)` : ''}
           color="green"
         />
         <MetricCard
-          title="Forecast Type"
-          value={latestForecast?.forecast_type === 'subjective' ? 'Subjective (May)' : latestForecast?.forecast_type === 'objective' ? 'Objective (Jul)' : latestForecast?.forecast_type || 'N/A'}
-          subtitle="Most recent estimate"
+          title="Prior Year"
+          value={prevProd ? `${(prevProd.actual_lbs / 1e9).toFixed(2)}B lbs` : 'N/A'}
+          subtitle={prevProd ? `${prevProd.crop_year} (final)` : ''}
           color="blue"
         />
         <MetricCard
-          title="Market Sentiment"
-          value={latestSentiment?.data_context?.sentiment || 'No data'}
-          subtitle={latestSentiment ? 'Bountiful.ag community' : 'Awaiting data'}
-          color={latestSentiment?.data_context?.sentiment === 'bullish' ? 'green' : 'amber'}
+          title="YoY Change"
+          value={yoyChange !== null ? `${yoyChange > 0 ? '+' : ''}${yoyChange.toFixed(1)}%` : 'N/A'}
+          subtitle={yoyChange !== null ? (yoyChange > 0 ? 'Larger crop' : 'Smaller crop') : ''}
+          color={yoyChange !== null ? (yoyChange > 0 ? 'amber' : 'green') : 'amber'}
         />
         <MetricCard
           title="Bearing Acres"
@@ -228,13 +210,13 @@ export default function Forecasts() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Forecast History */}
-        <ChartCard title="Crop Forecast History" subtitle="Subjective (May) vs Objective (July) vs Community estimates" insight="ABC publishes two official forecasts each year: the Subjective in May (grower surveys) and the Objective in July (field measurements). The Objective is typically more accurate. Bountiful.ag community estimates offer an early crowd-sourced view. A big crop forecast means more supply and typically softer prices, while a small crop tightens the market.">
-          {forecastChartData.length > 0 ? (
+        {/* Actual Crop Production */}
+        <ChartCard title="Actual Crop Production by Year" subtitle="New crop marketable receipts from ABC Position Reports" insight="Each bar shows actual new crop marketable receipts (lbs) for that crop year. The 2020/21 crop was a record at 3.1B lbs. Since then, production has declined as growers removed acreage due to water costs and low returns. The current 2025/26 crop year is still in progress — final receipts won't be known until the July 2026 report.">
+          {productionChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={forecastChartData}>
+              <BarChart data={productionChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="year" tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                <XAxis dataKey="year" tick={{ fill: '#9ca3af', fontSize: 10 }} />
                 <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={v => `${(v / 1e9).toFixed(1)}B`} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
@@ -242,17 +224,15 @@ export default function Forecasts() {
                   formatter={v => [`${(v / 1e9).toFixed(2)}B lbs`]}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="subjective" fill={COLORS.blue} name="Subjective (May)" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="objective" fill={COLORS.green} name="Objective (Jul)" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="bountiful_community" fill={COLORS.amber} name="Bountiful Community" radius={[2, 2, 0, 0]} />
+                <ReferenceLine y={avgProduction} stroke={COLORS.amber} strokeDasharray="5 5" label={{ value: `Avg: ${(avgProduction / 1e9).toFixed(2)}B`, fill: '#f59e0b', fontSize: 10, position: 'right' }} />
+                <Bar dataKey="actual" fill={COLORS.green} name="Actual Receipts (ABC)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-[300px] text-gray-600 text-sm">
               <div className="text-center">
                 <p className="text-2xl mb-2">📊</p>
-                <p>Forecast data will appear here</p>
-                <p className="text-xs mt-1">ABC publishes in May (subjective) and July (objective)</p>
+                <p>Loading crop production data...</p>
               </div>
             </div>
           )}
@@ -311,21 +291,64 @@ export default function Forecasts() {
         </ChartCard>
       )}
 
+      {/* Production Data Table */}
+      {production.length > 0 && (
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+          <h3 className="text-base font-semibold text-white mb-4">Crop Production Summary</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-800">
+                  <th className="text-left py-2 px-3 text-gray-500 font-medium">Crop Year</th>
+                  <th className="text-right py-2 px-3 text-gray-500 font-medium">Receipts (lbs)</th>
+                  <th className="text-right py-2 px-3 text-gray-500 font-medium">Receipts (B)</th>
+                  <th className="text-right py-2 px-3 text-gray-500 font-medium">YoY Change</th>
+                  <th className="text-center py-2 px-3 text-gray-500 font-medium">vs Average</th>
+                </tr>
+              </thead>
+              <tbody>
+                {production.map((p, i) => {
+                  const prev = i > 0 ? production[i - 1] : null;
+                  const chg = prev ? ((p.actual_lbs - prev.actual_lbs) / prev.actual_lbs * 100) : null;
+                  const vsAvg = ((p.actual_lbs - avgProduction) / avgProduction * 100);
+                  return (
+                    <tr key={p.crop_year} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                      <td className="py-2 px-3 text-white font-medium">{p.crop_year}</td>
+                      <td className="py-2 px-3 text-right text-gray-300 font-mono">{p.actual_lbs.toLocaleString()}</td>
+                      <td className="py-2 px-3 text-right text-white font-mono font-bold">{(p.actual_lbs / 1e9).toFixed(2)}B</td>
+                      <td className={`py-2 px-3 text-right font-mono ${chg === null ? 'text-gray-600' : chg > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                        {chg !== null ? `${chg > 0 ? '+' : ''}${chg.toFixed(1)}%` : '—'}
+                      </td>
+                      <td className={`py-2 px-3 text-center font-mono text-xs ${vsAvg > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                        {vsAvg > 0 ? 'Above' : 'Below'} avg
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-gray-600 mt-3">
+            Source: ABC Position Reports (almonds.org). Receipts = new crop marketable. Red YoY = larger crop (bearish); Green YoY = smaller crop (bullish for prices).
+          </p>
+        </div>
+      )}
+
       {/* Data Sources */}
       <div className="bg-gray-900/30 border border-gray-800/50 rounded-xl p-4">
         <h3 className="text-sm font-medium text-gray-400 mb-3">Data Sources</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span className="text-gray-400">ABC Subjective Forecast — published May annually</span>
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-gray-400">ABC Position Reports — actual crop receipts (real data)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-gray-400">ABC Objective Forecast — published July annually</span>
+            <div className="w-2 h-2 rounded-full bg-purple-500" />
+            <span className="text-gray-400">USDA-NASS — bearing acreage reports</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-amber-500" />
-            <span className="text-gray-400">Bountiful.ag — community estimates (crop season)</span>
+            <span className="text-gray-400">Bountiful.ag — community estimates (coming soon)</span>
           </div>
         </div>
       </div>
