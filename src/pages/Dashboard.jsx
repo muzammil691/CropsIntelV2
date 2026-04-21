@@ -162,15 +162,12 @@ export default function Dashboard() {
           .limit(20);
 
         if (aiData) {
-          // Aggressive dedup: by analysis_type + truncated summary (first 100 chars)
-          const seen = new Set();
-          const deduped = aiData.filter(a => {
-            const summaryKey = truncateText(a.summary, 100);
-            const key = `${a.analysis_type}::${summaryKey}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
+          // Strict dedup: keep only ONE per analysis_type (most recent)
+          const byType = {};
+          aiData.forEach(a => {
+            if (!byType[a.analysis_type]) byType[a.analysis_type] = a;
           });
+          const deduped = Object.values(byType);
           // Sort: monthly_brief first, then trade_signal, then others
           const priority = { monthly_brief: 0, trade_signal: 1, anomaly: 2, yoy_comparison: 3, seasonal_pattern: 4 };
           deduped.sort((a, b) => (priority[a.analysis_type] ?? 9) - (priority[b.analysis_type] ?? 9));
