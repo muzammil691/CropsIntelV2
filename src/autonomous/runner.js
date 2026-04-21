@@ -23,6 +23,8 @@ import { processData } from '../processors/data-processor.js';
 import { runAIAnalysis } from '../processors/ai-analyst.js';
 import { scrapeBountiful } from '../scrapers/bountiful-scraper.js';
 import { scrapeNews } from '../scrapers/news-scraper.js';
+import { pollInbox } from './imap-reader.js';
+import { runEmailIngestion } from './email-ingestor.js';
 
 const RUNNER_VERSION = '5.0.0';
 
@@ -64,6 +66,27 @@ async function runAutonomousCycle() {
   const steps = [];
 
   try {
+    // Step 0: Email Ingestion — poll IMAP inbox and process new emails
+    console.log('--- STEP 0: Email Ingestion (IMAP Poll) ---');
+    try {
+      const imapResult = await pollInbox();
+      steps.push({ step: 'imap_poll', found: imapResult.found, inserted: imapResult.inserted, errors: imapResult.errors });
+      console.log(`  IMAP: ${imapResult.inserted} new emails ingested`);
+    } catch (imapErr) {
+      console.warn('IMAP poll failed (non-fatal):', imapErr.message);
+      steps.push({ step: 'imap_poll', error: imapErr.message });
+    }
+
+    // Step 0B: Process unprocessed emails (classify, extract, route)
+    console.log('\n--- STEP 0B: Email Processing ---');
+    try {
+      const emailResult = await runEmailIngestion();
+      steps.push({ step: 'email_process', found: emailResult.found, processed: emailResult.processed });
+    } catch (emailErr) {
+      console.warn('Email processing failed (non-fatal):', emailErr.message);
+      steps.push({ step: 'email_process', error: emailErr.message });
+    }
+
     // Step 1: Scrape ALL ABC report types (position, forecasts, acreage, almanac)
     console.log('--- STEP 1: Scraping ALL ABC Report Types ---');
     const scrapeResult = await scrapeAllReportTypes();
@@ -180,6 +203,20 @@ function startRunner() {
 
   healthCheck();
 
+  // Every 15 minutes: Poll email inbox
+  cron.schedule('*/15 * * * *', async () => {
+    console.log('Scheduled trigger: Email inbox poll');
+    try {
+      const imapResult = await pollInbox();
+      if (imapResult.inserted > 0) {
+        console.log(`Email poll: ${imapResult.inserted} new emails — running ingestion...`);
+        await runEmailIngestion();
+      }
+    } catch (err) {
+      console.warn('Scheduled email poll failed:', err.message);
+    }
+  }, { timezone: 'UTC' });
+
   // Monthly: Full cycle on 15th at 8 AM UTC (when ABC publishes)
   cron.schedule('0 8 15 * *', () => {
     console.log('Scheduled trigger: Monthly ABC scrape cycle');
@@ -198,6 +235,7 @@ function startRunner() {
   }, { timezone: 'UTC' });
 
   console.log('Scheduled jobs:');
+  console.log('  - Email inbox poll: Every 15 minutes');
   console.log('  - Full scrape cycle: 15th of each month, 8 AM UTC');
   console.log('  - Data reprocess: Every Monday, 6 AM UTC');
   console.log('  - Health check: Daily at midnight UTC');

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 // Simple markdown-to-JSX renderer for AI-generated briefs
@@ -182,6 +183,8 @@ export default function Dashboard() {
   const [allReports, setAllReports] = useState([]);
   const [analyses, setAnalyses] = useState([]);
   const [scrapeLogs, setScrapeLogs] = useState([]);
+  const [latestPrices, setLatestPrices] = useState([]);
+  const [recentNews, setRecentNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -227,6 +230,29 @@ export default function Dashboard() {
           .limit(5);
 
         if (logs) setScrapeLogs(logs);
+
+        // Fetch latest Strata prices (one per variety, most recent)
+        const { data: prices } = await supabase
+          .from('strata_prices')
+          .select('*')
+          .order('price_date', { ascending: false })
+          .limit(20);
+
+        if (prices) {
+          // Deduplicate: keep latest per variety
+          const byVariety = {};
+          prices.forEach(p => { if (!byVariety[p.variety]) byVariety[p.variety] = p; });
+          setLatestPrices(Object.values(byVariety).slice(0, 6));
+        }
+
+        // Fetch recent news
+        const { data: news } = await supabase
+          .from('industry_news')
+          .select('*')
+          .order('published_date', { ascending: false })
+          .limit(5);
+
+        if (news) setRecentNews(news);
       } catch (err) {
         console.error('Dashboard load error:', err);
       } finally {
@@ -445,6 +471,167 @@ export default function Dashboard() {
                 <p className="text-xs text-gray-500">No scraper runs yet</p>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Live Pricing, News Feed, System Pipeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        {/* Live Pricing Widget */}
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Live Almond Prices</h3>
+            <Link to="/pricing" className="text-xs text-green-400 hover:text-green-300 transition-colors">
+              View All &rarr;
+            </Link>
+          </div>
+          {latestPrices.length > 0 ? (
+            <div className="space-y-3">
+              {latestPrices.map((p) => {
+                const marketPrice = parseFloat(p.price) || 0;
+                const maxonsPrice = (marketPrice * 1.03).toFixed(2);
+                return (
+                  <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-white truncate">{p.variety}</p>
+                      <p className="text-[10px] text-gray-600">
+                        {p.price_date ? new Date(p.price_date).toLocaleDateString() : '--'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-300">
+                        ${marketPrice.toFixed(2)}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">
+                        ${maxonsPrice}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-2">
+                <p className="text-[10px] text-gray-600 text-right">Market | MAXONS (+3%)</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-xs text-gray-500">No pricing data yet</p>
+              <p className="text-[10px] text-gray-600 mt-1">Strata scraper will populate prices</p>
+            </div>
+          )}
+        </div>
+
+        {/* Industry News Feed Widget */}
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Latest News &amp; Intel</h3>
+            <Link to="/news" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+              View All &rarr;
+            </Link>
+          </div>
+          {recentNews.length > 0 ? (
+            <div className="space-y-3">
+              {recentNews.map((item) => {
+                const sentimentColor = item.sentiment === 'bullish'
+                  ? 'bg-green-500' : item.sentiment === 'bearish'
+                  ? 'bg-red-500' : 'bg-gray-500';
+                return (
+                  <div key={item.id} className="group py-2 border-b border-gray-800 last:border-0">
+                    <div className="flex items-start gap-2">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${sentimentColor}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-white leading-snug line-clamp-2">{item.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {item.source && (
+                            <span className="text-[10px] text-gray-500">{item.source}</span>
+                          )}
+                          {item.published_date && (
+                            <span className="text-[10px] text-gray-600">
+                              {new Date(item.published_date).toLocaleDateString()}
+                            </span>
+                          )}
+                          {item.category && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">
+                              {item.category}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-xs text-gray-500">No news items yet</p>
+              <p className="text-[10px] text-gray-600 mt-1">News scraper will populate intel</p>
+            </div>
+          )}
+        </div>
+
+        {/* Autonomous Pipeline Status Widget */}
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Pipeline Status</h3>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-[10px] text-green-400">Active</span>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {/* Email System */}
+            <div className="bg-gray-800/50 rounded-lg px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">@</span>
+                  <span className="text-xs text-white">intel@cropsintel.com</span>
+                </div>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400">Active</span>
+              </div>
+            </div>
+
+            {/* Scrapers */}
+            {['ABC Position Reports', 'Strata Pricing', 'Bountiful Estimates', 'News Aggregator'].map((name) => {
+              const shortName = name.split(' ')[0].toLowerCase();
+              const log = scrapeLogs.find(l => l.scraper_name?.toLowerCase().includes(shortName));
+              return (
+                <div key={name} className="bg-gray-800/50 rounded-lg px-3 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-white">{name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      log?.status === 'success' ? 'bg-green-500/20 text-green-400' :
+                      log?.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                      'bg-gray-600/20 text-gray-400'
+                    }`}>
+                      {log?.status || 'Pending'}
+                    </span>
+                  </div>
+                  {log?.started_at && (
+                    <p className="text-[10px] text-gray-600 mt-1">
+                      Last: {new Date(log.started_at).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Next Scheduled */}
+            <div className="pt-2 border-t border-gray-800">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-gray-500">Next scheduled run</span>
+                <span className="text-[10px] text-gray-400">
+                  {scrapeLogs[0]?.started_at
+                    ? (() => {
+                        const last = new Date(scrapeLogs[0].started_at);
+                        const next = new Date(last.getTime() + 24 * 60 * 60 * 1000);
+                        return next > new Date() ? next.toLocaleString() : 'Overdue';
+                      })()
+                    : 'Not scheduled'
+                  }
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
