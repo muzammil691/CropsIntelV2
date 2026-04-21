@@ -1,0 +1,285 @@
+{
+  "lastUpdated": "2026-04-21T22:30:00Z",
+  "updatedBy": "Claude AI",
+  "sessionStatus": "building",
+  "overallPercent": 67,
+  "targetPercent": 85,
+  "stats": {
+    "pagesLive": 13,
+    "realReports": 116,
+    "cropYears": 9,
+    "countriesTracked": 50,
+    "aiModel": "Claude (Sonnet)",
+    "phasesComplete": 4,
+    "totalPhases": 6
+  },
+  "phases": [
+    { "id": 1, "name": "Data Foundation", "status": "done", "percent": 100, "completedDate": "2026-03-15", "summary": "116 ABC reports, 9 crop years, PDF scraping, data integrity audit" },
+    { "id": 2, "name": "Stabilization", "status": "done", "percent": 100, "completedDate": "2026-03-28", "summary": "Auth rebuilt, 30+ fixes, widgets stable, architecture lessons" },
+    { "id": 3, "name": "AI Systems", "status": "done", "percent": 100, "completedDate": "2026-04-08", "summary": "Claude API unified, Zyra widget, ElevenLabs voice, 4 edge functions" },
+    { "id": 4, "name": "CRM + Soft Launch Gate", "status": "done", "percent": 100, "completedDate": "2026-04-19", "summary": "6-tab CRM, 15 audit fixes, 12 AI enhancements, perf 30s→2-3s" },
+    { "id": 5, "name": "V2 Autonomous Rebuild", "status": "active", "percent": 85, "summary": "Clean React+Vite at cropsintel.net. 13 pages, code splitting, auto-deploy" },
+    { "id": 6, "name": "Polish + Growth", "status": "active", "percent": 25, "summary": "WhatsApp, live scrapers, trading portals, offer system" }
+  ],
+  "systems": [
+    {
+      "id": "abc-reports",
+      "name": "ABC Position Reports",
+      "category": "data",
+      "percent": 92,
+      "icon": "📦",
+      "description": "10 years of real data from Almond Board of California",
+      "features": [
+        { "name": "116 reports in DB (9 crop years, 2016/17–2025/26)", "status": "done" },
+        { "name": "72 real PDFs scraped from almonds.org", "status": "done" },
+        { "name": "PDF parser + domestic/export breakdowns", "status": "done" },
+        { "name": "Sold% formula corrected", "status": "done" },
+        { "name": "Data integrity audit: all 116 rows verified", "status": "done" },
+        { "name": "CSV export on Supply & Demand page", "status": "done" },
+        { "name": "Auto-scraper cron for new monthly reports", "status": "wip" }
+      ]
+    },
+    {
+      "id": "intel-ingestion",
+      "name": "Intel Ingestion",
+      "category": "data",
+      "percent": 75,
+      "icon": "🧠",
+      "description": "Market reports → Claude AI → Dashboard alerts + knowledge base",
+      "features": [
+        { "name": "Upload UI (paste/file/URL) with source presets", "status": "done" },
+        { "name": "Claude AI analysis pipeline — E2E verified", "status": "done" },
+        { "name": "Knowledge base accumulation", "status": "done" },
+        { "name": "4 edge functions capturing intelligence", "status": "done" },
+        { "name": "Email ingestion from intel@cropsintel.com", "status": "todo" },
+        { "name": "Batch auto-process on receive", "status": "todo" }
+      ]
+    },
+    {
+      "id": "live-pricing",
+      "name": "Live Pricing",
+      "category": "data",
+      "percent": 70,
+      "icon": "💰",
+      "description": "Strata Markets prices + MAXONS 3% margin calculator",
+      "features": [
+        { "name": "Full Pricing page with variety/grade/form", "status": "done" },
+        { "name": "MAXONS 3% margin calculator", "status": "done" },
+        { "name": "Bid/Ask spread display", "status": "done" },
+        { "name": "CSV export for pricing data", "status": "done" },
+        { "name": "Seeded data for all major varieties", "status": "done" },
+        { "name": "Deploy Strata scraper on daily cron", "status": "wip" },
+        { "name": "Historical price trend charts", "status": "todo" }
+      ]
+    },
+    {
+      "id": "news",
+      "name": "News & External Data",
+      "category": "data",
+      "percent": 60,
+      "icon": "📰",
+      "description": "Industry news, crop forecasts, market intelligence",
+      "features": [
+        { "name": "News page with sentiment + market impact", "status": "done" },
+        { "name": "Real articles from multiple sources", "status": "done" },
+        { "name": "CSV export for news data", "status": "done" },
+        { "name": "Forecasts page with crop year data + CSV", "status": "done" },
+        { "name": "Deploy scrapers on cron (almonds.org, USDA, Bountiful.ag)", "status": "wip" }
+      ]
+    },
+    {
+      "id": "destinations",
+      "name": "Destinations & Trade Flow",
+      "category": "data",
+      "percent": 65,
+      "icon": "🌍",
+      "description": "50+ country export/import data with YoY comparison",
+      "features": [
+        { "name": "Destinations page with country breakdowns", "status": "done" },
+        { "name": "Real export data from ABC reports", "status": "done" },
+        { "name": "Prior-year YoY comparison", "status": "done" },
+        { "name": "Country-specific deep drill pages", "status": "wip" }
+      ]
+    },
+    {
+      "id": "zyra",
+      "name": "Zyra AI Agent",
+      "category": "ai",
+      "percent": 80,
+      "icon": "💜",
+      "description": "AI co-pilot: guides, speaks, provides market prescriptions",
+      "priority": true,
+      "features": [
+        { "name": "Floating chat widget on all 13 pages", "status": "done" },
+        { "name": "Real Claude API conversations with market context", "status": "done" },
+        { "name": "ElevenLabs voice toggle", "status": "done" },
+        { "name": "4-tier role-aware quick-ask topics", "status": "done" },
+        { "name": "Multi-turn conversation history", "status": "done" },
+        { "name": "Mobile-responsive panel", "status": "done" },
+        { "name": "Intelligence page with full Zyra chat", "status": "done" },
+        { "name": "WhatsApp + Twilio voice channel", "status": "wip" },
+        { "name": "Proactive trade prescriptions", "status": "todo" }
+      ]
+    },
+    {
+      "id": "multi-ai",
+      "name": "Multi-AI Council",
+      "category": "ai",
+      "percent": 15,
+      "icon": "🏛️",
+      "description": "Claude + GPT + Gemini debate (deferred post-launch)",
+      "features": [
+        { "name": "Claude API fully integrated as primary", "status": "done" },
+        { "name": "GPT + Gemini council voting", "status": "todo" }
+      ]
+    },
+    {
+      "id": "auth",
+      "name": "Auth & Registration",
+      "category": "users",
+      "percent": 80,
+      "icon": "🔐",
+      "description": "Full Supabase auth, registration, guest preview",
+      "features": [
+        { "name": "Supabase Auth with email/password", "status": "done" },
+        { "name": "Registration page with profile fields", "status": "done" },
+        { "name": "5-minute guest timer with blur overlay", "status": "done" },
+        { "name": "Login/logout flow", "status": "done" },
+        { "name": "User menu with profile display", "status": "done" },
+        { "name": "WhatsApp OTP registration", "status": "wip" },
+        { "name": "Admin user creation + role enforcement", "status": "wip" },
+        { "name": "Verification tier workflow", "status": "todo" }
+      ]
+    },
+    {
+      "id": "crm",
+      "name": "CRM & Deal Pipeline",
+      "category": "users",
+      "percent": 85,
+      "icon": "🤝",
+      "description": "Full CRM with contacts, pipeline, activities, AI enhancements",
+      "features": [
+        { "name": "CRM Dashboard with pipeline view", "status": "done" },
+        { "name": "Contact management + activities", "status": "done" },
+        { "name": "6-tab interface", "status": "done" },
+        { "name": "15 audit issues fixed (A-O)", "status": "done" },
+        { "name": "12 AI enhancements shipped", "status": "done" },
+        { "name": "WhatsApp/email customer invitations", "status": "wip" },
+        { "name": "Customer CSV bulk import", "status": "todo" },
+        { "name": "MAXONS offer builder", "status": "todo" }
+      ]
+    },
+    {
+      "id": "app-shell",
+      "name": "App Shell & Navigation",
+      "category": "platform",
+      "percent": 90,
+      "icon": "🌐",
+      "description": "13 pages, code splitting, responsive, auto-deploy",
+      "features": [
+        { "name": "13 lazy-loaded pages with code splitting", "status": "done" },
+        { "name": "Desktop sidebar + mobile bottom nav", "status": "done" },
+        { "name": "Cmd+K command palette", "status": "done" },
+        { "name": "GitHub Pages auto-deploy", "status": "done" },
+        { "name": "SPA routing with 404.html handler", "status": "done" },
+        { "name": "OG/Twitter meta tags", "status": "done" },
+        { "name": "iOS app on TestFlight", "status": "done" }
+      ]
+    },
+    {
+      "id": "welcome",
+      "name": "Welcome & Onboarding",
+      "category": "platform",
+      "percent": 85,
+      "icon": "🏠",
+      "description": "Cinematic landing page with animated tour",
+      "features": [
+        { "name": "Welcome page with 3 pillars + 6 capabilities", "status": "done" },
+        { "name": "10-slide cinematic tour overlay", "status": "done" },
+        { "name": "Animated counter stats", "status": "done" },
+        { "name": "6 stakeholder role cards", "status": "done" },
+        { "name": "Guest preview CTA flow", "status": "done" }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "category": "platform",
+      "percent": 85,
+      "icon": "📊",
+      "description": "Real-time overview, 10-widget cap, lazy tabs",
+      "features": [
+        { "name": "Lazy tab loading (30s→2-3s)", "status": "done" },
+        { "name": "10-widget cap per tab", "status": "done" },
+        { "name": "Real ABC data in all charts", "status": "done" },
+        { "name": "Alert cards from intel pipeline", "status": "done" }
+      ]
+    },
+    {
+      "id": "reports",
+      "name": "Reports & Analysis",
+      "category": "platform",
+      "percent": 75,
+      "icon": "📋",
+      "description": "Position reports, market analysis, CSV exports",
+      "features": [
+        { "name": "Reports page with tabular data", "status": "done" },
+        { "name": "Analysis page with charts and trends", "status": "done" },
+        { "name": "CSV export on all data pages", "status": "done" },
+        { "name": "10-year YoY comparison charts", "status": "wip" }
+      ]
+    },
+    {
+      "id": "portals",
+      "name": "Portals (BRM/SRM)",
+      "category": "future",
+      "percent": 8,
+      "icon": "🏬",
+      "description": "Customer/Supplier/Broker portals — post launch",
+      "features": []
+    },
+    {
+      "id": "trading-hub",
+      "name": "Trading Hub",
+      "category": "future",
+      "percent": 10,
+      "icon": "⚡",
+      "description": "Offer builder + contracts + e-sign — post launch",
+      "features": []
+    },
+    {
+      "id": "atlas-brain",
+      "name": "Atlas Brain (PM AI)",
+      "category": "future",
+      "percent": 10,
+      "icon": "🧬",
+      "description": "Autonomous PM with scope graph — standalone scaffold exists",
+      "features": []
+    }
+  ],
+  "milestones": [
+    { "date": "2026-04-21", "text": "Cmd+K command palette + OG meta tags + CSV exports" },
+    { "date": "2026-04-21", "text": "Cinematic 10-slide tour on Welcome page" },
+    { "date": "2026-04-19", "text": "SOFT LAUNCH GATE REACHED — Phases 1-4 complete" },
+    { "date": "2026-04-19", "text": "CRM Phase 4: 15 issues + 12 AI enhancements shipped" },
+    { "date": "2026-04-18", "text": "Dashboard perf: 30s → 2-3s load" },
+    { "date": "2026-04-11", "text": "iOS app uploaded to TestFlight" },
+    { "date": "2026-04-10", "text": "Data integrity audit: 114 PDFs, 116 rows clean" },
+    { "date": "2026-04-10", "text": "Pre-launch signoff: R1-R3 gates passed" },
+    { "date": "2026-04-08", "text": "Phase 3 AI Systems complete — all 4 edge functions live" },
+    { "date": "2026-03-28", "text": "Phase 2 Stabilization — 30+ steps done" },
+    { "date": "2026-03-15", "text": "72 real ABC PDFs scraped, DB rebuilt" }
+  ],
+  "accessTiers": [
+    { "id": "guest", "name": "Guest", "status": "built", "description": "5-min preview, blur after timer" },
+    { "id": "registered", "name": "Registered", "status": "built", "description": "Free account, full page access" },
+    { "id": "verified", "name": "Verified", "status": "partial", "description": "Admin-approved, role logic exists" },
+    { "id": "maxons", "name": "MAXONS Team", "status": "partial", "description": "CRM built, admin enforcement pending" }
+  ],
+  "nextPriorities": [
+    { "id": 1, "title": "Deploy Live Scrapers", "color": "#22c55e", "description": "ABC auto-scraper, Strata pricing, news scrapers on cron" },
+    { "id": 2, "title": "WhatsApp + Twilio Integration", "color": "#8b5cf6", "description": "Zyra on WhatsApp, OTP registration, trade alerts" },
+    { "id": 3, "title": "Admin + Tier Enforcement", "color": "#3b82f6", "description": "Role gating, admin user creation, verification workflow" },
+    { "id": 4, "title": "MAXONS Offer System", "color": "#f59e0b", "description": "Offer builder, delivery, accept/reject, CRM integration" }
+  ]
+}
