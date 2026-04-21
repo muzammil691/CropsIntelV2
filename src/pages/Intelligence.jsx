@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { smartQuery, getAIStatus, loadAPIKeys } from '../lib/ai-engine';
 
 // ─── Sample AI analyses when table is empty ────────────────────
 const SAMPLE_ANALYSES = [
@@ -83,11 +84,22 @@ export default function Intelligence() {
   const [isSample, setIsSample] = useState(false);
   const [filter, setFilter] = useState('all');
   const [chatMessages, setChatMessages] = useState([
-    { role: 'assistant', text: ZYRA_RESPONSES.default }
+    { role: 'assistant', text: ZYRA_RESPONSES.default, provider: 'zyra' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [aiStatus, setAiStatus] = useState(null);
+  const [councilMode, setCouncilMode] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   const chatEndRef = useRef(null);
+
+  // Load API keys and AI status on mount
+  useEffect(() => {
+    (async () => {
+      await loadAPIKeys();
+      setAiStatus(getAIStatus());
+    })();
+  }, []);
 
   useEffect(() => { loadAnalyses(); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
@@ -115,7 +127,7 @@ export default function Intelligence() {
     setLoading(false);
   }
 
-  function sendChat(e) {
+  async function sendChat(e) {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
@@ -124,12 +136,46 @@ export default function Intelligence() {
     setChatInput('');
     setChatLoading(true);
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const response = getZyraResponse(userMsg);
-      setChatMessages(prev => [...prev, { role: 'assistant', text: response }]);
-      setChatLoading(false);
-    }, 800 + Math.random() * 600);
+    try {
+      const mode = councilMode ? 'council' : 'auto';
+      const result = await smartQuery(userMsg, { mode });
+
+      // Check if we got a real response
+      const text = result.consensus || result.text;
+      if (text && !result.fallback && result.type !== 'offline') {
+        // Real AI response
+        const providerLabel = result.type === 'council'
+          ? `AI Council (${result.modelsUsed?.join(', ')})`
+          : result.provider || 'AI';
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          text,
+          provider: providerLabel,
+          isCouncil: result.type === 'council',
+          unanimity: result.unanimity,
+        }]);
+      } else {
+        // Fallback to sample responses
+        const fallbackText = getZyraResponse(userMsg);
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          text: fallbackText,
+          provider: 'zyra-offline',
+        }]);
+      }
+    } catch (err) {
+      // Network error — use sample responses
+      const fallbackText = getZyraResponse(userMsg);
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        text: fallbackText,
+        provider: 'zyra-offline',
+      }]);
+    }
+
+    // Refresh AI status after each query
+    setAiStatus(getAIStatus());
+    setChatLoading(false);
   }
 
   const types = [...new Set(analyses.map(a => a.analysis_type))].filter(Boolean);
@@ -194,13 +240,67 @@ export default function Intelligence() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-white">Zyra</h3>
-                <p className="text-[10px] text-gray-500">AI Trading Intelligence</p>
+                <p className="text-[10px] text-gray-500">
+                  {aiStatus?.council?.connected ? `${aiStatus.council.modelsActive} AI Models Active` : 'AI Trading Intelligence'}
+                </p>
               </div>
-              <div className="ml-auto flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[10px] text-gray-500">Online</span>
+              <div className="ml-auto flex items-center gap-2">
+                {/* Council Mode Toggle */}
+                <button
+                  onClick={() => setCouncilMode(!councilMode)}
+                  title={councilMode ? 'Council Mode: All AIs vote' : 'Fast Mode: Primary AI only'}
+                  className={`text-[9px] px-2 py-0.5 rounded-full border transition-colors ${
+                    councilMode
+                      ? 'bg-purple-500/20 border-purple-500/30 text-purple-400'
+                      : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-400'
+                  }`}
+                >
+                  {councilMode ? 'Council' : 'Fast'}
+                </button>
+                {/* AI Status Button */}
+                <button
+                  onClick={() => setShowAiPanel(!showAiPanel)}
+                  className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+                  title="AI Systems Status"
+                >
+                  {aiStatus?.council?.connected ? (
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      Live
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      Offline
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
+
+            {/* AI Status Panel (collapsible) */}
+            {showAiPanel && aiStatus && (
+              <div className="mt-3 grid grid-cols-2 gap-1.5">
+                {Object.entries(aiStatus).filter(([k]) => k !== 'council').map(([key, val]) => (
+                  <div key={key} className="flex items-center gap-1.5 bg-gray-800/50 rounded px-2 py-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${val.connected ? 'bg-green-500' : 'bg-gray-600'}`} />
+                    <span className="text-[9px] text-gray-400 capitalize">{key}</span>
+                    <span className={`text-[9px] ml-auto ${val.connected ? 'text-green-500' : 'text-gray-600'}`}>
+                      {val.connected ? 'Ready' : 'No Key'}
+                    </span>
+                  </div>
+                ))}
+                {aiStatus.council && (
+                  <div className="col-span-2 flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 rounded px-2 py-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${aiStatus.council.connected ? 'bg-purple-400' : 'bg-gray-600'}`} />
+                    <span className="text-[9px] text-purple-400">AI Council</span>
+                    <span className={`text-[9px] ml-auto ${aiStatus.council.connected ? 'text-purple-400' : 'text-gray-600'}`}>
+                      {aiStatus.council.connected ? `${aiStatus.council.modelsActive}/3 Models` : 'Need 2+ Keys'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Messages */}
@@ -210,9 +310,32 @@ export default function Intelligence() {
                 <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
                   msg.role === 'user'
                     ? 'bg-green-600/20 text-green-100 border border-green-500/20'
-                    : 'bg-gray-800/80 text-gray-300 border border-gray-700/50'
+                    : msg.isCouncil
+                      ? 'bg-purple-900/30 text-gray-300 border border-purple-500/30'
+                      : 'bg-gray-800/80 text-gray-300 border border-gray-700/50'
                 }`}>
                   {msg.text}
+                  {/* Provider badge */}
+                  {msg.role === 'assistant' && msg.provider && msg.provider !== 'zyra' && (
+                    <div className="mt-1.5 pt-1.5 border-t border-gray-700/30 flex items-center gap-1.5">
+                      {msg.provider === 'zyra-offline' ? (
+                        <span className="text-[9px] text-amber-500/60">Offline mode — sample response</span>
+                      ) : (
+                        <>
+                          <span className={`text-[9px] ${msg.isCouncil ? 'text-purple-400' : 'text-green-500/60'}`}>
+                            {msg.isCouncil ? 'Council' : msg.provider}
+                          </span>
+                          {msg.unanimity && (
+                            <span className={`text-[9px] px-1 rounded ${
+                              msg.unanimity === 'full' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'
+                            }`}>
+                              {msg.unanimity === 'full' ? 'Unanimous' : 'Partial'}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -248,7 +371,7 @@ export default function Intelligence() {
               </button>
             </div>
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {['What should MAXONS do?', 'Price outlook?', 'Supply position?', 'India demand?'].map(q => (
+              {['What should MAXONS do?', 'Price outlook?', 'Supply position?', 'India demand?', 'Risk assessment?', 'Trade signal?'].map(q => (
                 <button
                   key={q}
                   type="button"
@@ -328,14 +451,42 @@ export default function Intelligence() {
         </div>
       </div>
 
-      {/* How AI Intelligence Works */}
+      {/* Multi-AI Architecture Info */}
       <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-white mb-2">How AI Intelligence Works</h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          CropsIntel's AI engine processes all incoming data — position reports, shipment volumes, pricing trends, news sentiment,
-          and crop forecasts — to generate trade signals, anomaly alerts, and actionable prescriptions. Each insight includes a
-          confidence score based on data quality and historical accuracy. Zyra, the AI assistant, can answer questions
-          about current market conditions and recommend specific actions for MAXONS trading operations.
+        <h3 className="text-sm font-semibold text-white mb-3">4 AI Systems Working Together</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-gray-800/50 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-5 h-5 rounded bg-orange-500/20 flex items-center justify-center text-[10px]">C</div>
+              <span className="text-xs font-medium text-white">Claude</span>
+            </div>
+            <p className="text-[10px] text-gray-500">Primary brain. Deep reasoning, document analysis, trade synthesis.</p>
+          </div>
+          <div className="bg-gray-800/50 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-5 h-5 rounded bg-green-500/20 flex items-center justify-center text-[10px]">G</div>
+              <span className="text-xs font-medium text-white">GPT</span>
+            </div>
+            <p className="text-[10px] text-gray-500">Fast factual checks, alternative market perspectives.</p>
+          </div>
+          <div className="bg-gray-800/50 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center text-[10px]">Ge</div>
+              <span className="text-xs font-medium text-white">Gemini</span>
+            </div>
+            <p className="text-[10px] text-gray-500">Third perspective for consensus, creative analysis.</p>
+          </div>
+          <div className="bg-gray-800/50 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-5 h-5 rounded bg-purple-500/20 flex items-center justify-center text-[10px]">11</div>
+              <span className="text-xs font-medium text-white">ElevenLabs</span>
+            </div>
+            <p className="text-[10px] text-gray-500">Voice synthesis for Zyra. Speak any insight aloud.</p>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-500 mt-3 leading-relaxed">
+          Fast Mode: Claude handles standard queries with GPT/Gemini fallback. Council Mode: all 3 LLMs analyze high-stakes
+          trade decisions independently, then Claude synthesizes a consensus with confidence scoring.
         </p>
       </div>
     </div>
