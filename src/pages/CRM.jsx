@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
 
 const DEAL_STAGES = ['inquiry', 'quoted', 'negotiation', 'agreed', 'contracted', 'shipped', 'completed', 'lost'];
 const STAGE_COLORS = {
@@ -51,14 +52,38 @@ function ActivityIcon({ type }) {
   return <span className="text-sm">{icons[type] || '📋'}</span>;
 }
 
+const TIER_COLORS = {
+  guest: 'bg-gray-500/20 text-gray-400',
+  registered: 'bg-blue-500/20 text-blue-400',
+  verified: 'bg-green-500/20 text-green-400',
+  maxons_team: 'bg-purple-500/20 text-purple-400',
+  admin: 'bg-red-500/20 text-red-400',
+};
+
+const ROLE_OPTIONS = [
+  { value: 'buyer', label: 'Buyer' },
+  { value: 'supplier', label: 'Supplier' },
+  { value: 'broker', label: 'Broker' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'trader', label: 'Trader' },
+  { value: 'analyst', label: 'Analyst' },
+  { value: 'logistics', label: 'Logistics' },
+  { value: 'finance', label: 'Finance' },
+];
+
 export default function CRM() {
+  const { user, profile } = useAuth();
   const [contacts, setContacts] = useState([]);
   const [deals, setDeals] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pipeline');
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvResult, setCsvResult] = useState(null);
+  const csvFileRef = useRef(null);
 
-  useEffect(() => { loadCRM(); }, []);
+  useEffect(() => { loadCRM(); loadUsers(); }, []);
 
   async function loadCRM() {
     setLoading(true);
@@ -78,6 +103,70 @@ export default function CRM() {
       setActivities([]);
     }
     setLoading(false);
+  }
+
+  async function loadUsers() {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) setUsers(data);
+    } catch { /* table may not exist */ }
+  }
+
+  async function handleCSVImport(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvImporting(true);
+    setCsvResult(null);
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row');
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, ''));
+      const rows = lines.slice(1).map(line => {
+        const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+        return obj;
+      });
+
+      // Map CSV columns to CRM contacts
+      let imported = 0;
+      let skipped = 0;
+      for (const row of rows) {
+        const name = row.name || row.company_name || row.contact_name || '';
+        const email = row.email || row.email_address || '';
+        const company = row.company || row.company_name || '';
+        if (!name && !email) { skipped++; continue; }
+
+        const { error } = await supabase.from('crm_contacts').upsert({
+          company_name: company || name,
+          contact_name: name,
+          email: email,
+          phone: row.phone || row.phone_number || '',
+          country: row.country || '',
+          city: row.city || '',
+          contact_type: row.type || row.contact_type || 'buyer',
+          relationship_score: parseInt(row.score || row.relationship_score || '50') || 50,
+          notes: row.notes || '',
+          whatsapp: row.whatsapp || row.whatsapp_number || '',
+        }, { onConflict: 'email' });
+
+        if (!error) imported++;
+        else skipped++;
+      }
+
+      setCsvResult({ imported, skipped, total: rows.length });
+      loadCRM(); // Refresh contacts
+    } catch (err) {
+      setCsvResult({ error: err.message });
+    }
+    setCsvImporting(false);
+    if (csvFileRef.current) csvFileRef.current.value = '';
   }
 
   // Pipeline stats
@@ -163,7 +252,7 @@ export default function CRM() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 bg-gray-900/50 border border-gray-800 rounded-lg p-1 w-fit">
-        {['pipeline', 'contacts', 'activity'].map(tab => (
+        {['pipeline', 'contacts', 'activity', 'users'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -309,6 +398,124 @@ export default function CRM() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Users & Admin Panel */}
+      {activeTab === 'users' && (
+        <div className="space-y-4">
+          {/* Import & Actions */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium cursor-pointer transition-colors">
+                {csvImporting ? 'Importing...' : 'Import CSV'}
+                <input
+                  ref={csvFileRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={handleCSVImport}
+                  disabled={csvImporting}
+                />
+              </label>
+              <span className="text-[10px] text-gray-500">Upload customer list (name, email, company, country, type)</span>
+            </div>
+            {csvResult && (
+              <span className={`text-xs ${csvResult.error ? 'text-red-400' : 'text-green-400'}`}>
+                {csvResult.error || `Imported ${csvResult.imported} of ${csvResult.total} (${csvResult.skipped} skipped)`}
+              </span>
+            )}
+          </div>
+
+          {/* Registered Users */}
+          <div className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white">Registered Users ({users.length})</h3>
+              <div className="flex items-center gap-2">
+                {['all', 'maxons_team', 'verified', 'registered'].map(t => (
+                  <button key={t} className="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:text-white transition-colors capitalize">
+                    {t === 'all' ? 'All' : t.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {users.length > 0 ? (
+              <div className="divide-y divide-gray-800">
+                {users.map(u => (
+                  <div key={u.id} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-800/30 transition-colors">
+                    {/* Avatar */}
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-600/30 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-green-400">
+                        {(u.full_name || u.email || '?').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-white font-medium truncate">{u.full_name || 'No Name'}</p>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${TIER_COLORS[u.tier] || TIER_COLORS.registered}`}>
+                          {(u.tier || 'registered').replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
+                    </div>
+
+                    {/* Role & Company */}
+                    <div className="hidden md:block text-right">
+                      <p className="text-xs text-gray-400 capitalize">{u.role || '—'}</p>
+                      <p className="text-[10px] text-gray-600">{u.company || '—'}</p>
+                    </div>
+
+                    {/* Country */}
+                    <div className="hidden lg:block">
+                      <p className="text-xs text-gray-400">{u.country || '—'}</p>
+                    </div>
+
+                    {/* Joined */}
+                    <div className="hidden sm:block text-right">
+                      <p className="text-[10px] text-gray-600">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-5 py-12 text-center">
+                <p className="text-gray-500 text-sm">No registered users yet</p>
+                <p className="text-xs text-gray-600 mt-1">Users who register on the app will appear here. Import a CSV to add contacts to the CRM.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Invitation Flow Info */}
+          <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-white mb-2">Invitation Flow</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+                <p className="text-lg mb-1">1</p>
+                <p className="text-[10px] text-gray-400">Upload CSV</p>
+                <p className="text-[9px] text-gray-600">Import customer list</p>
+              </div>
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+                <p className="text-lg mb-1">2</p>
+                <p className="text-[10px] text-gray-400">Send Invites</p>
+                <p className="text-[9px] text-gray-600">WhatsApp + Email</p>
+              </div>
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+                <p className="text-lg mb-1">3</p>
+                <p className="text-[10px] text-gray-400">Register</p>
+                <p className="text-[9px] text-gray-600">App, email link, or WhatsApp</p>
+              </div>
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+                <p className="text-lg mb-1">4</p>
+                <p className="text-[10px] text-gray-400">Personalize</p>
+                <p className="text-[9px] text-gray-600">AI tailors insights to profile</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
