@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import WhatsAppVerify from '../components/WhatsAppVerify';
 
 const ROLES = [
   { value: 'buyer', label: 'Buyer / Importer' },
@@ -230,24 +231,57 @@ export default function Register() {
     }
   }
 
+  const [whatsappDone, setWhatsappDone] = useState(false);
+
   if (success) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+        <div className="max-w-md w-full bg-gray-900 border border-gray-800 rounded-2xl p-8">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Registration Successful</h2>
+            <p className="text-sm text-gray-400">
+              Check your email to verify your account.
+            </p>
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Registration Successful</h2>
-          <p className="text-sm text-gray-400 mb-6">
-            Please check your email to verify your account. Once verified, you'll have full access to CropsIntel's market intelligence platform.
-          </p>
+
+          {/* WhatsApp Verification Step */}
+          {!whatsappDone && form.whatsapp_number && (
+            <div className="mb-6">
+              <div className="border-t border-gray-800 pt-5 mb-3">
+                <p className="text-center text-xs text-gray-500 mb-3 uppercase tracking-wider">Connect WhatsApp</p>
+              </div>
+              <WhatsAppVerify
+                phoneNumber={form.whatsapp_number}
+                onVerified={() => setWhatsappDone(true)}
+                onSkip={() => setWhatsappDone(true)}
+                compact
+              />
+            </div>
+          )}
+
+          {!whatsappDone && !form.whatsapp_number && (
+            <div className="mb-6">
+              <div className="border-t border-gray-800 pt-5 mb-3">
+                <p className="text-center text-xs text-gray-500 mb-3 uppercase tracking-wider">Connect WhatsApp (Optional)</p>
+              </div>
+              <WhatsAppVerify
+                onVerified={(phone) => setWhatsappDone(true)}
+                onSkip={() => setWhatsappDone(true)}
+                compact
+              />
+            </div>
+          )}
+
           <Link
             to="/login"
-            className="inline-block px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium transition-colors"
+            className="block w-full text-center px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-medium transition-colors"
           >
-            Go to Login
+            {whatsappDone ? 'Go to Login' : 'Skip & Go to Login'}
           </Link>
         </div>
       </div>

@@ -638,3 +638,42 @@ CREATE POLICY "Service role full access" ON intel_insights FOR ALL USING (true) 
 CREATE POLICY "Service role full access" ON knowledge_base FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Anon read published insights" ON intel_insights FOR SELECT USING (is_published = true);
 CREATE POLICY "Anon read knowledge" ON knowledge_base FOR SELECT USING (is_current = true);
+
+-- ============================================================
+-- WhatsApp OTP Verification
+-- ============================================================
+CREATE TABLE IF NOT EXISTS whatsapp_otps (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  phone_number TEXT NOT NULL UNIQUE,
+  otp_code TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  verified BOOLEAN DEFAULT FALSE,
+  attempts INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_otps_phone ON whatsapp_otps(phone_number);
+
+-- ============================================================
+-- WhatsApp Message Log
+-- ============================================================
+CREATE TABLE IF NOT EXISTS whatsapp_messages (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  direction TEXT NOT NULL CHECK (direction IN ('inbound', 'outbound', 'system')),
+  phone_number TEXT NOT NULL,
+  message_type TEXT NOT NULL DEFAULT 'chat',
+  body TEXT DEFAULT '',
+  twilio_sid TEXT,
+  status TEXT DEFAULT 'pending',
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_phone ON whatsapp_messages(phone_number, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_type ON whatsapp_messages(message_type, direction);
+
+-- RLS for WhatsApp tables
+ALTER TABLE whatsapp_otps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON whatsapp_otps FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access" ON whatsapp_messages FOR ALL USING (true) WITH CHECK (true);
