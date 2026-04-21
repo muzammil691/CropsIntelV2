@@ -16,14 +16,6 @@ const BASE_PRICES = {
   'Mission-23/25': 3.15, 'Monterey-25/27': 3.25, 'Independence-23/25': 3.45,
 };
 
-// Sample recent offers
-const SAMPLE_OFFERS = [
-  { id: 1, buyer: 'Al Rayyan Foods', country: 'UAE', variety: 'Nonpareil', grade: '23/25', volume_mt: 200, base: 3.85, maxons: 3.97, incoterm: 'CIF', destination: 'Jebel Ali', status: 'sent', created: '2026-04-18' },
-  { id: 2, buyer: 'Delhi Dry Fruits', country: 'India', variety: 'Nonpareil', grade: '25/27', volume_mt: 100, base: 3.60, maxons: 3.71, incoterm: 'CFR', destination: 'Mumbai', status: 'pending', created: '2026-04-15' },
-  { id: 3, buyer: 'Pacific Trade', country: 'South Korea', variety: 'Carmel', grade: '25/27', volume_mt: 150, base: 3.20, maxons: 3.30, incoterm: 'FOB', destination: 'Busan', status: 'accepted', created: '2026-04-05' },
-  { id: 4, buyer: 'Europa Nuts GmbH', country: 'Germany', variety: 'Nonpareil', grade: '23/25', volume_mt: 50, base: 3.85, maxons: 3.97, incoterm: 'CIF', destination: 'Hamburg', status: 'draft', created: '2026-04-20' },
-  { id: 5, buyer: 'Riyadh Food Industries', country: 'Saudi Arabia', variety: 'Nonpareil', grade: 'Blanched', volume_mt: 25, base: 4.10, maxons: 4.22, incoterm: 'CFR', destination: 'Jeddah', status: 'draft', created: '2026-04-21' },
-];
 
 const STATUS_COLORS = {
   draft: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
@@ -38,7 +30,7 @@ function fmtUSD(n) { return '$' + (n || 0).toLocaleString('en-US', { minimumFrac
 
 export default function Trading() {
   const [activeTab, setActiveTab] = useState('builder');
-  const [offers] = useState(SAMPLE_OFFERS);
+  const [offers] = useState([]);
 
   // Offer builder state
   const [variety, setVariety] = useState('Nonpareil');
@@ -72,7 +64,6 @@ export default function Trading() {
       <div>
         <h1 className="text-2xl font-bold text-white">
           Trading Portal
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>
         </h1>
         <p className="text-sm text-gray-500 mt-1">
           Build offers, manage trades, and view portal perspectives
@@ -216,6 +207,14 @@ export default function Trading() {
       {/* ─── Recent Offers ─── */}
       {activeTab === 'offers' && (
         <div className="space-y-2">
+          {offers.length === 0 && (
+            <div className="flex items-center justify-center h-48 text-gray-600">
+              <div className="text-center">
+                <p className="text-sm">No offers yet</p>
+                <p className="text-xs mt-1 text-gray-700">Use the Offer Builder to create your first trade offer</p>
+              </div>
+            </div>
+          )}
           {offers.map(offer => (
             <div key={offer.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
               <div className="flex items-start justify-between gap-3">

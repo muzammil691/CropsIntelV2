@@ -16,21 +16,6 @@ const SENTIMENT_CONFIG = {
   neutral: { icon: '→', color: 'text-gray-400', bg: 'bg-gray-500/10' },
 };
 
-// Fallback news when industry_news table doesn't exist yet
-const FALLBACK_NEWS = [
-  { id: 'f1', title: 'ABC Reports Record 2024/25 Shipments Through March', category: 'market', ai_sentiment: 'bullish', source: 'almonds.org', published_date: '2025-04-10', summary: 'Total shipments for the 2024/25 crop year are running 12% ahead of the prior year through March, with strong export demand from India and the EU.', ai_market_impact: 'Strong demand pace supports current price levels and may push prices higher if pace continues.' },
-  { id: 'f2', title: 'India Announces Reduction in Almond Import Duty', category: 'trade', ai_sentiment: 'bullish', source: 'Reuters', published_date: '2025-03-28', summary: 'India will reduce import duties on tree nuts including almonds from 42% to 35%, effective April 1st, boosting demand projections for the world\'s largest almond import market.', ai_market_impact: 'Lower tariffs directly increase demand from India, the #1 export destination. Bullish for California almond prices.' },
-  { id: 'f3', title: 'Drought Conditions Ease Across Central Valley', category: 'crop', ai_sentiment: 'bearish', source: 'USDA', published_date: '2025-03-15', summary: 'Above-average winter rainfall has significantly improved water conditions across California\'s Central Valley, with reservoir levels at 115% of historical average.', ai_market_impact: 'Better water supply means higher yields and potentially larger 2025 crop. More supply = softer prices.' },
-  { id: 'f4', title: 'EU Implements Stricter MRL Standards for Tree Nuts', category: 'regulatory', ai_sentiment: 'neutral', source: 'European Commission', published_date: '2025-03-05', summary: 'New maximum residue levels (MRL) for certain pesticides on imported tree nuts take effect June 1, 2025. California growers largely already comply.', ai_market_impact: 'Minimal direct impact on California almonds; may disadvantage competitors from regions with less stringent practices.' },
-  { id: 'f5', title: 'Almond Acreage Declines for Third Consecutive Year', category: 'crop', ai_sentiment: 'bullish', source: 'USDA-NASS', published_date: '2025-02-20', summary: 'USDA reports total California almond acreage dropped to 1.29M acres in 2025, down from 1.38M peak in 2022. Non-bearing acres at lowest level since 2014.', ai_market_impact: 'Declining acreage signals structurally tighter supply in coming years. Long-term bullish signal for prices.' },
-  { id: 'f6', title: 'China Retaliates with 25% Tariff on US Tree Nuts', category: 'trade', ai_sentiment: 'bearish', source: 'Bloomberg', published_date: '2025-02-15', summary: 'China announces retaliatory tariffs on US agricultural products including a 25% duty on almonds, effective March 1. China accounts for ~5% of California almond exports.', ai_market_impact: 'Direct hit to ~5% of export volume. Other markets (India, EU, Middle East) may absorb some displaced volume.' },
-  { id: 'f7', title: 'Bee Colony Health Improves Ahead of Pollination Season', category: 'crop', ai_sentiment: 'neutral', source: 'Almond Board of California', published_date: '2025-02-01', summary: 'Managed honeybee colonies entering 2025 pollination season show improved health metrics, with colony loss rates at 30% vs 40% the prior year.', ai_market_impact: 'Better pollination supports normal crop set. No supply disruption expected from bee health issues.' },
-  { id: 'f8', title: 'Almond Prices Firm as New Crop Commitments Surge', category: 'market', ai_sentiment: 'bullish', source: 'Strata Markets', published_date: '2025-01-20', summary: 'New crop commitment volumes for 2025/26 are running 18% ahead of the same period last year, with buyers locking in supply early amid tight inventory signals.', ai_market_impact: 'Strong forward buying indicates market confidence in higher prices. Uncommitted inventory declining rapidly.' },
-  { id: 'f9', title: 'ABC Launches Sustainability Certification Program', category: 'sustainability', ai_sentiment: 'neutral', source: 'almonds.org', published_date: '2025-01-10', summary: 'The Almond Board introduces a voluntary sustainability certification covering water usage, carbon footprint, and biodiversity metrics for California almond orchards.', ai_market_impact: 'Long-term brand value play. Certified almonds may command premium pricing in EU and corporate supply chains.' },
-  { id: 'f10', title: 'Middle East Demand Hits 5-Year High', category: 'trade', ai_sentiment: 'bullish', source: 'ABC Position Report', published_date: '2024-12-15', summary: 'Almond exports to the Middle East region reached 145M lbs through December, the highest level in five years. UAE and Saudi Arabia lead the growth.', ai_market_impact: 'Growing Middle East demand diversifies export markets. MAXONS positioned well in this corridor.' },
-  { id: 'f11', title: 'Health Study Links Daily Almond Consumption to Heart Health', category: 'health', ai_sentiment: 'bullish', source: 'Journal of Nutrition', published_date: '2024-12-01', summary: 'A large-scale clinical study confirms that consuming 1.5oz of almonds daily reduces LDL cholesterol by 8-10%, strengthening the health marketing narrative.', ai_market_impact: 'Positive health news drives consumer demand growth of 2-3% annually. Supports long-term price floor.' },
-  { id: 'f12', title: 'Frost Risk Alert: February Cold Snap Threatens Bloom', category: 'crop', ai_sentiment: 'bullish', source: 'NOAA', published_date: '2024-11-30', summary: 'Extended forecast models suggest elevated frost risk during the critical February bloom period, which could reduce nut set and lower the 2025 crop.', ai_market_impact: 'Frost damage during bloom is the single biggest weather risk. Even moderate damage can reduce crop 10-15%.' },
-];
 
 function CategoryBadge({ category }) {
   const cls = CATEGORY_COLORS[category] || CATEGORY_COLORS.market;
@@ -89,7 +74,6 @@ function NewsCard({ article }) {
 export default function News() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isSample, setIsSample] = useState(false);
   const [filter, setFilter] = useState('all');
   const [sentimentFilter, setSentimentFilter] = useState('all');
 
@@ -106,18 +90,14 @@ export default function News() {
         .order('published_date', { ascending: false })
         .limit(200);
 
-      // Use DB data if available and non-empty, otherwise use fallback
       if (!error && data && data.length > 0) {
         setNews(data);
-        setIsSample(false);
       } else {
-        setNews(FALLBACK_NEWS);
-        setIsSample(true);
+        setNews([]);
       }
     } catch (err) {
-      console.error('Load error, using fallback:', err);
-      setNews(FALLBACK_NEWS);
-      setIsSample(true);
+      console.error('Load error:', err);
+      setNews([]);
     }
     setLoading(false);
   }
@@ -153,7 +133,6 @@ export default function News() {
         <div>
           <h1 className="text-2xl font-bold text-white">
             Industry News & Intelligence
-            {isSample && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Auto-scraped from almonds.org, press releases, and industry sources — AI-analyzed for market impact

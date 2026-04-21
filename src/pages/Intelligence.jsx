@@ -2,53 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { askClaude, smartQuery, getAIStatus, loadAPIKeys, textToSpeech } from '../lib/ai-engine';
 
-// ─── Sample AI analyses when table is empty ────────────────────
-const SAMPLE_ANALYSES = [
-  {
-    id: 's1', analysis_type: 'trade_signal', title: 'Trade Signal: BULLISH — 2024/2025',
-    summary: 'Shipments and new commitments both trending up month-over-month. Uncommitted inventory declining faster than prior year. Strong demand from India and Middle East. Recommend securing forward positions.',
-    confidence: 0.78, tags: ['signal', 'actionable'], is_actionable: true, is_read: false,
-    data_context: { signal: 'bullish' }, created_at: '2026-04-21T08:00:00Z',
-  },
-  {
-    id: 's2', analysis_type: 'monthly_brief', title: 'Monthly Brief: 2024/2025 (Mar 2026)',
-    summary: 'Supply: 3,050M lbs | Shipped: 1,820M | Committed: 680M | Uncommitted: 550M. 81.9% of supply sold or committed — tighter than prior year at same point (78.2%). Season pace running 12% ahead.',
-    confidence: 0.98, tags: ['brief'], is_actionable: false, is_read: false,
-    data_context: {}, created_at: '2026-04-20T06:00:00Z',
-  },
-  {
-    id: 's3', analysis_type: 'anomaly', title: 'Anomaly: Record India Shipments — Feb 2026',
-    summary: 'February shipments to India hit 45M lbs — 2.3 std devs above 10-year average (28M). Likely driven by India duty reduction and weak Australian crop. Volume may normalize in spring months.',
-    confidence: 0.87, tags: ['anomaly'], is_actionable: true, is_read: false,
-    data_context: { z_score: '2.31' }, created_at: '2026-04-18T10:00:00Z',
-  },
-  {
-    id: 's4', analysis_type: 'trade_signal', title: 'Price Alert: Nonpareil 23/25 Firming',
-    summary: 'Strata market data shows Nonpareil 23/25 prices up $0.12/lb over 30 days ($3.73 → $3.85). Volume-weighted average trending higher. New crop commitments running 18% ahead of prior year suggests further upside.',
-    confidence: 0.72, tags: ['signal', 'price'], is_actionable: true, is_read: false,
-    data_context: { signal: 'bullish' }, created_at: '2026-04-17T14:00:00Z',
-  },
-  {
-    id: 's5', analysis_type: 'prescription', title: 'MAXONS Action: Secure Carmel 25/27 Supply',
-    summary: 'Current Carmel 25/27 prices ($3.20/lb) are 8% below 3-year average. With declining acreage and strong Middle East demand for lower grades, prices likely to firm in Q3. Recommend locking 200-300 MT at current levels for Dubai/Saudi orders.',
-    confidence: 0.68, tags: ['prescription', 'maxons'], is_actionable: true, is_read: false,
-    data_context: { variety: 'Carmel', grade: '25/27' }, created_at: '2026-04-16T09:00:00Z',
-  },
-  {
-    id: 's6', analysis_type: 'yoy_comparison', title: 'YoY: Export Shipments +14% Through March',
-    summary: 'Total export shipments through March 2026 are 14.2% ahead of the same period in 2025. India (+28%), Middle East (+18%), and EU (+6%) lead the growth. China (-12%) dragged by tariffs.',
-    confidence: 0.95, tags: ['yoy'], is_actionable: false, is_read: false,
-    data_context: {}, created_at: '2026-04-15T07:00:00Z',
-  },
-  {
-    id: 's7', analysis_type: 'anomaly', title: 'Alert: Acreage Decline Accelerating',
-    summary: 'California almond bearing acreage down to 1.29M acres (2025), lowest since 2019. Non-bearing acres at 14-year low signals no rebound for 3-4 years. Structurally tighter supply ahead.',
-    confidence: 0.90, tags: ['anomaly', 'supply'], is_actionable: true, is_read: false,
-    data_context: {}, created_at: '2026-04-14T11:00:00Z',
-  },
-];
-
-// ─── Zyra chat sample responses ────────────────────────────────
+// ─── Zyra chat offline fallback responses ────────────────────────────────
 const ZYRA_RESPONSES = {
   default: "I'm Zyra, your AI trading intelligence assistant. I analyze almond market data, generate trade signals, and provide actionable insights for MAXONS. Ask me about market conditions, pricing trends, supply outlook, or specific trade opportunities.",
   price: "Based on current Strata market data, Nonpareil 23/25 is trading at $3.85/lb (MAXONS price: $3.97/lb with 3% margin). Prices have firmed $0.12 over the past 30 days. The tightening supply position and strong export pace support current levels. I'd watch for further upside if the April position report shows continued uncommitted inventory decline.",
@@ -81,7 +35,6 @@ function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month
 export default function Intelligence() {
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isSample, setIsSample] = useState(false);
   const [filter, setFilter] = useState('all');
   const [chatMessages, setChatMessages] = useState([
     { role: 'assistant', text: ZYRA_RESPONSES.default, provider: 'zyra' }
@@ -148,14 +101,11 @@ export default function Intelligence() {
 
       if (!error && data?.length > 0) {
         setAnalyses(data);
-        setIsSample(false);
       } else {
-        setAnalyses(SAMPLE_ANALYSES);
-        setIsSample(true);
+        setAnalyses([]);
       }
     } catch {
-      setAnalyses(SAMPLE_ANALYSES);
-      setIsSample(true);
+      setAnalyses([]);
     }
     setLoading(false);
   }
@@ -277,7 +227,6 @@ export default function Intelligence() {
         <div>
           <h1 className="text-2xl font-bold text-white">
             AI Intelligence
-            {isSample && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Trade signals, market prescriptions, and Zyra AI assistant

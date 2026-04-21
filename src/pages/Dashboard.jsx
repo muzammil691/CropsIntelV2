@@ -280,23 +280,6 @@ function ShipmentTrend({ reports }) {
   );
 }
 
-// Dashboard fallback data for when DB tables don't exist yet
-const DASH_FALLBACK_PRICES = [
-  { variety: 'Nonpareil', grade: 'Supreme', price_usd_per_lb: 3.85, maxons_price_per_lb: 3.97, price_date: '2025-04-15' },
-  { variety: 'Carmel', grade: 'Standard', price_usd_per_lb: 3.20, maxons_price_per_lb: 3.30, price_date: '2025-04-15' },
-  { variety: 'Butte/Padres', grade: 'US Extra #1', price_usd_per_lb: 2.95, maxons_price_per_lb: 3.04, price_date: '2025-04-15' },
-  { variety: 'Monterey', grade: 'Standard', price_usd_per_lb: 3.10, maxons_price_per_lb: 3.19, price_date: '2025-04-15' },
-  { variety: 'Independence', grade: 'Standard', price_usd_per_lb: 3.30, maxons_price_per_lb: 3.40, price_date: '2025-04-15' },
-  { variety: 'Mission', grade: 'Standard', price_usd_per_lb: 2.75, maxons_price_per_lb: 2.83, price_date: '2025-04-15' },
-];
-
-const DASH_FALLBACK_NEWS = [
-  { id: 'fn1', title: 'ABC Reports Record 2024/25 Shipments Through March', category: 'market', ai_sentiment: 'bullish', source: 'almonds.org', published_date: '2025-04-10', summary: 'Total shipments running 12% ahead of prior year with strong India and EU demand.' },
-  { id: 'fn2', title: 'India Announces Reduction in Almond Import Duty', category: 'trade', ai_sentiment: 'bullish', source: 'Reuters', published_date: '2025-03-28', summary: 'Import duties dropping from 42% to 35%, boosting demand from world\'s largest market.' },
-  { id: 'fn3', title: 'Almond Acreage Declines for Third Consecutive Year', category: 'crop', ai_sentiment: 'bullish', source: 'USDA-NASS', published_date: '2025-02-20', summary: 'Total acreage dropped to 1.29M, signaling tighter supply ahead.' },
-  { id: 'fn4', title: 'Almond Prices Firm as New Crop Commitments Surge', category: 'market', ai_sentiment: 'bullish', source: 'Strata Markets', published_date: '2025-01-20', summary: 'New crop commitments running 18% ahead of last year.' },
-  { id: 'fn5', title: 'Middle East Demand Hits 5-Year High', category: 'trade', ai_sentiment: 'bullish', source: 'ABC Position Report', published_date: '2024-12-15', summary: 'Exports to Middle East reached 145M lbs through December, highest in five years.' },
-];
 
 export default function Dashboard() {
   const [latestReport, setLatestReport] = useState(null);
@@ -306,8 +289,6 @@ export default function Dashboard() {
   const [scrapeLogs, setScrapeLogs] = useState([]);
   const [latestPrices, setLatestPrices] = useState([]);
   const [recentNews, setRecentNews] = useState([]);
-  const [isSamplePrices, setIsSamplePrices] = useState(false);
-  const [isSampleNews, setIsSampleNews] = useState(false);
   const [aiStatus, setAiStatus] = useState(null);
   const [intelInsights, setIntelInsights] = useState([]);
   const [knowledgeStats, setKnowledgeStats] = useState(null);
@@ -384,10 +365,8 @@ export default function Dashboard() {
           const byVariety = {};
           prices.forEach(p => { if (!byVariety[p.variety]) byVariety[p.variety] = p; });
           setLatestPrices(Object.values(byVariety).slice(0, 6));
-          setIsSamplePrices(false);
         } else {
-          setLatestPrices(DASH_FALLBACK_PRICES);
-          setIsSamplePrices(true);
+          setLatestPrices([]);
         }
 
         // Fetch recent news
@@ -399,10 +378,8 @@ export default function Dashboard() {
 
         if (news && news.length > 0) {
           setRecentNews(news);
-          setIsSampleNews(false);
         } else {
-          setRecentNews(DASH_FALLBACK_NEWS);
-          setIsSampleNews(true);
+          setRecentNews([]);
         }
 
         // Fetch intel insights (from forwarded reports)
@@ -686,7 +663,7 @@ export default function Dashboard() {
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">
-              Live Almond Prices{isSamplePrices && <SampleBadge />}
+              Live Almond Prices
             </h3>
             <Link to="/pricing" className="text-xs text-green-400 hover:text-green-300 transition-colors">
               View All &rarr;
@@ -732,7 +709,7 @@ export default function Dashboard() {
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">
-              Latest News &amp; Intel{isSampleNews && <SampleBadge />}
+              Latest News &amp; Intel
             </h3>
             <Link to="/news" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
               View All &rarr;

@@ -37,29 +37,6 @@ function ChartCard({ title, subtitle, insight, children }) {
   );
 }
 
-// Fallback pricing data when strata_prices table doesn't exist yet
-const FALLBACK_PRICES = [
-  { variety: 'Nonpareil', grade: 'Supreme', form: '23/25', price_usd_per_lb: 3.85, price_date: '2025-04-15', maxons_price_per_lb: 3.97 },
-  { variety: 'Nonpareil', grade: 'Supreme', form: '23/25', price_usd_per_lb: 3.80, price_date: '2025-04-01', maxons_price_per_lb: 3.91 },
-  { variety: 'Nonpareil', grade: 'Supreme', form: '23/25', price_usd_per_lb: 3.72, price_date: '2025-03-15', maxons_price_per_lb: 3.83 },
-  { variety: 'Nonpareil', grade: 'Supreme', form: '23/25', price_usd_per_lb: 3.68, price_date: '2025-03-01', maxons_price_per_lb: 3.79 },
-  { variety: 'Carmel', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.20, price_date: '2025-04-15', maxons_price_per_lb: 3.30 },
-  { variety: 'Carmel', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.15, price_date: '2025-04-01', maxons_price_per_lb: 3.24 },
-  { variety: 'Carmel', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.10, price_date: '2025-03-15', maxons_price_per_lb: 3.19 },
-  { variety: 'Carmel', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.05, price_date: '2025-03-01', maxons_price_per_lb: 3.14 },
-  { variety: 'Butte/Padres', grade: 'US Extra #1', form: 'Whole', price_usd_per_lb: 2.95, price_date: '2025-04-15', maxons_price_per_lb: 3.04 },
-  { variety: 'Butte/Padres', grade: 'US Extra #1', form: 'Whole', price_usd_per_lb: 2.90, price_date: '2025-04-01', maxons_price_per_lb: 2.99 },
-  { variety: 'Butte/Padres', grade: 'US Extra #1', form: 'Whole', price_usd_per_lb: 2.85, price_date: '2025-03-15', maxons_price_per_lb: 2.94 },
-  { variety: 'Monterey', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.10, price_date: '2025-04-15', maxons_price_per_lb: 3.19 },
-  { variety: 'Monterey', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.05, price_date: '2025-04-01', maxons_price_per_lb: 3.14 },
-  { variety: 'Monterey', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.00, price_date: '2025-03-15', maxons_price_per_lb: 3.09 },
-  { variety: 'Independence', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.30, price_date: '2025-04-15', maxons_price_per_lb: 3.40 },
-  { variety: 'Independence', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.25, price_date: '2025-04-01', maxons_price_per_lb: 3.35 },
-  { variety: 'Independence', grade: 'Standard', form: 'Whole', price_usd_per_lb: 3.18, price_date: '2025-03-15', maxons_price_per_lb: 3.28 },
-  { variety: 'Mission', grade: 'Standard', form: 'Whole', price_usd_per_lb: 2.75, price_date: '2025-04-15', maxons_price_per_lb: 2.83 },
-  { variety: 'Mission', grade: 'Standard', form: 'Whole', price_usd_per_lb: 2.70, price_date: '2025-04-01', maxons_price_per_lb: 2.78 },
-  { variety: 'Mission', grade: 'Standard', form: 'Whole', price_usd_per_lb: 2.65, price_date: '2025-03-15', maxons_price_per_lb: 2.73 },
-];
 
 function PriceCard({ variety, price, maxonsPrice, grade, form, date, trend }) {
   const trendColor = trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-gray-400';
@@ -96,7 +73,6 @@ function PriceCard({ variety, price, maxonsPrice, grade, form, date, trend }) {
 export default function Pricing() {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isSample, setIsSample] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'chart'
   const [varietyFilter, setVarietyFilter] = useState('all');
 
@@ -115,15 +91,12 @@ export default function Pricing() {
 
       if (!error && data && data.length > 0) {
         setPrices(data);
-        setIsSample(false);
       } else {
-        setPrices(FALLBACK_PRICES);
-        setIsSample(true);
+        setPrices([]);
       }
     } catch (err) {
-      console.error('Load error, using fallback:', err);
-      setPrices(FALLBACK_PRICES);
-      setIsSample(true);
+      console.error('Load error:', err);
+      setPrices([]);
     }
     setLoading(false);
   }
@@ -185,7 +158,6 @@ export default function Pricing() {
         <div>
           <h1 className="text-2xl font-bold text-white">
             Live Pricing
-            {isSample && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Strata Markets almond prices with MAXONS 3% margin applied

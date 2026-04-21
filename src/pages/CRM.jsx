@@ -21,34 +21,6 @@ const CONTACT_TYPE_COLORS = {
   industry: 'text-purple-400',
 };
 
-// Sample data for demonstration
-const SAMPLE_CONTACTS = [
-  { id: 1, contact_type: 'buyer', company_name: 'Al Rayyan Foods', contact_name: 'Ahmed Al-Rashid', email: 'ahmed@alrayyanfoods.ae', country: 'United Arab Emirates', region: 'middle_east', relationship_score: 85, total_volume_lbs: 2200000, total_interactions: 34, last_interaction_at: '2026-04-18T10:00:00Z', ai_next_action: 'Follow up on Q3 volume commitment', tags: ['premium', 'repeat'] },
-  { id: 2, contact_type: 'buyer', company_name: 'Delhi Dry Fruits Co.', contact_name: 'Rajesh Kumar', email: 'rajesh@delhidryfruits.in', country: 'India', region: 'asia', relationship_score: 72, total_volume_lbs: 1500000, total_interactions: 18, last_interaction_at: '2026-04-15T14:00:00Z', ai_next_action: 'Send updated Nonpareil pricing for 2025/26', tags: ['growing'] },
-  { id: 3, contact_type: 'supplier', company_name: 'Blue Diamond Growers', contact_name: 'Sarah Johnson', email: 'sarah@bdg.com', country: 'United States', region: 'americas', relationship_score: 90, total_volume_lbs: 5000000, total_interactions: 56, last_interaction_at: '2026-04-20T09:00:00Z', ai_next_action: 'Negotiate 2025/26 supply agreement', tags: ['key-supplier', 'california'] },
-  { id: 4, contact_type: 'buyer', company_name: 'Europa Nuts GmbH', contact_name: 'Klaus Weber', email: 'klaus@europanuts.de', country: 'Germany', region: 'europe', relationship_score: 65, total_volume_lbs: 800000, total_interactions: 12, last_interaction_at: '2026-04-10T11:00:00Z', ai_next_action: 'Share EU MRL compliance docs', tags: ['eu-market'] },
-  { id: 5, contact_type: 'broker', company_name: 'Pacific Trade Partners', contact_name: 'Michael Chen', email: 'mchen@pacifictrade.com', country: 'United States', region: 'americas', relationship_score: 78, total_volume_lbs: 3200000, total_interactions: 42, last_interaction_at: '2026-04-19T16:00:00Z', ai_next_action: 'Review Q3 spot offer for Carmel 25/27', tags: ['broker', 'spot'] },
-  { id: 6, contact_type: 'buyer', company_name: 'Riyadh Food Industries', contact_name: 'Fahad Al-Dosari', email: 'fahad@riyadhfood.sa', country: 'Saudi Arabia', region: 'middle_east', relationship_score: 60, total_volume_lbs: 500000, total_interactions: 8, last_interaction_at: '2026-04-05T08:00:00Z', ai_next_action: 'Schedule intro call to explore blanched almond demand', tags: ['new-lead'] },
-];
-
-const SAMPLE_DEALS = [
-  { id: 1, contact_id: 1, stage: 'negotiation', variety: 'Nonpareil', grade: '23/25', volume_lbs: 440000, volume_mt: 200, strata_base_price: 3.85, maxons_price: 3.97, margin_pct: 3, total_value_usd: 174680, incoterm: 'CIF', destination_country: 'UAE', confidence_pct: 75, priority: 'high', created_at: '2026-04-10T10:00:00Z', updated_at: '2026-04-18T10:00:00Z' },
-  { id: 2, contact_id: 2, stage: 'quoted', variety: 'Nonpareil', grade: '25/27', volume_lbs: 220000, volume_mt: 100, strata_base_price: 3.60, maxons_price: 3.71, margin_pct: 3, total_value_usd: 81620, incoterm: 'CFR', destination_country: 'India', confidence_pct: 50, priority: 'normal', created_at: '2026-04-15T14:00:00Z', updated_at: '2026-04-15T14:00:00Z' },
-  { id: 3, contact_id: 5, stage: 'agreed', variety: 'Carmel', grade: '25/27', volume_lbs: 330000, volume_mt: 150, strata_base_price: 3.20, maxons_price: 3.30, margin_pct: 3, total_value_usd: 108900, incoterm: 'FOB', destination_country: 'South Korea', confidence_pct: 90, priority: 'high', created_at: '2026-04-05T09:00:00Z', updated_at: '2026-04-19T16:00:00Z' },
-  { id: 4, contact_id: 4, stage: 'inquiry', variety: 'Nonpareil', grade: '23/25', volume_lbs: 110000, volume_mt: 50, strata_base_price: 3.85, maxons_price: 3.97, margin_pct: 3, total_value_usd: 43670, incoterm: 'CIF', destination_country: 'Germany', confidence_pct: 30, priority: 'normal', created_at: '2026-04-20T11:00:00Z', updated_at: '2026-04-20T11:00:00Z' },
-  { id: 5, contact_id: 1, stage: 'shipped', variety: 'Butte/Padres', grade: 'Extra #1', volume_lbs: 220000, volume_mt: 100, strata_base_price: 2.90, maxons_price: 2.99, margin_pct: 3, total_value_usd: 65780, incoterm: 'CIF', destination_country: 'UAE', confidence_pct: 95, priority: 'normal', created_at: '2026-03-01T10:00:00Z', updated_at: '2026-04-12T10:00:00Z' },
-  { id: 6, contact_id: 6, stage: 'inquiry', variety: 'Nonpareil', grade: 'Blanched', volume_lbs: 55000, volume_mt: 25, strata_base_price: 4.10, maxons_price: 4.22, margin_pct: 3, total_value_usd: 23210, incoterm: 'CFR', destination_country: 'Saudi Arabia', confidence_pct: 20, priority: 'low', created_at: '2026-04-21T08:00:00Z', updated_at: '2026-04-21T08:00:00Z' },
-  { id: 7, contact_id: 3, stage: 'contracted', variety: 'Mixed', grade: 'Various', volume_lbs: 1100000, volume_mt: 500, strata_base_price: 3.40, maxons_price: 3.50, margin_pct: 3, total_value_usd: 385000, incoterm: 'FOB', destination_country: 'United States', confidence_pct: 95, priority: 'high', created_at: '2026-02-15T09:00:00Z', updated_at: '2026-04-01T09:00:00Z' },
-];
-
-const SAMPLE_ACTIVITIES = [
-  { id: 1, contact_id: 1, deal_id: 1, activity_type: 'whatsapp', subject: 'Price discussion for Q3 Nonpareil', outcome: 'positive', created_at: '2026-04-18T10:00:00Z' },
-  { id: 2, contact_id: 5, deal_id: 3, activity_type: 'email', subject: 'Carmel 25/27 agreement terms finalized', outcome: 'positive', created_at: '2026-04-19T16:00:00Z' },
-  { id: 3, contact_id: 3, deal_id: 7, activity_type: 'meeting', subject: 'Annual supply review + 2025/26 planning', outcome: 'positive', created_at: '2026-04-20T09:00:00Z' },
-  { id: 4, contact_id: 4, deal_id: 4, activity_type: 'email', subject: 'Initial inquiry for Nonpareil 23/25', outcome: 'neutral', created_at: '2026-04-20T11:00:00Z' },
-  { id: 5, contact_id: 2, deal_id: 2, activity_type: 'offer_sent', subject: 'Nonpareil 25/27 quote — $3.71/lb CFR Mumbai', outcome: 'neutral', created_at: '2026-04-15T14:00:00Z' },
-  { id: 6, contact_id: 6, deal_id: 6, activity_type: 'call', subject: 'Introduction call — exploring blanched demand', outcome: 'positive', created_at: '2026-04-21T08:00:00Z' },
-];
 
 function fmtUSD(n) { return '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
 function fmtLbs(n) { return (n || 0).toLocaleString('en-US') + ' lbs'; }
@@ -84,7 +56,6 @@ export default function CRM() {
   const [deals, setDeals] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isSample, setIsSample] = useState(false);
   const [activeTab, setActiveTab] = useState('pipeline');
 
   useEffect(() => { loadCRM(); }, []);
@@ -98,25 +69,13 @@ export default function CRM() {
         supabase.from('crm_activities').select('*').order('created_at', { ascending: false }).limit(50),
       ]);
 
-      const hasContacts = !cRes.error && cRes.data?.length > 0;
-      const hasDeals = !dRes.error && dRes.data?.length > 0;
-
-      if (hasContacts) {
-        setContacts(cRes.data);
-        setDeals(hasDeals ? dRes.data : SAMPLE_DEALS);
-        setActivities(!aRes.error && aRes.data?.length > 0 ? aRes.data : SAMPLE_ACTIVITIES);
-        setIsSample(!hasDeals);
-      } else {
-        setContacts(SAMPLE_CONTACTS);
-        setDeals(SAMPLE_DEALS);
-        setActivities(SAMPLE_ACTIVITIES);
-        setIsSample(true);
-      }
+      setContacts(!cRes.error && cRes.data?.length > 0 ? cRes.data : []);
+      setDeals(!dRes.error && dRes.data?.length > 0 ? dRes.data : []);
+      setActivities(!aRes.error && aRes.data?.length > 0 ? aRes.data : []);
     } catch {
-      setContacts(SAMPLE_CONTACTS);
-      setDeals(SAMPLE_DEALS);
-      setActivities(SAMPLE_ACTIVITIES);
-      setIsSample(true);
+      setContacts([]);
+      setDeals([]);
+      setActivities([]);
     }
     setLoading(false);
   }
@@ -163,7 +122,6 @@ export default function CRM() {
         <div>
           <h1 className="text-2xl font-bold text-white">
             CRM & Trade Pipeline
-            {isSample && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Manage contacts, track deals, and monitor your trade pipeline
