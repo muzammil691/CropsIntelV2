@@ -20,6 +20,7 @@ const News = lazy(() => import('./pages/News'));
 const Welcome = lazy(() => import('./pages/Welcome'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const CRM = lazy(() => import('./pages/CRM'));
 const Intelligence = lazy(() => import('./pages/Intelligence'));
 const Trading = lazy(() => import('./pages/Trading'));
@@ -335,6 +336,7 @@ const PAGE_TITLES = {
   '/welcome': 'Welcome',
   '/login': 'Sign In',
   '/register': 'Create Account',
+  '/reset-password': 'Reset Password',
 };
 
 function usePageTitle() {
@@ -346,7 +348,7 @@ function usePageTitle() {
 }
 
 // Full-page routes (no sidebar/nav chrome)
-const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register'];
+const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password'];
 
 export default function App() {
   usePageTitle();
@@ -362,6 +364,7 @@ export default function App() {
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </Suspense>
     );

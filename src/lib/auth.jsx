@@ -141,6 +141,13 @@ export function AuthProvider({ children }) {
     return result;
   }, []);
 
+  const resetPassword = useCallback(async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -169,6 +176,7 @@ export function AuthProvider({ children }) {
       signInWithOTP,
       sendLoginOTP,
       signOut,
+      resetPassword,
       resetGuestTimer,
       isAuthenticated: !!user,
     }}>

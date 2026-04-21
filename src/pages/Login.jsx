@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 // ═══════════════════════════════════════════════════════════════
 
 export default function Login() {
-  const { signIn, signInWithOTP, sendLoginOTP } = useAuth();
+  const { signIn, signInWithOTP, sendLoginOTP, resetPassword } = useAuth();
   const navigate = useNavigate();
 
   // Active login method — email+password default (V1 users)
@@ -32,6 +32,11 @@ export default function Login() {
 
   // Email magic link
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  // Forgot password
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
 
   // State
   const [error, setError] = useState('');
@@ -55,6 +60,8 @@ export default function Login() {
     setOtpStep('input');
     setOtp(['', '', '', '', '', '']);
     setMagicLinkSent(false);
+    setForgotMode(false);
+    setForgotSent(false);
   }, [method]);
 
   // ────────────────────────────────────────────────────────
@@ -186,6 +193,26 @@ export default function Login() {
   }
 
   // ────────────────────────────────────────────────────────
+  // 5. Forgot Password
+  // ────────────────────────────────────────────────────────
+  async function handleForgotPassword(e) {
+    e.preventDefault();
+    setError('');
+    const targetEmail = forgotEmail.trim();
+    if (!targetEmail) return setError('Enter your email address');
+
+    setLoading(true);
+    try {
+      await resetPassword(targetEmail);
+      setForgotSent(true);
+    } catch (err) {
+      setError(err.message || 'Failed to send reset link');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────
   // OTP digit handlers
   // ────────────────────────────────────────────────────────
   function onOTPChange(i, val) {
@@ -270,6 +297,12 @@ export default function Login() {
                 onChange={v => { setPassword(v); setError(''); }}
                 placeholder="Your password" />
               <SubmitBtn loading={loading} text="Sign In" />
+              <div className="text-center">
+                <button type="button" onClick={() => { setMethod('email_password'); setForgotMode(true); setError(''); }}
+                  className="text-xs text-gray-500 hover:text-green-400 transition-colors">
+                  Forgot your password?
+                </button>
+              </div>
             </form>
           )}
 
@@ -310,7 +343,7 @@ export default function Login() {
           )}
 
           {/* ─── Email + Password ───────────────────── */}
-          {method === 'email_password' && (
+          {method === 'email_password' && !forgotMode && (
             <form onSubmit={handleEmailPassword} className="space-y-4">
               <Field label="Email" type="email" value={email}
                 onChange={v => { setEmail(v); setError(''); }}
@@ -319,7 +352,52 @@ export default function Login() {
                 onChange={v => { setPassword(v); setError(''); }}
                 placeholder="Your password" />
               <SubmitBtn loading={loading} text="Sign In" />
+              <div className="text-center">
+                <button type="button" onClick={() => { setForgotMode(true); setForgotEmail(email); setError(''); }}
+                  className="text-xs text-gray-500 hover:text-green-400 transition-colors">
+                  Forgot your password?
+                </button>
+              </div>
             </form>
+          )}
+
+          {/* ─── Forgot Password ───────────────────── */}
+          {method === 'email_password' && forgotMode && !forgotSent && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="text-center mb-1">
+                <p className="text-white text-sm font-medium">Reset Your Password</p>
+                <p className="text-gray-500 text-xs mt-1">We'll send a reset link to your email</p>
+              </div>
+              <Field label="Email" type="email" value={forgotEmail}
+                onChange={v => { setForgotEmail(v); setError(''); }}
+                placeholder="you@company.com" autoFocus />
+              <SubmitBtn loading={loading} text="Send Reset Link" />
+              <div className="text-center">
+                <button type="button" onClick={() => { setForgotMode(false); setError(''); }}
+                  className="text-xs text-gray-500 hover:text-green-400 transition-colors">
+                  Back to sign in
+                </button>
+              </div>
+            </form>
+          )}
+
+          {method === 'email_password' && forgotMode && forgotSent && (
+            <div className="text-center py-4 space-y-3">
+              <div className="w-14 h-14 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+                <svg className="w-7 h-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="text-white text-sm font-medium">Check your email</p>
+              <p className="text-gray-500 text-xs">
+                We sent a password reset link to <span className="text-gray-300">{forgotEmail}</span>
+              </p>
+              <p className="text-gray-600 text-xs">
+                Click the link in the email to set a new password.
+              </p>
+              <button onClick={() => { setForgotMode(false); setForgotSent(false); setError(''); }}
+                className="text-xs text-green-400 hover:text-green-300">Back to sign in</button>
+            </div>
           )}
 
           {/* ─── Email Magic Link ───────────────────── */}
