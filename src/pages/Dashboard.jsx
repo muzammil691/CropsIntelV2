@@ -94,6 +94,23 @@ function StatCard({ title, value, subtitle, trend, color = 'green' }) {
   );
 }
 
+// Strip markdown markers and truncate text for card previews
+function truncateText(text, maxLen = 150) {
+  if (!text) return '';
+  // Strip markdown: headings, bold, italic, horizontal rules, bullet markers
+  const clean = text
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/---+|___+|\*\*\*+/g, ' ')
+    .replace(/[-*]\s+/g, '')
+    .replace(/\n+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (clean.length <= maxLen) return clean;
+  return clean.slice(0, maxLen).replace(/\s+\S*$/, '') + '...';
+}
+
 function InsightCard({ analysis }) {
   const typeConfig = {
     trade_signal: { border: 'border-blue-500/30 bg-blue-500/5', icon: 'S', iconBg: 'bg-blue-500/20 text-blue-400' },
@@ -106,7 +123,7 @@ function InsightCard({ analysis }) {
   const cfg = typeConfig[analysis.analysis_type] || { border: 'border-gray-700 bg-gray-800/50', icon: '?', iconBg: 'bg-gray-500/20 text-gray-400' };
 
   return (
-    <div className={`border rounded-lg p-4 ${cfg.border}`}>
+    <div className={`border rounded-lg p-4 max-h-28 overflow-hidden ${cfg.border}`}>
       <div className="flex items-start gap-3">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${cfg.iconBg}`}>
           {cfg.icon}
@@ -123,7 +140,7 @@ function InsightCard({ analysis }) {
             )}
           </div>
           <h3 className="text-sm font-medium text-white mb-1 truncate">{analysis.title}</h3>
-          <p className="text-xs text-gray-400 leading-relaxed">{analysis.summary}</p>
+          <p className="text-xs text-gray-400 leading-relaxed">{truncateText(analysis.summary, 150)}</p>
         </div>
       </div>
     </div>
@@ -216,10 +233,18 @@ export default function Dashboard() {
           .limit(15);
 
         if (aiData) {
+          // Deduplicate by analysis_type + title (keep most recent per combo)
+          const seen = new Set();
+          const deduped = aiData.filter(a => {
+            const key = `${a.analysis_type}::${a.title}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
           // Sort: trade_signal first, then monthly_brief, then anomaly, then yoy
           const priority = { trade_signal: 0, monthly_brief: 1, anomaly: 2, yoy_comparison: 3 };
-          aiData.sort((a, b) => (priority[a.analysis_type] ?? 9) - (priority[b.analysis_type] ?? 9));
-          setAnalyses(aiData);
+          deduped.sort((a, b) => (priority[a.analysis_type] ?? 9) - (priority[b.analysis_type] ?? 9));
+          setAnalyses(deduped);
         }
 
         // Fetch recent scrape logs
@@ -229,7 +254,12 @@ export default function Dashboard() {
           .order('started_at', { ascending: false })
           .limit(5);
 
-        if (logs) setScrapeLogs(logs);
+        if (logs) {
+          // Deduplicate by scraper_name (keep most recent per scraper)
+          const byName = {};
+          logs.forEach(l => { if (!byName[l.scraper_name]) byName[l.scraper_name] = l; });
+          setScrapeLogs(Object.values(byName));
+        }
 
         // Fetch latest Strata prices (one per variety, most recent)
         const { data: prices } = await supabase
@@ -368,10 +398,16 @@ export default function Dashboard() {
                     </span>
                   )}
                 </div>
-                <MarkdownText text={brief?.summary || signal?.summary} className="text-sm text-gray-300 leading-relaxed" />
-                {brief && signal && brief.id !== signal.id && (
-                  <MarkdownText text={signal.summary} className="text-xs text-gray-500 mt-2 leading-relaxed" />
-                )}
+                <div className="relative max-h-48 overflow-hidden">
+                  <MarkdownText text={brief?.summary || signal?.summary} className="text-sm text-gray-300 leading-relaxed" />
+                  {brief && signal && brief.id !== signal.id && (
+                    <MarkdownText text={signal.summary} className="text-xs text-gray-500 mt-2 leading-relaxed" />
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-gray-900/90 to-transparent pointer-events-none" />
+                </div>
+                <p className="text-xs text-green-400 mt-2 cursor-pointer hover:text-green-300 transition-colors">
+                  Read full brief &rarr;
+                </p>
               </div>
             </div>
           </div>
@@ -416,7 +452,7 @@ export default function Dashboard() {
           </h3>
           {analyses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {analyses.slice(0, 8).map(a => <InsightCard key={a.id} analysis={a} />)}
+              {analyses.slice(0, 4).map(a => <InsightCard key={a.id} analysis={a} />)}
             </div>
           ) : (
             <div className="border border-gray-800 rounded-lg p-8 text-center">
