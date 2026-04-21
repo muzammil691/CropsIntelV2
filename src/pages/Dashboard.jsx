@@ -1,74 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
-// Simple markdown-to-JSX renderer for AI-generated briefs
-function MarkdownText({ text, className = '' }) {
-  if (!text) return null;
-
-  const renderLine = (line, i) => {
-    // Strip heading markers and render as bold
-    if (line.startsWith('## ')) {
-      return <span key={i} className="block text-white font-semibold mt-3 mb-1 text-sm">{renderInline(line.slice(3))}</span>;
-    }
-    if (line.startsWith('# ')) {
-      return <span key={i} className="block text-white font-bold mt-3 mb-1">{renderInline(line.slice(2))}</span>;
-    }
-    // Horizontal rules become spacing
-    if (line.trim() === '---' || line.trim() === '***') {
-      return <span key={i} className="block my-2" />;
-    }
-    // Empty line
-    if (!line.trim()) return <span key={i} className="block h-2" />;
-    // Normal paragraph
-    return <span key={i} className="block mb-1">{renderInline(line)}</span>;
-  };
-
-  const renderInline = (str) => {
-    // Replace **bold** and *italic* with styled spans
-    const parts = [];
-    let remaining = str;
-    let key = 0;
-
-    while (remaining.length > 0) {
-      // Bold: **text**
-      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
-      if (boldMatch) {
-        const idx = remaining.indexOf(boldMatch[0]);
-        if (idx > 0) parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
-        parts.push(<span key={key++} className="text-white font-semibold">{boldMatch[1]}</span>);
-        remaining = remaining.slice(idx + boldMatch[0].length);
-        continue;
-      }
-      // Italic: *text*
-      const italicMatch = remaining.match(/\*(.+?)\*/);
-      if (italicMatch) {
-        const idx = remaining.indexOf(italicMatch[0]);
-        if (idx > 0) parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
-        parts.push(<span key={key++} className="italic text-gray-300">{italicMatch[1]}</span>);
-        remaining = remaining.slice(idx + italicMatch[0].length);
-        continue;
-      }
-      // No more matches
-      parts.push(<span key={key++}>{remaining}</span>);
-      break;
-    }
-    return parts;
-  };
-
-  const lines = text.split(/\n|---/).flatMap((segment, i, arr) => {
-    if (i < arr.length - 1) return [segment, '---'];
-    return [segment];
-  });
-
-  // Split on actual newlines first
-  const actualLines = text.split('\n');
-
-  return (
-    <div className={className}>
-      {actualLines.map((line, i) => renderLine(line.trim(), i))}
-    </div>
-  );
+// Strip markdown markers and truncate text for card previews
+function truncateText(text, maxLen = 150) {
+  if (!text) return '';
+  const clean = text
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/---+|___+|\*\*\*+/g, ' ')
+    .replace(/[-*]\s+/g, '')
+    .replace(/\n+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (clean.length <= maxLen) return clean;
+  return clean.slice(0, maxLen).replace(/\s+\S*$/, '') + '...';
 }
 
 function StatCard({ title, value, subtitle, trend, color = 'green' }) {
@@ -94,23 +41,6 @@ function StatCard({ title, value, subtitle, trend, color = 'green' }) {
   );
 }
 
-// Strip markdown markers and truncate text for card previews
-function truncateText(text, maxLen = 150) {
-  if (!text) return '';
-  // Strip markdown: headings, bold, italic, horizontal rules, bullet markers
-  const clean = text
-    .replace(/#{1,6}\s+/g, '')
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/---+|___+|\*\*\*+/g, ' ')
-    .replace(/[-*]\s+/g, '')
-    .replace(/\n+/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-  if (clean.length <= maxLen) return clean;
-  return clean.slice(0, maxLen).replace(/\s+\S*$/, '') + '...';
-}
-
 function InsightCard({ analysis }) {
   const typeConfig = {
     trade_signal: { border: 'border-blue-500/30 bg-blue-500/5', icon: 'S', iconBg: 'bg-blue-500/20 text-blue-400' },
@@ -123,7 +53,7 @@ function InsightCard({ analysis }) {
   const cfg = typeConfig[analysis.analysis_type] || { border: 'border-gray-700 bg-gray-800/50', icon: '?', iconBg: 'bg-gray-500/20 text-gray-400' };
 
   return (
-    <div className={`border rounded-lg p-4 max-h-28 overflow-hidden ${cfg.border}`}>
+    <div className={`border rounded-lg p-4 ${cfg.border}`}>
       <div className="flex items-start gap-3">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${cfg.iconBg}`}>
           {cfg.icon}
@@ -140,7 +70,7 @@ function InsightCard({ analysis }) {
             )}
           </div>
           <h3 className="text-sm font-medium text-white mb-1 truncate">{analysis.title}</h3>
-          <p className="text-xs text-gray-400 leading-relaxed">{truncateText(analysis.summary, 150)}</p>
+          <p className="text-xs text-gray-400 leading-relaxed line-clamp-3">{truncateText(analysis.summary, 180)}</p>
         </div>
       </div>
     </div>
@@ -217,7 +147,6 @@ export default function Dashboard() {
         if (reports?.length) {
           setLatestReport(reports[0]);
           setAllReports(reports);
-          // Find prior year same month
           const py = reports.find(r =>
             r.report_month === reports[0].report_month &&
             r.report_year === reports[0].report_year - 1
@@ -225,39 +154,42 @@ export default function Dashboard() {
           if (py) setPriorYearReport(py);
         }
 
-        // Fetch AI analyses â prioritize trade_signal and monthly_brief
+        // Fetch AI analyses
         const { data: aiData } = await supabase
           .from('ai_analyses')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(15);
+          .limit(20);
 
         if (aiData) {
-          // Deduplicate by analysis_type + title (keep most recent per combo)
+          // Aggressive dedup: by analysis_type + truncated summary (first 100 chars)
           const seen = new Set();
           const deduped = aiData.filter(a => {
-            const key = `${a.analysis_type}::${a.title}`;
+            const summaryKey = truncateText(a.summary, 100);
+            const key = `${a.analysis_type}::${summaryKey}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
           });
-          // Sort: trade_signal first, then monthly_brief, then anomaly, then yoy
-          const priority = { trade_signal: 0, monthly_brief: 1, anomaly: 2, yoy_comparison: 3 };
+          // Sort: monthly_brief first, then trade_signal, then others
+          const priority = { monthly_brief: 0, trade_signal: 1, anomaly: 2, yoy_comparison: 3, seasonal_pattern: 4 };
           deduped.sort((a, b) => (priority[a.analysis_type] ?? 9) - (priority[b.analysis_type] ?? 9));
           setAnalyses(deduped);
         }
 
-        // Fetch recent scrape logs
+        // Fetch recent scrape logs - deduplicated
         const { data: logs } = await supabase
           .from('scraping_logs')
           .select('*')
           .order('started_at', { ascending: false })
-          .limit(5);
+          .limit(20);
 
         if (logs) {
-          // Deduplicate by scraper_name (keep most recent per scraper)
+          // Deduplicate by scraper_name (keep only most recent per scraper)
           const byName = {};
-          logs.forEach(l => { if (!byName[l.scraper_name]) byName[l.scraper_name] = l; });
+          logs.forEach(l => {
+            if (!byName[l.scraper_name]) byName[l.scraper_name] = l;
+          });
           setScrapeLogs(Object.values(byName));
         }
 
@@ -266,10 +198,9 @@ export default function Dashboard() {
           .from('strata_prices')
           .select('*')
           .order('price_date', { ascending: false })
-          .limit(20);
+          .limit(30);
 
         if (prices) {
-          // Deduplicate: keep latest per variety
           const byVariety = {};
           prices.forEach(p => { if (!byVariety[p.variety]) byVariety[p.variety] = p; });
           setLatestPrices(Object.values(byVariety).slice(0, 6));
@@ -319,6 +250,14 @@ export default function Dashboard() {
   const lr = latestReport;
   const py = priorYearReport;
 
+  // Get the featured brief and signal for the Market Brief card
+  const featuredBrief = analyses.find(a => a.analysis_type === 'monthly_brief');
+  const featuredSignal = analyses.find(a => a.analysis_type === 'trade_signal');
+  // Insight cards: exclude the featured brief/signal, show max 4
+  const insightCards = analyses
+    .filter(a => a.id !== featuredBrief?.id && a.id !== featuredSignal?.id)
+    .slice(0, 4);
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl">
       {/* Header */}
@@ -329,7 +268,7 @@ export default function Dashboard() {
             <p className="text-gray-500 text-sm mt-1">
               {lr
                 ? `${lr.crop_year} crop year | Report: ${lr.report_year}/${String(lr.report_month).padStart(2, '0')} | ${allReports.length} months loaded`
-                : 'No data yet â run the scraper to populate'
+                : 'No data yet - run the scraper to populate'
               }
             </p>
           </div>
@@ -374,45 +313,46 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Market Brief â featured analysis */}
-      {(() => {
-        const brief = analyses.find(a => a.analysis_type === 'monthly_brief');
-        const signal = analyses.find(a => a.analysis_type === 'trade_signal');
-        if (!brief && !signal) return null;
-        return (
-          <div className="mb-6 bg-gradient-to-r from-green-500/10 via-blue-500/5 to-transparent border border-green-500/20 rounded-xl p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
-                <span className="text-green-400 font-bold text-sm">AI</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-base font-semibold text-white">{brief?.title || signal?.title || 'Market Intelligence'}</h3>
-                  {signal?.data_context?.signal && (
+      {/* Market Brief - concise executive summary */}
+      {(featuredBrief || featuredSignal) && (
+        <div className="mb-6 bg-gradient-to-r from-green-500/10 via-blue-500/5 to-transparent border border-green-500/20 rounded-xl p-5">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
+              <span className="text-green-400 font-bold text-sm">AI</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className="text-base font-semibold text-white">
+                  {featuredBrief?.title || featuredSignal?.title || 'Market Intelligence'}
+                </h3>
+                {(() => {
+                  const sig = featuredSignal?.data_context?.signal || 'neutral';
+                  return (
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                      signal.data_context.signal === 'bullish' ? 'bg-green-500/20 text-green-400' :
-                      signal.data_context.signal === 'bearish' ? 'bg-red-500/20 text-red-400' :
+                      sig === 'bullish' ? 'bg-green-500/20 text-green-400' :
+                      sig === 'bearish' ? 'bg-red-500/20 text-red-400' :
                       'bg-gray-500/20 text-gray-400'
                     }`}>
-                      {signal.data_context.signal}
+                      {sig}
                     </span>
-                  )}
-                </div>
-                <div className="relative max-h-48 overflow-hidden">
-                  <MarkdownText text={brief?.summary || signal?.summary} className="text-sm text-gray-300 leading-relaxed" />
-                  {brief && signal && brief.id !== signal.id && (
-                    <MarkdownText text={signal.summary} className="text-xs text-gray-500 mt-2 leading-relaxed" />
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-gray-900/90 to-transparent pointer-events-none" />
-                </div>
-                <p className="text-xs text-green-400 mt-2 cursor-pointer hover:text-green-300 transition-colors">
-                  Read full brief &rarr;
-                </p>
+                  );
+                })()}
               </div>
+              <p className="text-sm text-gray-300 leading-relaxed">
+                {truncateText(featuredBrief?.summary || featuredSignal?.summary || '', 350)}
+              </p>
+              {featuredSignal && featuredSignal.id !== featuredBrief?.id && (
+                <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                  {truncateText(featuredSignal.summary, 150)}
+                </p>
+              )}
+              <Link to="/analysis" className="inline-block text-xs text-green-400 mt-3 hover:text-green-300 transition-colors">
+                Read full analysis &rarr;
+              </Link>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* Second row: Supply breakdown + Shipment trend */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -450,14 +390,14 @@ export default function Dashboard() {
             AI Insights
             <span className="text-xs text-gray-500 font-normal ml-2">{analyses.length} total</span>
           </h3>
-          {analyses.length > 0 ? (
+          {insightCards.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {analyses.slice(0, 4).map(a => <InsightCard key={a.id} analysis={a} />)}
+              {insightCards.map(a => <InsightCard key={a.id} analysis={a} />)}
             </div>
           ) : (
             <div className="border border-gray-800 rounded-lg p-8 text-center">
-              <p className="text-gray-500">No insights yet</p>
-              <p className="text-xs text-gray-600 mt-1">Run the autonomous scraper to generate insights</p>
+              <p className="text-gray-500">No additional insights</p>
+              <p className="text-xs text-gray-600 mt-1">Run the autonomous scraper to generate more insights</p>
             </div>
           )}
         </div>
@@ -486,7 +426,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {scrapeLogs.length > 0 ? scrapeLogs.map(log => (
+            {scrapeLogs.length > 0 ? scrapeLogs.slice(0, 4).map(log => (
               <div key={log.id} className="flex items-center justify-between bg-gray-900 rounded-lg px-4 py-3 border border-gray-800">
                 <div>
                   <p className="text-xs text-white">{log.scraper_name}</p>
