@@ -9,6 +9,10 @@ import { useAuth } from '../lib/auth';
 import { askClaude, loadAPIKeys, textToSpeech } from '../lib/ai-engine';
 import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 import { supabase } from '../lib/supabase';
+import {
+  generateSessionId, logConversation, logError, trackQuestionPattern,
+  detectTopics, detectConversationSentiment, getFullLearningContext, categorizeQuery
+} from '../lib/zyra-memory';
 
 // ─── Quick-ask topics by user tier ──────────────────────────────────
 const QUICK_TOPICS = {
@@ -41,7 +45,7 @@ const QUICK_TOPICS = {
 };
 
 // ─── Zyra system prompt builder ─────────────────────────────────────
-function buildZyraSystemPrompt(userTier, profile, marketContext) {
+function buildZyraSystemPrompt(userTier, profile, marketContext, learningContext = '') {
   const tierDescriptions = {
     guest: 'a guest visitor exploring CropsIntel. Give helpful but general information. Encourage them to register for deeper insights.',
     registered: 'a registered user with basic access. Provide good market insights but remind them that verified users get personalized prescriptions.',
@@ -70,7 +74,9 @@ RULES:
 - Keep responses under 200 words unless asked for a detailed analysis
 - Use trading terminology naturally (long, short, bullish, bearish, basis, FOB, CIF)
 - When discussing MAXONS pricing, the margin is 3% above Strata market prices
-- Reference specific ABC data points when available (shipments, commitments, uncommitted)`;
+- Reference specific ABC data points when available (shipments, commitments, uncommitted)
+- If you learned something from past conversations (shown below), apply it — don't repeat past mistakes
+${learningContext}`;
 }
 
 // ─── Message bubble component ───────────────────────────────────────
@@ -129,6 +135,9 @@ export default function ZyraWidget() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [pulseAnimation, setPulseAnimation] = useState(true);
+  const [learningContext, setLearningContext] = useState('');
+  const [sessionId] = useState(() => generateSessionId());
+  const sessionStartRef = useRef(Date.now());
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const audioRef = useRef(null);
@@ -142,6 +151,12 @@ export default function ZyraWidget() {
     async function loadContext() {
       try {
         await loadAPIKeys();
+
+        // Load Zyra's learned knowledge from past conversations
+        try {
+          const learned = await getFullLearningContext();
+          if (learned) setLearningContext(learned);
+        } catch (e) { /* learning tables may not exist yet */ }
 
         // Get latest position report data
         const { data: reports } = await supabase
@@ -248,6 +263,32 @@ export default function ZyraWidget() {
     if (isOpen) setPulseAnimation(false);
   }, [isOpen]);
 
+  // Log conversation when widget closes (if there were real exchanges)
+  useEffect(() => {
+    if (!isOpen && messages.length >= 2) {
+      // Non-blocking: save conversation to learning system
+      const userMessages = messages.filter(m => m.role === 'user');
+      if (userMessages.length > 0) {
+        const topics = detectTopics(messages);
+        const sentiment = detectConversationSentiment(messages);
+        const duration = Math.round((Date.now() - sessionStartRef.current) / 1000);
+
+        logConversation({
+          sessionId,
+          channel: 'web',
+          userId: user?.id || null,
+          userTier,
+          pageContext: window.location.pathname,
+          messages,
+          topics,
+          sentiment,
+          hadError: messages.some(m => m.content?.includes('trouble connecting')),
+          durationSeconds: duration,
+        });
+      }
+    }
+  }, [isOpen]);
+
   // Welcome message on first open
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -280,8 +321,11 @@ export default function ZyraWidget() {
       .slice(-8) // Keep last 8 messages for context
       .map(m => ({ role: m.role, content: m.content }));
 
+    // Track question pattern (async, non-blocking)
+    trackQuestionPattern(text, categorizeQuery(text));
+
     try {
-      const systemPrompt = buildZyraSystemPrompt(userTier, profile, marketContext);
+      const systemPrompt = buildZyraSystemPrompt(userTier, profile, marketContext, learningContext);
 
       const result = await askClaude(text, {
         system: systemPrompt,
@@ -319,6 +363,15 @@ export default function ZyraWidget() {
       }
     } catch (err) {
       console.error('Zyra error:', err);
+
+      // Log error for learning
+      logError({
+        errorType: 'api_failure',
+        errorMessage: err.message,
+        userQuery: text,
+        channel: 'web',
+      });
+
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'I apologize — I\'m having trouble connecting to my intelligence systems right now. Please try again in a moment.',
@@ -327,7 +380,7 @@ export default function ZyraWidget() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading, userTier, profile, marketContext, voiceEnabled]);
+  }, [messages, isLoading, userTier, profile, marketContext, learningContext, voiceEnabled]);
 
   // ElevenLabs voice output
   const speakResponse = useCallback(async (text) => {
