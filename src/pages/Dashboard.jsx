@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { getAIStatus, loadAPIKeys } from '../lib/ai-engine';
 
 // Strip markdown markers, section labels, and truncate text for card previews
 function truncateText(text, maxLen = 150) {
@@ -239,7 +240,12 @@ export default function Dashboard() {
   const [recentNews, setRecentNews] = useState([]);
   const [isSamplePrices, setIsSamplePrices] = useState(false);
   const [isSampleNews, setIsSampleNews] = useState(false);
+  const [aiStatus, setAiStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => { await loadAPIKeys(); setAiStatus(getAIStatus()); })();
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -517,10 +523,28 @@ export default function Dashboard() {
             </div>
 
             <div className="bg-gray-900 rounded-lg px-4 py-3 border border-gray-800">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">AI Analyses</span>
-                <span className="text-xs text-blue-400">{analyses.length} insights</span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-400">AI Engine (4 Systems)</span>
+                <Link to="/intelligence" className="text-[10px] text-green-400 hover:text-green-300">Open &rarr;</Link>
               </div>
+              {aiStatus ? (
+                <div className="grid grid-cols-2 gap-1">
+                  {Object.entries(aiStatus).filter(([k]) => k !== 'council').map(([key, val]) => (
+                    <div key={key} className="flex items-center gap-1">
+                      <div className={`w-1.5 h-1.5 rounded-full ${val.connected ? 'bg-green-500' : 'bg-gray-600'}`} />
+                      <span className="text-[10px] text-gray-500 capitalize">{key}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs text-gray-600">Loading...</span>
+              )}
+              {aiStatus?.council && (
+                <div className="mt-1.5 pt-1.5 border-t border-gray-800 flex items-center gap-1">
+                  <div className={`w-1.5 h-1.5 rounded-full ${aiStatus.council.connected ? 'bg-purple-400' : 'bg-gray-600'}`} />
+                  <span className="text-[10px] text-gray-500">Council: {aiStatus.council.modelsActive}/3</span>
+                </div>
+              )}
             </div>
 
             {scrapeLogs.length > 0 ? scrapeLogs.slice(0, 4).map(log => (
