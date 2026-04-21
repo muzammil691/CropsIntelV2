@@ -130,7 +130,7 @@ export default function Autonomous() {
       // Monthly brief
       if (latest) {
         const fm = v => (v / M).toFixed(0) + 'M';
-        const soldPct = ((latest.total_shipped_lbs + latest.total_committed_lbs) / latest.total_supply_lbs * 100).toFixed(1);
+        const soldPct = ((latest.total_supply_lbs - (latest.uncommitted_lbs || 0)) / latest.total_supply_lbs * 100).toFixed(1);
         analyses.push({ analysis_type: 'monthly_brief', title: `Monthly Brief: ${latest.crop_year} (${latest.report_year}/${String(latest.report_month).padStart(2, '0')})`, summary: `Supply: ${fm(latest.total_supply_lbs)} lbs | Shipped: ${fm(latest.total_shipped_lbs)} | Committed: ${fm(latest.total_committed_lbs)} | Uncommitted: ${fm(latest.uncommitted_lbs)}. ${soldPct}% of supply sold or committed.`, confidence: 0.98, data_context: {}, tags: ['brief'], is_actionable: false });
       }
 

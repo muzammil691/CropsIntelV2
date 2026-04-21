@@ -91,13 +91,15 @@ function SampleBadge() {
 function SupplyPositionWidget({ current, prior }) {
   if (!current) return null;
 
-  const soldCurrent = (current.total_shipped_lbs || 0) + (current.total_committed_lbs || 0);
+  // Correct formula: Sold = Total Supply - Uncommitted (not shipped + committed)
+  const soldCurrent = (current.total_supply_lbs || 0) - (current.uncommitted_lbs || 0);
   const soldPctCurrent = current.total_supply_lbs > 0 ? (soldCurrent / current.total_supply_lbs * 100) : 0;
-  const shippedPctCurrent = current.total_supply_lbs > 0 ? (current.total_shipped_lbs / current.total_supply_lbs * 100) : 0;
+  const shippedPctCurrent = current.total_supply_lbs > 0 ? ((current.total_shipped_lbs || 0) / current.total_supply_lbs * 100) : 0;
+  const committedPctCurrent = current.total_supply_lbs > 0 ? ((current.total_committed_lbs || 0) / current.total_supply_lbs * 100) : 0;
 
   let soldPctPrior = null;
   if (prior && prior.total_supply_lbs > 0) {
-    const soldPrior = (prior.total_shipped_lbs || 0) + (prior.total_committed_lbs || 0);
+    const soldPrior = (prior.total_supply_lbs || 0) - (prior.uncommitted_lbs || 0);
     soldPctPrior = (soldPrior / prior.total_supply_lbs * 100);
   }
 
@@ -107,7 +109,8 @@ function SupplyPositionWidget({ current, prior }) {
     <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
       <h3 className="text-lg font-semibold text-white mb-1">Crop Sold Progress</h3>
       <p className="text-[10px] text-gray-500 mb-4">
-        {current.crop_year} — shipped + committed as % of total supply
+        {current.crop_year} — sold (shipped + committed) as % of total supply
+        {prior && <span className="ml-1">vs {prior.crop_year}</span>}
       </p>
 
       {/* Main progress bar */}
@@ -413,7 +416,7 @@ export default function Dashboard() {
         <StatCard
           title="Committed"
           value={formatLbs(lr?.total_committed_lbs)}
-          subtitle={`Dom ${formatLbs(lr?.domestic_committed_lbs)} / Exp ${formatLbs(lr?.export_committed_lbs)}`}
+          subtitle={lr?.domestic_committed_lbs ? `Dom ${formatLbs(lr?.domestic_committed_lbs)} / Exp ${formatLbs(lr?.export_committed_lbs)}` : 'Sold but not yet shipped'}
           trend={yoyPct(lr?.total_committed_lbs, py?.total_committed_lbs)}
           color="blue"
         />

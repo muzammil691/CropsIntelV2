@@ -94,8 +94,8 @@ export default function Reports() {
         va = colDef.sortKey(a);
         vb = colDef.sortKey(b);
       } else if (sortCol === 'sold_pct') {
-        va = a.total_supply_lbs > 0 ? (a.total_shipped_lbs + a.total_committed_lbs) / a.total_supply_lbs : 0;
-        vb = b.total_supply_lbs > 0 ? (b.total_shipped_lbs + b.total_committed_lbs) / b.total_supply_lbs : 0;
+        va = a.total_supply_lbs > 0 ? (a.total_supply_lbs - (a.uncommitted_lbs || 0)) / a.total_supply_lbs : 0;
+        vb = b.total_supply_lbs > 0 ? (b.total_supply_lbs - (b.uncommitted_lbs || 0)) / b.total_supply_lbs : 0;
       } else {
         va = a[sortCol] || 0;
         vb = b[sortCol] || 0;
@@ -125,7 +125,7 @@ export default function Reports() {
     const totalCommitted = filtered.reduce((s, r) => s + (r.total_committed_lbs || 0), 0);
     const avgSold = filtered.reduce((s, r) => {
       if (!r.total_supply_lbs) return s;
-      return s + (r.total_shipped_lbs + r.total_committed_lbs) / r.total_supply_lbs;
+      return s + (r.total_supply_lbs - (r.uncommitted_lbs || 0)) / r.total_supply_lbs;
     }, 0) / filtered.filter(r => r.total_supply_lbs > 0).length;
     return { latest, totalSupply, totalShipped, totalCommitted, avgSold, count: filtered.length };
   }, [filtered]);
@@ -335,7 +335,7 @@ export default function Reports() {
               {sorted.map((r, idx) => {
                 const py = findPrior(r);
                 const soldPct = r.total_supply_lbs > 0
-                  ? ((r.total_shipped_lbs + r.total_committed_lbs) / r.total_supply_lbs * 100).toFixed(1)
+                  ? ((r.total_supply_lbs - (r.uncommitted_lbs || 0)) / r.total_supply_lbs * 100).toFixed(1)
                   : '--';
                 return (
                   <tr
@@ -367,8 +367,8 @@ export default function Reports() {
                               {soldPct}%
                             </span>
                             {yoyBadge(
-                              r.total_supply_lbs > 0 ? (r.total_shipped_lbs + r.total_committed_lbs) / r.total_supply_lbs : 0,
-                              py && py.total_supply_lbs > 0 ? (py.total_shipped_lbs + py.total_committed_lbs) / py.total_supply_lbs : 0
+                              r.total_supply_lbs > 0 ? (r.total_supply_lbs - (r.uncommitted_lbs || 0)) / r.total_supply_lbs : 0,
+                              py && py.total_supply_lbs > 0 ? (py.total_supply_lbs - (py.uncommitted_lbs || 0)) / py.total_supply_lbs : 0
                             )}
                           </td>
                         );
