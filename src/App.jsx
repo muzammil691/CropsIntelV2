@@ -16,6 +16,7 @@ const News = lazy(() => import('./pages/News'));
 const Welcome = lazy(() => import('./pages/Welcome'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const CRM = lazy(() => import('./pages/CRM'));
 
 function PageLoader() {
   return (
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { path: '/forecasts', label: 'Forecasts', icon: '🔮' },
   { path: '/news', label: 'News & Intel', icon: '📰' },
   { path: '/analysis', label: 'Analysis', icon: '📈' },
+  { path: '/crm', label: 'CRM & Deals', icon: '🤝' },
   { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/autonomous', label: 'Autonomous', icon: '🤖' }
 ];
@@ -270,6 +272,7 @@ const PAGE_TITLES = {
   '/forecasts': 'Crop Forecasts',
   '/news': 'News & Intelligence',
   '/analysis': 'Market Analysis',
+  '/crm': 'CRM & Trade Pipeline',
   '/reports': 'Position Reports',
   '/autonomous': 'Autonomous Systems',
   '/welcome': 'Welcome',
@@ -327,6 +330,7 @@ export default function App() {
               <Route path="/forecasts" element={<Forecasts />} />
               <Route path="/news" element={<News />} />
               <Route path="/analysis" element={<Analysis />} />
+              <Route path="/crm" element={<CRM />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/autonomous" element={<Autonomous />} />
               <Route path="*" element={<Dashboard />} />

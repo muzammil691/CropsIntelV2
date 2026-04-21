@@ -359,6 +359,68 @@ CREATE TABLE IF NOT EXISTS crm_contacts (
 );
 
 -- ============================================================
+-- CRM Deals / Offers (trade pipeline)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS crm_deals (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  contact_id BIGINT REFERENCES crm_contacts(id),
+  deal_type TEXT NOT NULL DEFAULT 'sell',    -- 'sell' (to buyer), 'buy' (from supplier)
+  stage TEXT NOT NULL DEFAULT 'inquiry',     -- 'inquiry', 'quoted', 'negotiation', 'agreed', 'contracted', 'shipped', 'completed', 'lost'
+
+  -- Product details
+  variety TEXT,                              -- 'Nonpareil', 'Carmel', etc.
+  grade TEXT,                                -- '23/25', 'Extra #1', etc.
+  form TEXT,                                 -- 'Whole Natural', 'Blanched', etc.
+  volume_lbs BIGINT DEFAULT 0,
+  volume_mt DECIMAL(10,2) DEFAULT 0,         -- metric tons
+
+  -- Pricing
+  strata_base_price DECIMAL(10,4),           -- Strata market price at time of offer
+  maxons_price DECIMAL(10,4),                -- MAXONS offered price (base + margin)
+  margin_pct DECIMAL(5,2) DEFAULT 3.00,      -- margin percentage
+  total_value_usd DECIMAL(12,2) DEFAULT 0,
+
+  -- Logistics
+  incoterm TEXT,                             -- 'FOB', 'CIF', 'CFR', 'EXW'
+  destination_country TEXT,
+  destination_port TEXT,
+  estimated_ship_date DATE,
+  actual_ship_date DATE,
+
+  -- Status
+  confidence_pct INT DEFAULT 50,             -- 0-100 deal confidence
+  priority TEXT DEFAULT 'normal',            -- 'urgent', 'high', 'normal', 'low'
+  lost_reason TEXT,                          -- if stage = 'lost'
+
+  -- AI
+  ai_notes TEXT,                             -- AI-generated deal intelligence
+  ai_risk_assessment TEXT,
+
+  notes TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- CRM Activities (interaction log)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS crm_activities (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  contact_id BIGINT REFERENCES crm_contacts(id),
+  deal_id BIGINT REFERENCES crm_deals(id),
+  activity_type TEXT NOT NULL,               -- 'email', 'call', 'meeting', 'whatsapp', 'offer_sent', 'offer_received', 'note', 'stage_change'
+  subject TEXT,
+  description TEXT,
+  outcome TEXT,                              -- 'positive', 'neutral', 'negative', 'follow_up'
+  scheduled_at TIMESTAMPTZ,                  -- for future follow-ups
+  completed_at TIMESTAMPTZ,
+  created_by TEXT DEFAULT 'system',          -- 'system', 'manual', user email
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- User Profiles (extends Supabase auth.users)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS user_profiles (
@@ -421,6 +483,10 @@ CREATE INDEX IF NOT EXISTS idx_crm_contacts_type ON crm_contacts(contact_type, c
 CREATE INDEX IF NOT EXISTS idx_crm_contacts_score ON crm_contacts(relationship_score DESC);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON user_profiles(role, access_tier);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_company ON user_profiles(company);
+CREATE INDEX IF NOT EXISTS idx_crm_deals_contact ON crm_deals(contact_id, stage);
+CREATE INDEX IF NOT EXISTS idx_crm_deals_stage ON crm_deals(stage, created_at);
+CREATE INDEX IF NOT EXISTS idx_crm_activities_contact ON crm_activities(contact_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_crm_activities_deal ON crm_activities(deal_id, created_at);
 
 -- ============================================================
 -- RLS Policies (enable for frontend, bypass with service_role)
@@ -443,6 +509,8 @@ ALTER TABLE email_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_inbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm_contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crm_deals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crm_activities ENABLE ROW LEVEL SECURITY;
 
 -- Public read for anon (dashboard data)
 CREATE POLICY "Public read position reports" ON abc_position_reports FOR SELECT USING (true);
@@ -458,6 +526,8 @@ CREATE POLICY "Public read analyses" ON ai_analyses FOR SELECT USING (true);
 
 CREATE POLICY "Public read pipeline runs" ON pipeline_runs FOR SELECT USING (true);
 CREATE POLICY "Public read crm contacts" ON crm_contacts FOR SELECT USING (true);
+CREATE POLICY "Public read crm deals" ON crm_deals FOR SELECT USING (true);
+CREATE POLICY "Public read crm activities" ON crm_activities FOR SELECT USING (true);
 
 -- User profiles: users can read/update their own profile, admins can read all
 CREATE POLICY "Users read own profile" ON user_profiles FOR SELECT USING (auth.uid() = id);
