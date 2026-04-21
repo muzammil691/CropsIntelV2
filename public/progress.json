@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-22T03:15:00Z",
-  "updatedBy": "Claude AI",
-  "sessionStatus": "building",
-  "overallPercent": 88,
+  "lastUpdated": "2026-04-22T04:30:00Z",
+  "updatedBy": "Claude AI (overnight auth session)",
+  "sessionStatus": "auth-complete",
+  "overallPercent": 90,
   "targetPercent": 95,
   "stats": {
     "pagesLive": 13,
@@ -18,13 +18,17 @@
   "v2Migration": {
     "title": "V2 Migration to cropsintel.com",
     "description": "Complete shift from V1 (Lovable) to V2 (React+Vite) as the production app at cropsintel.com",
-    "overallPercent": 60,
+    "overallPercent": 70,
     "items": [
       { "id": "m1", "name": "V2 app live at cropsintel.net", "status": "done", "date": "2026-04-20" },
       { "id": "m2", "name": "65 V1 users migrated to V2 Supabase", "status": "done", "date": "2026-04-22" },
       { "id": "m3", "name": "4-method login system built (WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email OTP)", "status": "done", "date": "2026-04-22" },
       { "id": "m4", "name": "whatsapp-login edge function created", "status": "done", "date": "2026-04-22" },
       { "id": "m5", "name": "Profile completion banner for missing data", "status": "done", "date": "2026-04-22" },
+      { "id": "m5b", "name": "Forgot Password flow + ResetPassword page", "status": "done", "date": "2026-04-22" },
+      { "id": "m5c", "name": "Supabase email templates branded (Reset, Magic Link, Confirm)", "status": "done", "date": "2026-04-22" },
+      { "id": "m5d", "name": "Supabase redirect URLs configured for cropsintel.net + .com", "status": "done", "date": "2026-04-22" },
+      { "id": "m5e", "name": "Forgot password tested live — email sent to muzammil.akhtar@me.com", "status": "done", "date": "2026-04-22" },
       { "id": "m6", "name": "Deploy whatsapp-login edge function to Supabase", "status": "todo", "priority": "high" },
       { "id": "m6b", "name": "Settings page: profile editing section", "status": "done", "date": "2026-04-22" },
       { "id": "m7", "name": "iOS TestFlight pointing to V2 (cropsintel.net)", "status": "done", "date": "2026-04-22", "note": "Build #39 green, uploaded to TestFlight" },
@@ -165,6 +169,10 @@
         { "name": "5-minute guest timer with blur overlay", "status": "done" },
         { "name": "Registration with rich business profile", "status": "done" },
         { "name": "WhatsApp OTP verify step after registration", "status": "done" },
+        { "name": "Forgot Password flow with branded email", "status": "done" },
+        { "name": "ResetPassword page (handles Supabase callback)", "status": "done" },
+        { "name": "3 Supabase email templates branded (Reset, Magic Link, Confirm)", "status": "done" },
+        { "name": "Supabase Site URL + Redirect URLs configured", "status": "done" },
         { "name": "Deploy whatsapp-login edge function", "status": "wip" },
         { "name": "Admin user management + role enforcement", "status": "done" },
         { "name": "Verification tier workflow", "status": "todo" }
@@ -300,6 +308,7 @@
     }
   ],
   "milestones": [
+    { "date": "2026-04-22", "text": "AUTH OVERNIGHT: Forgot Password flow + ResetPassword page + 3 branded email templates + redirect URLs + live verification" },
     { "date": "2026-04-22", "text": "4-method login system: WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email Magic Link" },
     { "date": "2026-04-22", "text": "65 V1 users migrated to V2 Supabase with full profiles" },
     { "date": "2026-04-22", "text": "whatsapp-login edge function + profile completion banner" },
