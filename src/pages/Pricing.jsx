@@ -200,6 +200,26 @@ export default function Pricing() {
             <option value="all">All Varieties</option>
             {varieties.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
+          {/* CSV Export */}
+          <button
+            onClick={() => {
+              const rows = [['Date','Variety','Grade','Form','Market_USD_per_lb','MAXONS_USD_per_lb','Bid','Ask']];
+              filteredPrices.forEach(p => rows.push([
+                p.price_date, p.variety, p.grade || '', p.form || '',
+                p.price_usd_per_lb, p.maxons_price_per_lb || '',
+                p.bid_price || '', p.ask_price || ''
+              ]));
+              const csv = rows.map(r => r.join(',')).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'cropsintel_pricing.csv'; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-xs text-gray-500 hover:text-green-400 transition-colors px-2 py-1 rounded border border-gray-800 hover:border-green-500/30"
+          >
+            Export CSV
+          </button>
         </div>
       </div>
 

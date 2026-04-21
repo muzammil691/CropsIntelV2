@@ -169,6 +169,27 @@ export default function Forecasts() {
           <span className="text-xs text-gray-600">
             {production.length} crop years | {acreage.length} acreage reports
           </span>
+          <button
+            onClick={() => {
+              const rows = [['Crop_Year','New_Crop_Receipts_Lbs','Bearing_Acres','Non_Bearing_Acres','Total_Acres']];
+              production.forEach(p => {
+                const ac = acreage.find(a => String(a.report_year) === String(p.crop_year).split('/')[0]);
+                rows.push([
+                  p.crop_year, p.actual_lbs || '',
+                  ac?.bearing_acres || '', ac?.non_bearing_acres || '', ac?.total_acres || ''
+                ]);
+              });
+              const csv = rows.map(r => r.join(',')).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'cropsintel_forecasts.csv'; a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-xs text-gray-500 hover:text-green-400 transition-colors px-2 py-1 rounded border border-gray-800 hover:border-green-500/30"
+          >
+            Export CSV
+          </button>
         </div>
       </div>
 

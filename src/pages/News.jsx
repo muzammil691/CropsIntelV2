@@ -183,6 +183,27 @@ export default function News() {
         <span className="text-xs text-gray-600 ml-2">
           Showing {filtered.length} of {news.length} articles
         </span>
+        <button
+          onClick={() => {
+            const rows = [['Date','Title','Source','Category','Sentiment','Market_Impact','Summary','URL']];
+            filtered.forEach(n => rows.push([
+              n.published_date || '', `"${(n.title || '').replace(/"/g, '""')}"`,
+              n.source || '', n.category || '', n.ai_sentiment || '',
+              `"${(n.ai_market_impact || '').replace(/"/g, '""')}"`,
+              `"${(n.summary || '').replace(/"/g, '""')}"`,
+              n.source_url || ''
+            ]));
+            const csv = rows.map(r => r.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'cropsintel_news_intel.csv'; a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="text-xs text-gray-500 hover:text-green-400 transition-colors px-2 py-1 rounded border border-gray-800 hover:border-green-500/30 ml-auto"
+        >
+          Export CSV
+        </button>
       </div>
 
       {/* News Feed */}
