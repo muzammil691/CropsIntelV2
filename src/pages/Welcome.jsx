@@ -195,9 +195,11 @@ export default function Welcome() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Link to="/login" className="text-xs text-gray-400 hover:text-white transition-colors hidden sm:block">Sign In</Link>
-                <Link to="/register" className="px-4 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg text-xs font-medium transition-colors border border-green-500/20">
-                  Get Started
+                <Link to="/login" className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-xs font-semibold transition-all shadow-md shadow-green-500/20">
+                  Sign In
+                </Link>
+                <Link to="/register" className="px-4 py-2 bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 rounded-lg text-xs font-medium transition-colors border border-gray-700 hidden sm:block">
+                  Register
                 </Link>
               </div>
             </div>
@@ -233,16 +235,22 @@ export default function Welcome() {
             <HeroReveal delay={450}>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
                 <Link
-                  to="/dashboard"
+                  to="/login"
                   className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-green-500/20 hover:shadow-green-500/30"
                 >
-                  Enter Dashboard — Free Preview
+                  Sign In to Your Account
                 </Link>
                 <Link
                   to="/register"
                   className="w-full sm:w-auto px-8 py-3.5 bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 rounded-xl text-sm font-medium transition-colors border border-gray-700/80"
                 >
                   Create Free Account
+                </Link>
+                <Link
+                  to="/dashboard"
+                  className="w-full sm:w-auto px-6 py-3 text-gray-500 hover:text-gray-300 text-sm transition-colors"
+                >
+                  Preview as Guest
                 </Link>
               </div>
             </HeroReveal>
@@ -533,14 +541,14 @@ export default function Welcome() {
           <div className="text-center">
             <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">Ready to Trade Smarter?</h3>
             <p className="text-sm text-gray-400 mb-6 max-w-lg mx-auto">
-              Join MAXONS and the world's most informed almond traders. Free preview — no credit card required.
+              Join MAXONS and the world's most informed almond traders. Sign in with your existing account or create a new one.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                to="/dashboard"
+                to="/login"
                 className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-green-500/20"
               >
-                Enter Dashboard
+                Sign In
               </Link>
               <Link
                 to="/register"

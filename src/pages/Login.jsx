@@ -16,8 +16,8 @@ export default function Login() {
   const { signIn, signInWithOTP, sendLoginOTP } = useAuth();
   const navigate = useNavigate();
 
-  // Active login method
-  const [method, setMethod] = useState('whatsapp_password');
+  // Active login method — email+password default (V1 users)
+  const [method, setMethod] = useState('email_password');
 
   // Shared fields
   const [phone, setPhone] = useState('');
@@ -216,9 +216,9 @@ export default function Login() {
   // RENDER
   // ════════════════════════════════════════════════════════
   const methods = [
+    { id: 'email_password', icon: <EmailIcon />, label: 'Email + Password' },
     { id: 'whatsapp_password', icon: <WhatsAppIcon />, label: 'WhatsApp + Password' },
     { id: 'whatsapp_otp', icon: <WhatsAppIcon />, label: 'WhatsApp OTP' },
-    { id: 'email_password', icon: <EmailIcon />, label: 'Email + Password' },
     { id: 'email_otp', icon: <EmailIcon />, label: 'Email Magic Link' },
   ];
 
