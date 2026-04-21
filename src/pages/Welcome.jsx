@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
 /* ── Animated counter hook ── */
-function useCounter(end, duration = 2000) {
+function useCounter(end, duration = 2000, startDelay = 0) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
   const started = useRef(false);
@@ -14,21 +14,23 @@ function useCounter(end, duration = 2000) {
       ([entry]) => {
         if (entry.isIntersecting && !started.current) {
           started.current = true;
-          const start = performance.now();
-          const step = (now) => {
-            const progress = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            setCount(Math.floor(eased * end));
-            if (progress < 1) requestAnimationFrame(step);
-          };
-          requestAnimationFrame(step);
+          setTimeout(() => {
+            const start = performance.now();
+            const step = (now) => {
+              const progress = Math.min((now - start) / duration, 1);
+              const eased = 1 - Math.pow(1 - progress, 3);
+              setCount(Math.floor(eased * end));
+              if (progress < 1) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+          }, startDelay);
         }
       },
-      { threshold: 0.3 }
+      { threshold: 0.05 }
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [end, duration]);
+  }, [end, duration, startDelay]);
 
   return [count, ref];
 }
@@ -149,10 +151,10 @@ const CAPABILITIES = [
 ];
 
 export default function Welcome() {
-  const [yearsCount, yearsRef] = useCounter(10, 1800);
-  const [reportsCount, reportsRef] = useCounter(116, 2200);
-  const [countriesCount, countriesRef] = useCounter(50, 2000);
-  const [cropYearsCount, cropYearsRef] = useCounter(9, 1600);
+  const [yearsCount, yearsRef] = useCounter(10, 1800, 800);
+  const [reportsCount, reportsRef] = useCounter(116, 2200, 900);
+  const [countriesCount, countriesRef] = useCounter(50, 2000, 1000);
+  const [cropYearsCount, cropYearsRef] = useCounter(9, 1600, 1100);
   const [chatStep, setChatStep] = useState(0);
 
   useEffect(() => {
