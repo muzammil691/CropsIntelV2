@@ -143,6 +143,15 @@ export default function News() {
         </div>
       </div>
 
+      {/* How to Read This Page */}
+      <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          Every article is auto-scraped from industry sources and analyzed by AI for market relevance. The sentiment arrows show whether the news is likely bullish (price-supportive), bearish (price-negative), or neutral.
+          The "Market impact" line on each article explains WHY it matters for trading decisions. Filter by category to focus on trade policy, crop conditions, or regulatory changes that affect your positions.
+        </p>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <select

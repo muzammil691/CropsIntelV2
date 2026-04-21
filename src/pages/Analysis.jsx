@@ -18,7 +18,7 @@ const CROP_COLORS = {
   '2025/2026': '#3b82f6',
 };
 
-function ChartCard({ title, subtitle, children }) {
+function ChartCard({ title, subtitle, insight, children }) {
   return (
     <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
       <div className="mb-4">
@@ -26,6 +26,11 @@ function ChartCard({ title, subtitle, children }) {
         {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
       </div>
       {children}
+      {insight && (
+        <div className="mt-3 pt-3 border-t border-gray-800">
+          <p className="text-xs text-gray-400 leading-relaxed">{insight}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -153,6 +158,16 @@ export default function Analysis() {
         <p className="text-gray-500 text-sm mt-1">10-year almond industry trends and crop year comparisons</p>
       </div>
 
+      {/* How to Read This Page */}
+      <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4 mb-6">
+        <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          This page overlays multiple crop years side by side so you can spot patterns and anomalies. Select crop years below to compare them.
+          The almond crop year runs August to July. Each chart includes context explaining what the data means for trading decisions.
+          Covering {allCropYears.length} crop years ({allCropYears[0]} to {allCropYears[allCropYears.length - 1]}) with {reports.length} monthly data points from ABC Position Reports.
+        </p>
+      </div>
+
       {/* Crop Year Selector */}
       <div className="flex flex-wrap gap-2 mb-6">
         {allCropYears.map(cy => (
@@ -189,7 +204,7 @@ export default function Analysis() {
 
       {/* Row 1: Shipment Comparison + Supply Over Crop Years */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Shipments by Crop Year" subtitle="Monthly total shipments overlaid by crop year">
+        <ChartCard title="Shipments by Crop Year" subtitle="Monthly total shipments overlaid by crop year" insight="Overlaying shipments across crop years reveals seasonal patterns and year-over-year momentum. If a current crop year line tracks above prior years, demand is running hot. If it falls below, the market may be slowing or buyers are delaying purchases.">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={cropComparison}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -212,7 +227,7 @@ export default function Analysis() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="New Commitments by Crop Year" subtitle="Monthly new sales commitments">
+        <ChartCard title="New Commitments by Crop Year" subtitle="Monthly new sales commitments" insight="New commitments represent fresh buyer orders each month. A surge in commitments signals strong forward demand and potential price support. A slowdown may indicate buyer hesitation, often preceding price softening or a wait-and-see market.">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={cropComparison}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -238,7 +253,7 @@ export default function Analysis() {
 
       {/* Row 2: Uncommitted Trend + Export vs Domestic */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Uncommitted Inventory" subtitle="Available inventory by crop year month">
+        <ChartCard title="Uncommitted Inventory" subtitle="Available inventory by crop year month" insight="Uncommitted inventory is the almond industry's bargaining chip. When it's high, buyers have leverage and prices tend to soften. When it drops fast, sellers gain the upper hand. Compare the drawdown curve across years to gauge how tight the current market really is.">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={cropComparison}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -262,7 +277,7 @@ export default function Analysis() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Export vs Domestic Ratio" subtitle="Export share of total shipments over time">
+        <ChartCard title="Export vs Domestic Ratio" subtitle="Export share of total shipments over time" insight="California almonds serve both domestic and global markets. When the export share rises, international demand is driving the market. A shift toward domestic may signal trade barriers, currency effects, or stronger US consumption. For traders like MAXONS, a growing export share means more opportunity in your markets.">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={exportRatio}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -282,7 +297,7 @@ export default function Analysis() {
 
       {/* Row 3: Full timeline shipments + committed */}
       <div className="mb-6">
-        <ChartCard title="10-Year Shipment & Commitment Trend" subtitle="Monthly shipments vs outstanding commitments across all crop years">
+        <ChartCard title="10-Year Shipment & Commitment Trend" subtitle="Monthly shipments vs outstanding commitments across all crop years" insight="This long-range view shows the industry's heartbeat. The green bars (shipments) reveal seasonal peaks, while the blue line (commitments) shows how far ahead buyers are booking. The dashed amber line (uncommitted) is the safety net. When all three converge, the market is tight and prices typically firm up.">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={monthlyTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -303,7 +318,7 @@ export default function Analysis() {
       </div>
 
       {/* Row 4: Crop Year Summary Table */}
-      <ChartCard title="Crop Year Summary" subtitle="Key metrics by crop year">
+      <ChartCard title="Crop Year Summary" subtitle="Key metrics by crop year" insight="This table is your quick reference for comparing crop years at a glance. Watch Total Supply changes year-over-year: a big jump usually softens prices, while a drop tightens the market. The Avg Ship/Mo column shows market velocity, and Peak Ship reveals the seasonal high point when logistics capacity matters most.">
         <div className="flex justify-end mb-3">
           <button
             onClick={() => {

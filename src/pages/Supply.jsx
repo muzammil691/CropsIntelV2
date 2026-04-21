@@ -18,7 +18,7 @@ const CROP_COLORS = {
   '2025/2026': '#3b82f6',
 };
 
-function ChartCard({ title, subtitle, children }) {
+function ChartCard({ title, subtitle, insight, children }) {
   return (
     <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
       <div className="mb-4">
@@ -26,6 +26,11 @@ function ChartCard({ title, subtitle, children }) {
         {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
       </div>
       {children}
+      {insight && (
+        <div className="mt-3 pt-3 border-t border-gray-800">
+          <p className="text-xs text-gray-400 leading-relaxed">{insight}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -285,6 +290,28 @@ export default function Supply() {
         </div>
       )}
 
+      {/* Market Context — explains what the numbers mean */}
+      {latestMetrics && (
+        <div className="mb-6 bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-white mb-2">What This Means for Traders</h3>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            {parseFloat(latestMetrics.uncommittedPct) > 20
+              ? `With ${latestMetrics.uncommittedPct}% of supply still uncommitted (${(latestMetrics.uncommitted / 1e6).toFixed(0)}M lbs), the market has adequate availability. Buyers have negotiating leverage, and there is no urgency to lock in positions. However, watch for seasonal acceleration in Q2/Q3 when commitment velocity typically increases.`
+              : parseFloat(latestMetrics.uncommittedPct) > 10
+              ? `Uncommitted inventory at ${latestMetrics.uncommittedPct}% (${(latestMetrics.uncommitted / 1e6).toFixed(0)}M lbs) signals a moderately tight market. Forward buyers should begin securing positions, as remaining availability will decline through the crop year. Export demand typically intensifies from here.`
+              : `At just ${latestMetrics.uncommittedPct}% uncommitted, the market is tight. Remaining availability is limited and prices may firm. Buyers should act promptly to secure needed volumes, particularly for popular export varieties.`
+            }
+            {' '}The commitment rate of {latestMetrics.commitRate}% and ship rate of {latestMetrics.shipRate}% together indicate
+            {parseFloat(latestMetrics.commitRate) > parseFloat(latestMetrics.shipRate) * 2
+              ? ' strong forward demand well ahead of actual shipments — a bullish signal.'
+              : parseFloat(latestMetrics.commitRate) > parseFloat(latestMetrics.shipRate)
+              ? ' healthy forward commitments running ahead of shipments — balanced market conditions.'
+              : ' shipments tracking close to commitments — indicating prompt demand rather than forward buying.'
+            }
+          </p>
+        </div>
+      )}
+
       {/* Crop Year Selector */}
       <div className="flex flex-wrap gap-2 mb-6">
         {allCropYears.map(cy => (
@@ -321,7 +348,7 @@ export default function Supply() {
 
       {/* Row 1: Commitment Rate + Draw-Down */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Commitment Rate by Crop Year" subtitle="% of total supply committed — higher = tighter market">
+        <ChartCard title="Commitment Rate by Crop Year" subtitle="% of total supply committed — higher = tighter market" insight="The commitment rate shows how much of the total crop has been sold forward. When this line rises steeply early in the crop year, it signals strong buyer confidence and potential supply tightness later. A rate above 75% (red line) means most supply is spoken for.">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={commitmentRateData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -345,7 +372,7 @@ export default function Supply() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Inventory Draw-Down Curve" subtitle="Uncommitted % remaining — steeper = faster selling">
+        <ChartCard title="Inventory Draw-Down Curve" subtitle="Uncommitted % remaining — steeper = faster selling" insight="This chart tracks how quickly available inventory is being claimed. A steeper curve means demand is absorbing supply faster. When inventory drops below 20% (amber line), remaining buyers face limited options and potentially higher prices. Compare crop years to see if this year is selling faster or slower than prior years.">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={drawDownData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -373,7 +400,7 @@ export default function Supply() {
 
       {/* Row 2: Supply Utilization + Commitment Velocity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Supply Utilization (Shipped %)" subtitle="Cumulative shipments as % of total supply">
+        <ChartCard title="Supply Utilization (Shipped %)" subtitle="Cumulative shipments as % of total supply" insight="This shows how much of the crop has actually been shipped (not just committed). A gap between commitment rate and utilization rate means buyers have committed but not yet taken delivery — common in export markets where shipping logistics add lead time.">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={utilizationData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -396,7 +423,7 @@ export default function Supply() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Commitment Velocity" subtitle="New commitments as % of uncommitted inventory — selling speed">
+        <ChartCard title="Commitment Velocity" subtitle="New commitments as % of uncommitted inventory — selling speed" insight="Velocity measures the rate at which remaining supply is being committed each month. High velocity (big spikes) means buyers are aggressively securing positions — often a leading indicator of price support. Declining velocity may signal buyer hesitation or sufficient coverage.">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={velocityData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -422,7 +449,7 @@ export default function Supply() {
 
       {/* Row 3: Forward Coverage Ratio */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Forward Coverage Ratio" subtitle="Committed ÷ Shipped — months of forward sales cover">
+        <ChartCard title="Forward Coverage Ratio" subtitle="Committed ÷ Shipped — months of forward sales cover" insight="This ratio shows how many times over current shipments are covered by commitments. A ratio above 2.5x means strong forward demand; below 2x suggests the market may be shifting to more spot/prompt buying rather than forward planning.">
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={coverageData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -446,7 +473,7 @@ export default function Supply() {
         </ChartCard>
 
         {/* Supply Balance Timeline */}
-        <ChartCard title="Supply Balance Timeline" subtitle="10-year supply vs committed vs shipped">
+        <ChartCard title="Supply Balance Timeline" subtitle="10-year supply vs committed vs shipped" insight="The long-term timeline shows how California almond supply has grown over the decade. The gap between total supply and committed volumes represents available inventory. A narrowing gap over time indicates the industry is becoming more demand-driven.">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={supplyBalance}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -463,7 +490,7 @@ export default function Supply() {
       </div>
 
       {/* Row 4: Crop Year Supply Health Table */}
-      <ChartCard title="Supply Health by Crop Year" subtitle="Key supply-demand ratios at latest available month per crop year">
+      <ChartCard title="Supply Health by Crop Year" subtitle="Key supply-demand ratios at latest available month per crop year" insight="Compare each crop year's supply health at the same point in the marketing year. This helps identify whether the current crop year is tighter or looser than historical norms — essential context for pricing and buying decisions.">
         <div className="flex justify-end mb-3">
           <button
             onClick={() => {

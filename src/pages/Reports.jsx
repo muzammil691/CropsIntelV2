@@ -207,6 +207,17 @@ export default function Reports() {
         </div>
       </div>
 
+      {/* How to Read This Page */}
+      <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          This is the raw ABC Position Report data — the official monthly snapshot of California's almond industry.
+          "Supply" = Carry-In + Receipts (total available). "Shipped" = actual deliveries that month. "Committed" = sold but not yet shipped. "Uncommitted" = available to sell.
+          The "Sold %" column shows what fraction of total supply has been committed or shipped. Higher Sold % = tighter market = stronger pricing power for sellers.
+          Use crop year and month filters to drill into specific periods. Export CSV for your own analysis.
+        </p>
+      </div>
+
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

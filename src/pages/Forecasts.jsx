@@ -11,7 +11,7 @@ const COLORS = {
   purple: '#a855f7', cyan: '#06b6d4', emerald: '#10b981'
 };
 
-function ChartCard({ title, subtitle, children }) {
+function ChartCard({ title, subtitle, insight, children }) {
   return (
     <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
       <div className="mb-4">
@@ -19,6 +19,11 @@ function ChartCard({ title, subtitle, children }) {
         {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
       </div>
       {children}
+      {insight && (
+        <div className="mt-3 pt-3 border-t border-gray-800">
+          <p className="text-xs text-gray-400 leading-relaxed">{insight}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -133,6 +138,15 @@ export default function Forecasts() {
         </div>
       </div>
 
+      {/* How to Read This Page */}
+      <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          Forecasts are the most market-moving data in the almond industry. Each May, ABC releases the Subjective Forecast (grower surveys), and in July the more reliable Objective Forecast (field measurements).
+          These numbers set the tone for the entire trading year. A forecast significantly above or below the prior year triggers price adjustments across the supply chain. Acreage trends show the structural supply picture over decades.
+        </p>
+      </div>
+
       {/* Top Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
@@ -164,7 +178,7 @@ export default function Forecasts() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Forecast History */}
-        <ChartCard title="Crop Forecast History" subtitle="Subjective (May) vs Objective (July) vs Community estimates">
+        <ChartCard title="Crop Forecast History" subtitle="Subjective (May) vs Objective (July) vs Community estimates" insight="ABC publishes two official forecasts each year: the Subjective in May (grower surveys) and the Objective in July (field measurements). The Objective is typically more accurate. Bountiful.ag community estimates offer an early crowd-sourced view. A big crop forecast means more supply and typically softer prices, while a small crop tightens the market.">
           {forecastChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={forecastChartData}>
@@ -194,7 +208,7 @@ export default function Forecasts() {
         </ChartCard>
 
         {/* Acreage Trends */}
-        <ChartCard title="Bearing Acreage Trends" subtitle="USDA-NASS + Land IQ reports over time">
+        <ChartCard title="Bearing Acreage Trends" subtitle="USDA-NASS + Land IQ reports over time" insight="Bearing acreage is the long-term supply indicator. More bearing acres means higher potential production in future years. Non-bearing acres (young trees not yet producing) signal what's coming 3-4 years out. If non-bearing is declining, future supply growth is slowing, which is bullish for prices long-term.">
           {acreageChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={acreageChartData}>
@@ -226,7 +240,7 @@ export default function Forecasts() {
 
       {/* Sentiment Timeline */}
       {sentiment.length > 0 && (
-        <ChartCard title="Market Sentiment Timeline" subtitle="AI-analyzed sentiment from Bountiful.ag community estimates">
+        <ChartCard title="Market Sentiment Timeline" subtitle="AI-analyzed sentiment from Bountiful.ag community estimates" insight="Sentiment is the market's mood. Bullish sentiment means the community expects prices to rise (tight supply, strong demand). Bearish means they expect softening. These crowd signals often lead price moves by weeks, giving traders an early warning to position.">
           <div className="space-y-3">
             {sentiment.map((s, i) => (
               <div key={i} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">

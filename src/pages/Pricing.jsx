@@ -20,7 +20,7 @@ const VARIETY_COLORS = {
   'California': '#10b981',
 };
 
-function ChartCard({ title, subtitle, children }) {
+function ChartCard({ title, subtitle, insight, children }) {
   return (
     <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
       <div className="mb-4">
@@ -28,6 +28,11 @@ function ChartCard({ title, subtitle, children }) {
         {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
       </div>
       {children}
+      {insight && (
+        <div className="mt-3 pt-3 border-t border-gray-800">
+          <p className="text-xs text-gray-400 leading-relaxed">{insight}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -177,6 +182,16 @@ export default function Pricing() {
         </div>
       </div>
 
+      {/* How to Read This Page */}
+      <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          Prices come from Strata Markets, the primary exchange for California almond trading. Each variety card shows the latest market price alongside the MAXONS price (market + 3% margin).
+          The trend arrow shows direction vs. the previous data point. Switch between card, table, and chart views to analyze from different angles.
+          {varieties.length > 0 ? ` Currently tracking ${varieties.length} varieties across ${prices.length} data points.` : ''}
+        </p>
+      </div>
+
       {/* Summary Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
@@ -224,7 +239,7 @@ export default function Pricing() {
       )}
 
       {viewMode === 'table' && (
-        <ChartCard title="Price History" subtitle="All recorded prices with MAXONS margin">
+        <ChartCard title="Price History" subtitle="All recorded prices with MAXONS margin" insight="The full price history shows how each variety's price has moved over time. Watch the spread between bid and ask prices — a narrow spread means a liquid, active market. Wide spreads suggest uncertainty. The MAXONS column shows your selling price with the 3% margin pre-applied.">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -262,7 +277,7 @@ export default function Pricing() {
       )}
 
       {viewMode === 'chart' && (
-        <ChartCard title="Price Trends" subtitle="Market prices over time by variety">
+        <ChartCard title="Price Trends" subtitle="Market prices over time by variety" insight="Price trends reveal the direction of the market. Parallel lines mean varieties are moving together (macro-driven). Diverging lines suggest variety-specific demand shifts — Nonpareil premium may widen or narrow vs. other varieties. Time your purchases when lines are trending down and sell positions when they curve up.">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={chartData}>

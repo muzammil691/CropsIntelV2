@@ -17,7 +17,7 @@ const DEST_COLORS = [
   '#14b8a6', '#eab308', '#f97316', '#ec4899', '#84cc16'
 ];
 
-function ChartCard({ title, subtitle, children }) {
+function ChartCard({ title, subtitle, insight, children }) {
   return (
     <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
       <div className="mb-4">
@@ -25,6 +25,11 @@ function ChartCard({ title, subtitle, children }) {
         {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
       </div>
       {children}
+      {insight && (
+        <div className="mt-3 pt-3 border-t border-gray-800">
+          <p className="text-xs text-gray-400 leading-relaxed">{insight}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -215,6 +220,15 @@ export default function Destinations() {
         </button>
       </div>
 
+      {/* How to Read This Page */}
+      <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4 mb-6">
+        <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          This page maps where California almonds go after leaving the handler. Understanding destination flows helps traders identify growing markets, spot demand shifts, and time offers to buyers in specific regions.
+          Select a crop year to see that year's trade flow breakdown. Data covers {allCropYears.length} crop years with {shipments.length} destination-level records from ABC Shipment Reports.
+        </p>
+      </div>
+
       {/* Crop Year Selector */}
       <div className="flex flex-wrap gap-2 mb-6">
         {allCropYears.map(cy => (
@@ -234,7 +248,7 @@ export default function Destinations() {
 
       {/* Row 1: Export/Domestic Pie + Monthly Split */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Export vs Domestic" subtitle={`${selectedCropYear} — total shipment volume split`}>
+        <ChartCard title="Export vs Domestic" subtitle={`${selectedCropYear} — total shipment volume split`} insight="The export/domestic split tells you where the industry's revenue center of gravity lies. When exports dominate, international pricing dynamics and shipping logistics matter more. For MAXONS as an international trader, a higher export share means more competitive supply flowing into your buying channels.">
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="50%" height={220}>
               <PieChart>
@@ -271,7 +285,7 @@ export default function Destinations() {
           </div>
         </ChartCard>
 
-        <ChartCard title="Monthly Export vs Domestic" subtitle={`${selectedCropYear} — monthly shipment trend`}>
+        <ChartCard title="Monthly Export vs Domestic" subtitle={`${selectedCropYear} — monthly shipment trend`} insight="Monthly patterns reveal seasonal demand waves. Export shipments typically peak Oct-Dec as international buyers stock up for holiday seasons and Ramadan preparation. Domestic demand tends to be steadier. If export bars suddenly drop mid-season, it could signal trade disruption or currency headwinds.">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={monthlyExpDom}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -288,7 +302,7 @@ export default function Destinations() {
 
       {/* Row 2: Top Destinations Bar + Monthly by Destination */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Top Export Destinations" subtitle={`${selectedCropYear} — by total volume`}>
+        <ChartCard title="Top Export Destinations" subtitle={`${selectedCropYear} — by total volume`} insight="These are your competitors' customers. The ranking shows which countries are the biggest buyers. India, Spain, and Germany consistently lead, but shifts in the rankings signal new opportunities. A country climbing the list may be worth pursuing before prices firm up in that market.">
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={topDestinations} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -304,7 +318,7 @@ export default function Destinations() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Monthly Flow — Top 5 Destinations" subtitle={`${selectedCropYear} — monthly exports by country`}>
+        <ChartCard title="Monthly Flow — Top 5 Destinations" subtitle={`${selectedCropYear} — monthly exports by country`} insight="This stacked view shows the rhythm of each major market. India often has strong early-season buying, while European markets may peak later. Watch for months where a single country dominates the flow, as that concentration can create pricing pressure.">
           <ResponsiveContainer width="100%" height={320}>
             <AreaChart data={monthlyByDest}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
@@ -332,7 +346,7 @@ export default function Destinations() {
 
       {/* Row 3: YoY Comparison Table */}
       {yoyComparison.length > 0 && (
-        <ChartCard title="Year-over-Year Comparison" subtitle={`${selectedCropYear} vs prior crop year — top export destinations`}>
+        <ChartCard title="Year-over-Year Comparison" subtitle={`${selectedCropYear} vs prior crop year — top export destinations`} insight="Year-over-year changes reveal which markets are expanding and which are contracting. Countries with strong positive growth are absorbing more supply, potentially supporting prices. Sharp declines may indicate economic issues, trade barriers, or competition from other origins like Australia or Spain.">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -376,7 +390,7 @@ export default function Destinations() {
 
       {/* Full Destinations Table */}
       <div className="mt-6">
-        <ChartCard title="All Export Destinations" subtitle={`${selectedCropYear} — complete country breakdown`}>
+        <ChartCard title="All Export Destinations" subtitle={`${selectedCropYear} — complete country breakdown`} insight="The full table gives you the complete picture. Countries with high share but few active months may be bulk seasonal buyers. Countries with consistent monthly presence are steady demand anchors. Use this to find underserved markets where MAXONS could build relationships.">
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-gray-900">
