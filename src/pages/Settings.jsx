@@ -18,14 +18,43 @@ const colorMap = {
 };
 
 export default function Settings() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, profile: authProfile } = useAuth();
   const [keys, setKeys] = useState({ anthropic: '', openai: '', gemini: '', elevenlabs: '' });
   const [aiStatus, setAiStatus] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Profile editing state
+  const [profile, setProfile] = useState({
+    full_name: '', email: '', company: '', country: '', city: '',
+    phone: '', whatsapp_number: '', role: 'buyer', trade_type: '',
+    annual_volume: '', website: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
+
   useEffect(() => { loadSettings(); }, []);
+
+  // Load profile when auth profile is available
+  useEffect(() => {
+    if (authProfile) {
+      setProfile(prev => ({
+        ...prev,
+        full_name: authProfile.full_name || '',
+        email: authProfile.email || user?.email || '',
+        company: authProfile.company || '',
+        country: authProfile.country || '',
+        city: authProfile.city || '',
+        phone: authProfile.phone || '',
+        whatsapp_number: authProfile.whatsapp_number || '',
+        role: authProfile.role || 'buyer',
+        trade_type: authProfile.trade_type || '',
+        annual_volume: authProfile.annual_volume || '',
+        website: authProfile.website || '',
+      }));
+    }
+  }, [authProfile, user]);
 
   async function loadSettings() {
     setLoading(true);
@@ -88,6 +117,36 @@ export default function Settings() {
     setTimeout(() => setSaveMsg(''), 4000);
   }
 
+  async function saveProfile() {
+    if (!user) return;
+    setProfileSaving(true);
+    setProfileMsg('');
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          full_name: profile.full_name.trim(),
+          company: profile.company.trim(),
+          country: profile.country.trim(),
+          city: profile.city.trim(),
+          phone: profile.phone.trim(),
+          whatsapp_number: profile.whatsapp_number.trim(),
+          role: profile.role,
+          trade_type: profile.trade_type.trim(),
+          annual_volume: profile.annual_volume.trim(),
+          website: profile.website.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+      if (error) throw error;
+      setProfileMsg('Profile saved successfully.');
+    } catch (err) {
+      setProfileMsg('Error: ' + err.message);
+    }
+    setProfileSaving(false);
+    setTimeout(() => setProfileMsg(''), 4000);
+  }
+
   function maskKey(key) {
     if (!key || key.length < 12) return key;
     return key.slice(0, 6) + '...' + key.slice(-4);
@@ -110,6 +169,68 @@ export default function Settings() {
         <h1 className="text-2xl font-bold text-white">System Settings</h1>
         <p className="text-sm text-gray-500 mt-1">Configure AI systems, API keys, and platform preferences</p>
       </div>
+
+      {/* User Profile */}
+      {isAuthenticated && (
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+          <h2 className="text-lg font-semibold text-white mb-4">Your Profile</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[
+              { key: 'full_name', label: 'Full Name', placeholder: 'Your full name' },
+              { key: 'email', label: 'Email', placeholder: 'email@example.com', disabled: true, note: 'Contact admin to change' },
+              { key: 'company', label: 'Company', placeholder: 'Company name' },
+              { key: 'whatsapp_number', label: 'WhatsApp Number', placeholder: '+971501234567' },
+              { key: 'phone', label: 'Phone', placeholder: '+971501234567' },
+              { key: 'country', label: 'Country', placeholder: 'UAE' },
+              { key: 'city', label: 'City', placeholder: 'Dubai' },
+              { key: 'trade_type', label: 'Trade Type', placeholder: 'Importer, Exporter, Broker...' },
+              { key: 'annual_volume', label: 'Annual Volume', placeholder: '1000 MT' },
+              { key: 'website', label: 'Website', placeholder: 'https://...' },
+            ].map(f => (
+              <div key={f.key}>
+                <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
+                <input
+                  type="text"
+                  value={profile[f.key]}
+                  onChange={e => !f.disabled && setProfile(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  placeholder={f.placeholder}
+                  disabled={f.disabled}
+                  className={`w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50 ${f.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                />
+                {f.note && <p className="text-[10px] text-gray-600 mt-0.5">{f.note}</p>}
+              </div>
+            ))}
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Role</label>
+              <select
+                value={profile.role}
+                onChange={e => setProfile(prev => ({ ...prev, role: e.target.value }))}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50"
+              >
+                <option value="buyer">Buyer</option>
+                <option value="seller">Seller</option>
+                <option value="broker">Broker</option>
+                <option value="analyst">Analyst</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-5">
+            <button
+              onClick={saveProfile}
+              disabled={profileSaving}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              {profileSaving ? 'Saving...' : 'Save Profile'}
+            </button>
+            {profileMsg && (
+              <span className={`text-xs ${profileMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                {profileMsg}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* AI Systems Overview */}
       <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
