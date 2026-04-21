@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { seedCRM } from '../lib/seed-crm';
+import { sendWhatsAppMessage } from '../lib/whatsapp';
+import { getV2UpgradeWhatsAppMessage, getV2UpgradeEmailHTML } from '../lib/notifications';
 
 const DEAL_STAGES = ['inquiry', 'quoted', 'negotiation', 'agreed', 'contracted', 'shipped', 'completed', 'lost'];
 const STAGE_COLORS = {
@@ -83,6 +85,10 @@ export default function CRM() {
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvResult, setCsvResult] = useState(null);
   const csvFileRef = useRef(null);
+  const [inviting, setInviting] = useState({}); // { contactId: 'sending'|'sent'|'error' }
+  const [inviteMsg, setInviteMsg] = useState(null);
+  const [bulkInviting, setBulkInviting] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
 
   useEffect(() => { loadCRM(); loadUsers(); }, []);
 
@@ -138,6 +144,113 @@ export default function CRM() {
         .order('created_at', { ascending: false });
       if (!error && data) setUsers(data);
     } catch { /* table may not exist */ }
+  }
+
+  // ─── Invitation System ──────────────────────────────────────
+  async function sendInviteWhatsApp(contact) {
+    if (!contact.whatsapp && !contact.phone) {
+      setInviteMsg({ type: 'error', text: `${contact.contact_name || contact.company_name} has no WhatsApp/phone number` });
+      return;
+    }
+    const phone = contact.whatsapp || contact.phone;
+    setInviting(prev => ({ ...prev, [contact.id]: 'sending' }));
+    try {
+      const msg = getV2UpgradeWhatsAppMessage(contact.contact_name || contact.company_name);
+      await sendWhatsAppMessage(phone, msg);
+      // Log activity
+      await supabase.from('crm_activities').insert({
+        contact_id: contact.id,
+        activity_type: 'whatsapp',
+        subject: 'V2 platform invitation sent via WhatsApp',
+        outcome: 'positive',
+      });
+      setInviting(prev => ({ ...prev, [contact.id]: 'sent' }));
+      setInviteMsg({ type: 'success', text: `Invitation sent to ${contact.contact_name || contact.company_name}` });
+    } catch (err) {
+      setInviting(prev => ({ ...prev, [contact.id]: 'error' }));
+      setInviteMsg({ type: 'error', text: `Failed: ${err.message}` });
+    }
+  }
+
+  async function sendInviteEmail(contact) {
+    if (!contact.email) {
+      setInviteMsg({ type: 'error', text: `${contact.contact_name || contact.company_name} has no email address` });
+      return;
+    }
+    setInviting(prev => ({ ...prev, [contact.id]: 'sending' }));
+    try {
+      // Use Supabase edge function for email sending
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          to: contact.email,
+          subject: 'CropsIntel V2 is Live — Your Almond Intelligence Platform',
+          html: getV2UpgradeEmailHTML(contact.contact_name || contact.company_name),
+        }),
+      });
+      const data = await res.json();
+      if (!data.success && !res.ok) throw new Error(data.error || 'Email send failed');
+      // Log activity
+      await supabase.from('crm_activities').insert({
+        contact_id: contact.id,
+        activity_type: 'email',
+        subject: 'V2 platform invitation sent via email',
+        outcome: 'positive',
+      });
+      setInviting(prev => ({ ...prev, [contact.id]: 'sent' }));
+      setInviteMsg({ type: 'success', text: `Email invitation sent to ${contact.contact_name || contact.company_name}` });
+    } catch (err) {
+      setInviting(prev => ({ ...prev, [contact.id]: 'error' }));
+      setInviteMsg({ type: 'error', text: `Email failed: ${err.message}` });
+    }
+  }
+
+  async function sendBulkInvites(method = 'whatsapp') {
+    setBulkInviting(true);
+    setBulkResult(null);
+    let sent = 0, failed = 0, skipped = 0;
+    for (const contact of contacts) {
+      if (inviting[contact.id] === 'sent') { skipped++; continue; }
+      if (method === 'whatsapp' && !contact.whatsapp && !contact.phone) { skipped++; continue; }
+      if (method === 'email' && !contact.email) { skipped++; continue; }
+
+      try {
+        if (method === 'whatsapp') {
+          const phone = contact.whatsapp || contact.phone;
+          await sendWhatsAppMessage(phone, getV2UpgradeWhatsAppMessage(contact.contact_name || contact.company_name));
+        } else {
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              to: contact.email,
+              subject: 'CropsIntel V2 is Live — Your Almond Intelligence Platform',
+              html: getV2UpgradeEmailHTML(contact.contact_name || contact.company_name),
+            }),
+          });
+        }
+        await supabase.from('crm_activities').insert({
+          contact_id: contact.id,
+          activity_type: method === 'whatsapp' ? 'whatsapp' : 'email',
+          subject: `V2 platform invitation sent via ${method}`,
+          outcome: 'positive',
+        });
+        setInviting(prev => ({ ...prev, [contact.id]: 'sent' }));
+        sent++;
+      } catch {
+        setInviting(prev => ({ ...prev, [contact.id]: 'error' }));
+        failed++;
+      }
+    }
+    setBulkResult({ sent, failed, skipped });
+    setBulkInviting(false);
   }
 
   async function handleCSVImport(e) {
@@ -358,36 +471,109 @@ export default function CRM() {
 
       {/* Contacts View */}
       {activeTab === 'contacts' && (
-        <div className="space-y-2">
-          {contacts.map(contact => (
-            <div key={contact.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-medium capitalize ${CONTACT_TYPE_COLORS[contact.contact_type] || 'text-gray-400'}`}>
-                      {contact.contact_type}
-                    </span>
-                    {contact.tags?.map(tag => (
-                      <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 border border-gray-700">{tag}</span>
-                    ))}
+        <div className="space-y-3">
+          {/* Bulk invite bar */}
+          <div className="flex items-center gap-3 bg-gray-900/50 border border-gray-800 rounded-xl p-3">
+            <span className="text-xs text-gray-400">{contacts.length} contacts</span>
+            <div className="flex-1" />
+            {bulkResult && (
+              <span className="text-xs text-green-400">
+                Sent: {bulkResult.sent} | Failed: {bulkResult.failed} | Skipped: {bulkResult.skipped}
+              </span>
+            )}
+            <button
+              onClick={() => sendBulkInvites('whatsapp')}
+              disabled={bulkInviting}
+              className="px-3 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-lg text-[10px] font-medium transition-colors"
+            >
+              {bulkInviting ? 'Sending...' : 'Bulk WhatsApp Invite'}
+            </button>
+            <button
+              onClick={() => sendBulkInvites('email')}
+              disabled={bulkInviting}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-[10px] font-medium transition-colors"
+            >
+              {bulkInviting ? 'Sending...' : 'Bulk Email Invite'}
+            </button>
+          </div>
+
+          {/* Invite status message */}
+          {inviteMsg && (
+            <div className={`text-xs px-3 py-2 rounded-lg ${inviteMsg.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+              {inviteMsg.text}
+            </div>
+          )}
+
+          {contacts.map(contact => {
+            const status = inviting[contact.id];
+            const hasWhatsApp = !!(contact.whatsapp || contact.phone);
+            const hasEmail = !!contact.email;
+            return (
+              <div key={contact.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-medium capitalize ${CONTACT_TYPE_COLORS[contact.contact_type] || 'text-gray-400'}`}>
+                        {contact.contact_type}
+                      </span>
+                      {contact.tags?.map(tag => (
+                        <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 border border-gray-700">{tag}</span>
+                      ))}
+                      {status === 'sent' && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/20">Invited</span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-medium text-white">{contact.company_name}</h4>
+                    <p className="text-xs text-gray-500">{contact.contact_name} — {contact.country}</p>
+                    {contact.email && <p className="text-[10px] text-gray-600 mt-0.5">{contact.email}</p>}
+                    {(contact.whatsapp || contact.phone) && (
+                      <p className="text-[10px] text-gray-600">{contact.whatsapp || contact.phone}</p>
+                    )}
+                    {contact.ai_next_action && (
+                      <p className="text-xs text-amber-400/70 mt-1.5 italic">
+                        Next: {contact.ai_next_action}
+                      </p>
+                    )}
                   </div>
-                  <h4 className="text-sm font-medium text-white">{contact.company_name}</h4>
-                  <p className="text-xs text-gray-500">{contact.contact_name} — {contact.country}</p>
-                  {contact.ai_next_action && (
-                    <p className="text-xs text-amber-400/70 mt-1.5 italic">
-                      Next: {contact.ai_next_action}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right shrink-0 space-y-1">
-                  <ScoreBar score={contact.relationship_score} />
-                  <p className="text-[10px] text-gray-500">{fmtLbs(contact.total_volume_lbs)} lifetime</p>
-                  <p className="text-[10px] text-gray-600">{contact.total_interactions} interactions</p>
-                  <p className="text-[10px] text-gray-600">Last: {fmtDate(contact.last_interaction_at)}</p>
+                  <div className="text-right shrink-0 space-y-1">
+                    <ScoreBar score={contact.relationship_score} />
+                    <p className="text-[10px] text-gray-500">{fmtLbs(contact.total_volume_lbs)} lifetime</p>
+                    <p className="text-[10px] text-gray-600">{contact.total_interactions} interactions</p>
+                    <p className="text-[10px] text-gray-600">Last: {fmtDate(contact.last_interaction_at)}</p>
+                    {/* Invite buttons */}
+                    <div className="flex items-center gap-1.5 mt-2 justify-end">
+                      {hasWhatsApp && status !== 'sent' && (
+                        <button
+                          onClick={() => sendInviteWhatsApp(contact)}
+                          disabled={status === 'sending'}
+                          className="px-2 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded text-[10px] font-medium transition-colors disabled:opacity-50"
+                          title="Send WhatsApp invitation"
+                        >
+                          {status === 'sending' ? '...' : 'WhatsApp'}
+                        </button>
+                      )}
+                      {hasEmail && status !== 'sent' && (
+                        <button
+                          onClick={() => sendInviteEmail(contact)}
+                          disabled={status === 'sending'}
+                          className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded text-[10px] font-medium transition-colors disabled:opacity-50"
+                          title="Send email invitation"
+                        >
+                          {status === 'sending' ? '...' : 'Email'}
+                        </button>
+                      )}
+                      {status === 'sent' && (
+                        <span className="text-[10px] text-green-500">Sent</span>
+                      )}
+                      {status === 'error' && (
+                        <span className="text-[10px] text-red-400">Failed</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -519,27 +705,34 @@ export default function CRM() {
           <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-white mb-2">Invitation Flow</h3>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center border border-green-500/20">
                 <p className="text-lg mb-1">1</p>
-                <p className="text-[10px] text-gray-400">Upload CSV</p>
+                <p className="text-[10px] text-green-400 font-medium">Upload CSV</p>
                 <p className="text-[9px] text-gray-600">Import customer list</p>
+                <p className="text-[9px] text-green-500 mt-1">Active</p>
               </div>
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center border border-green-500/20">
                 <p className="text-lg mb-1">2</p>
-                <p className="text-[10px] text-gray-400">Send Invites</p>
-                <p className="text-[9px] text-gray-600">WhatsApp + Email</p>
+                <p className="text-[10px] text-green-400 font-medium">Send Invites</p>
+                <p className="text-[9px] text-gray-600">WhatsApp + Email per contact</p>
+                <p className="text-[9px] text-green-500 mt-1">Active</p>
               </div>
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center border border-green-500/20">
                 <p className="text-lg mb-1">3</p>
-                <p className="text-[10px] text-gray-400">Register</p>
-                <p className="text-[9px] text-gray-600">App, email link, or WhatsApp</p>
+                <p className="text-[10px] text-green-400 font-medium">Register</p>
+                <p className="text-[9px] text-gray-600">4-method login system</p>
+                <p className="text-[9px] text-green-500 mt-1">Active</p>
               </div>
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center border border-green-500/20">
                 <p className="text-lg mb-1">4</p>
-                <p className="text-[10px] text-gray-400">Personalize</p>
-                <p className="text-[9px] text-gray-600">AI tailors insights to profile</p>
+                <p className="text-[10px] text-green-400 font-medium">Personalize</p>
+                <p className="text-[9px] text-gray-600">Zyra AI tailors insights</p>
+                <p className="text-[9px] text-green-500 mt-1">Active</p>
               </div>
             </div>
+            <p className="text-[10px] text-gray-500 mt-3 text-center">
+              Go to the Contacts tab to send individual or bulk invitations via WhatsApp or Email
+            </p>
           </div>
         </div>
       )}
