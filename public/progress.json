@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-21T22:30:00Z",
+  "lastUpdated": "2026-04-22T01:00:00Z",
   "updatedBy": "Claude AI",
   "sessionStatus": "building",
-  "overallPercent": 67,
+  "overallPercent": 72,
   "targetPercent": 85,
   "stats": {
     "pagesLive": 13,
@@ -19,7 +19,7 @@
     { "id": 3, "name": "AI Systems", "status": "done", "percent": 100, "completedDate": "2026-04-08", "summary": "Claude API unified, Zyra widget, ElevenLabs voice, 4 edge functions" },
     { "id": 4, "name": "CRM + Soft Launch Gate", "status": "done", "percent": 100, "completedDate": "2026-04-19", "summary": "6-tab CRM, 15 audit fixes, 12 AI enhancements, perf 30s→2-3s" },
     { "id": 5, "name": "V2 Autonomous Rebuild", "status": "active", "percent": 85, "summary": "Clean React+Vite at cropsintel.net. 13 pages, code splitting, auto-deploy" },
-    { "id": 6, "name": "Polish + Growth", "status": "active", "percent": 25, "summary": "WhatsApp, live scrapers, trading portals, offer system" }
+    { "id": 6, "name": "Polish + Growth", "status": "active", "percent": 40, "summary": "WhatsApp integration built, live scrapers, trading portals, offer system" }
   ],
   "systems": [
     {
@@ -105,7 +105,7 @@
       "id": "zyra",
       "name": "Zyra AI Agent",
       "category": "ai",
-      "percent": 80,
+      "percent": 90,
       "icon": "💜",
       "description": "AI co-pilot: guides, speaks, provides market prescriptions",
       "priority": true,
@@ -117,7 +117,9 @@
         { "name": "Multi-turn conversation history", "status": "done" },
         { "name": "Mobile-responsive panel", "status": "done" },
         { "name": "Intelligence page with full Zyra chat", "status": "done" },
-        { "name": "WhatsApp + Twilio voice channel", "status": "wip" },
+        { "name": "WhatsApp Zyra chat via Twilio webhook + Claude API", "status": "done" },
+        { "name": "WhatsApp OTP verification for registration", "status": "done" },
+        { "name": "WhatsApp trade alert + offer delivery", "status": "done" },
         { "name": "Proactive trade prescriptions", "status": "todo" }
       ]
     },
@@ -137,16 +139,17 @@
       "id": "auth",
       "name": "Auth & Registration",
       "category": "users",
-      "percent": 80,
+      "percent": 88,
       "icon": "🔐",
-      "description": "Full Supabase auth, registration, guest preview",
+      "description": "Full Supabase auth, registration, guest preview, WhatsApp OTP",
       "features": [
         { "name": "Supabase Auth with email/password", "status": "done" },
         { "name": "Registration page with profile fields", "status": "done" },
         { "name": "5-minute guest timer with blur overlay", "status": "done" },
         { "name": "Login/logout flow", "status": "done" },
         { "name": "User menu with profile display", "status": "done" },
-        { "name": "WhatsApp OTP registration", "status": "wip" },
+        { "name": "WhatsApp OTP verification (send + verify + 6-digit UI)", "status": "done" },
+        { "name": "WhatsApp verify step after registration", "status": "done" },
         { "name": "Admin user creation + role enforcement", "status": "wip" },
         { "name": "Verification tier workflow", "status": "todo" }
       ]
@@ -258,6 +261,7 @@
     }
   ],
   "milestones": [
+    { "date": "2026-04-22", "text": "WhatsApp integration: 3 edge functions, OTP verify, Zyra chat webhook, offer/alert delivery" },
     { "date": "2026-04-21", "text": "Cmd+K command palette + OG meta tags + CSV exports" },
     { "date": "2026-04-21", "text": "Cinematic 10-slide tour on Welcome page" },
     { "date": "2026-04-19", "text": "SOFT LAUNCH GATE REACHED — Phases 1-4 complete" },
@@ -278,7 +282,7 @@
   ],
   "nextPriorities": [
     { "id": 1, "title": "Deploy Live Scrapers", "color": "#22c55e", "description": "ABC auto-scraper, Strata pricing, news scrapers on cron" },
-    { "id": 2, "title": "WhatsApp + Twilio Integration", "color": "#8b5cf6", "description": "Zyra on WhatsApp, OTP registration, trade alerts" },
+    { "id": 2, "title": "WhatsApp + Twilio Integration", "color": "#8b5cf6", "description": "DONE: 3 edge functions, OTP, Zyra chat, alerts. Deploy secrets to Supabase." },
     { "id": 3, "title": "Admin + Tier Enforcement", "color": "#3b82f6", "description": "Role gating, admin user creation, verification workflow" },
     { "id": 4, "title": "MAXONS Offer System", "color": "#f59e0b", "description": "Offer builder, delivery, accept/reject, CRM integration" }
   ]
