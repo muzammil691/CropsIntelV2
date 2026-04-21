@@ -52,11 +52,17 @@ export async function loadAPIKeys() {
 
 // ─── Claude (Anthropic) — Primary Brain ─────────────────────────
 export async function askClaude(prompt, options = {}) {
-  const { model = 'claude-sonnet-4-20250514', maxTokens = 1024, system = '' } = options;
+  const { model = 'claude-sonnet-4-20250514', maxTokens = 1024, system = '', history = [] } = options;
 
   if (!apiKeys.anthropic) {
     return { provider: 'claude', error: 'API key not configured', fallback: true };
   }
+
+  // Build messages array: conversation history + current user message
+  const messages = [
+    ...history.map(m => ({ role: m.role, content: m.content })),
+    { role: 'user', content: prompt },
+  ];
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -71,7 +77,7 @@ export async function askClaude(prompt, options = {}) {
         model,
         max_tokens: maxTokens,
         system: system || 'You are Zyra, an AI trading intelligence assistant for MAXONS International Trading. You specialize in California almond market analysis, pricing trends, supply/demand forecasting, and trade opportunity identification. Be concise, data-driven, and actionable.',
-        messages: [{ role: 'user', content: prompt }],
+        messages,
       }),
     });
 

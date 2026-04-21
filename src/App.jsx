@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import GuestOverlay from './components/GuestOverlay';
+import ZyraWidget from './components/ZyraWidget';
 
 // Lazy-load pages for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -356,6 +357,9 @@ export default function App() {
 
       {/* Guest timer overlay */}
       <GuestOverlay />
+
+      {/* Zyra AI Assistant — floating widget on all pages */}
+      <ZyraWidget />
     </div>
   );
 }
