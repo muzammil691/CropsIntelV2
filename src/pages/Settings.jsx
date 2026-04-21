@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadAPIKeys, getAIStatus } from '../lib/ai-engine';
 import { useAuth } from '../lib/auth';

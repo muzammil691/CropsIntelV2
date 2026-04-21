@@ -41,12 +41,12 @@ const NAV_ITEMS = [
   { path: '/forecasts', label: 'Forecasts', icon: '🔮' },
   { path: '/news', label: 'News & Intel', icon: '📰' },
   { path: '/analysis', label: 'Analysis', icon: '📈' },
-  { path: '/crm', label: 'CRM & Deals', icon: '🤝' },
+  { path: '/crm', label: 'CRM & Deals', icon: '🤝', requireTeam: true },
   { path: '/intelligence', label: 'AI Intelligence', icon: '🧠' },
-  { path: '/trading', label: 'Trading Portal', icon: '💼' },
+  { path: '/trading', label: 'Trading Portal', icon: '💼', requireTeam: true },
   { path: '/reports', label: 'Reports', icon: '📋' },
-  { path: '/autonomous', label: 'Autonomous', icon: '🤖' },
-  { path: '/settings', label: 'Settings', icon: '⚙️' }
+  { path: '/autonomous', label: 'Autonomous', icon: '🤖', requireAdmin: true },
+  { path: '/settings', label: 'Settings', icon: '⚙️', requireAuth: true }
 ];
 
 function formatTime(ms) {
@@ -126,8 +126,20 @@ function UserMenu() {
   );
 }
 
+const ADMIN_ROLES = ['admin'];
+const TEAM_ROLES = ['admin', 'analyst', 'broker', 'seller'];
+
 function Sidebar() {
   const location = useLocation();
+  const { isAuthenticated, profile } = useAuth();
+  const userRole = profile?.role || 'buyer';
+
+  // Filter nav items based on user role
+  const visibleItems = NAV_ITEMS.filter(item => {
+    if (item.requireAdmin && !ADMIN_ROLES.includes(userRole)) return false;
+    if (item.requireAuth && !isAuthenticated) return false;
+    return true;
+  });
 
   return (
     <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col min-h-screen shrink-0">
@@ -146,20 +158,26 @@ function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
-        {NAV_ITEMS.map(item => {
+        {visibleItems.map(item => {
           const isActive = location.pathname === item.path;
+          const isLocked = item.requireTeam && !TEAM_ROLES.includes(userRole);
           return (
             <Link
               key={item.path}
-              to={item.path}
+              to={isLocked ? '#' : item.path}
+              onClick={isLocked ? e => e.preventDefault() : undefined}
+              title={isLocked ? 'Team access required' : item.label}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                isActive
+                isLocked
+                  ? 'text-gray-700 cursor-not-allowed'
+                  : isActive
                   ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
               }`}
             >
               <span className="text-base">{item.icon}</span>
               <span>{item.label}</span>
+              {isLocked && <span className="ml-auto text-[10px] text-gray-700">🔒</span>}
             </Link>
           );
         })}
@@ -225,7 +243,15 @@ const MOBILE_MORE = NAV_ITEMS.slice(4);
 
 function MobileNav() {
   const location = useLocation();
+  const { isAuthenticated, profile } = useAuth();
+  const userRole = profile?.role || 'buyer';
   const [showMore, setShowMore] = React.useState(false);
+
+  const moreItems = MOBILE_MORE.filter(item => {
+    if (item.requireAdmin && !ADMIN_ROLES.includes(userRole)) return false;
+    if (item.requireAuth && !isAuthenticated) return false;
+    return true;
+  });
 
   return (
     <>
@@ -236,19 +262,22 @@ function MobileNav() {
           <div className="absolute bottom-16 left-0 right-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl p-4 space-y-1"
                onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-3" />
-            {MOBILE_MORE.map(item => {
+            {moreItems.map(item => {
               const isActive = location.pathname === item.path;
+              const isLocked = item.requireTeam && !TEAM_ROLES.includes(userRole);
               return (
                 <Link
                   key={item.path}
-                  to={item.path}
-                  onClick={() => setShowMore(false)}
+                  to={isLocked ? '#' : item.path}
+                  onClick={e => { if (isLocked) e.preventDefault(); else setShowMore(false); }}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
+                    isLocked ? 'text-gray-700' :
                     isActive ? 'bg-green-500/10 text-green-400' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
                   }`}
                 >
                   <span className="text-lg">{item.icon}</span>
                   <span>{item.label}</span>
+                  {isLocked && <span className="ml-auto text-[10px] text-gray-700">🔒</span>}
                 </Link>
               );
             })}
