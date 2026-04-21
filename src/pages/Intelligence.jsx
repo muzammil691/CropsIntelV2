@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { seedAiAnalyses } from '../lib/seed-ai-analyses';
 import { askClaude, smartQuery, getAIStatus, loadAPIKeys, textToSpeech } from '../lib/ai-engine';
 
 // ─── Zyra chat offline fallback responses ────────────────────────────────
@@ -102,7 +103,18 @@ export default function Intelligence() {
       if (!error && data?.length > 0) {
         setAnalyses(data);
       } else {
-        setAnalyses([]);
+        // Auto-seed if table is empty
+        const seeded = await seedAiAnalyses(supabase);
+        if (seeded) {
+          const { data: d2 } = await supabase
+            .from('ai_analyses')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+          setAnalyses(d2 || []);
+        } else {
+          setAnalyses([]);
+        }
       }
     } catch {
       setAnalyses([]);

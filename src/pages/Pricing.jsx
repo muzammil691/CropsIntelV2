@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { seedStrataPrices } from '../lib/seed-strata';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -92,7 +93,19 @@ export default function Pricing() {
       if (!error && data && data.length > 0) {
         setPrices(data);
       } else {
-        setPrices([]);
+        // Auto-seed if table is empty
+        const seeded = await seedStrataPrices(supabase);
+        if (seeded) {
+          // Reload after seeding
+          const { data: d2 } = await supabase
+            .from('strata_prices')
+            .select('*')
+            .order('price_date', { ascending: false })
+            .limit(500);
+          setPrices(d2 || []);
+        } else {
+          setPrices([]);
+        }
       }
     } catch (err) {
       console.error('Load error:', err);

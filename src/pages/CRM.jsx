@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
+import { seedCRM } from '../lib/seed-crm';
 
 const DEAL_STAGES = ['inquiry', 'quoted', 'negotiation', 'agreed', 'contracted', 'shipped', 'completed', 'lost'];
 const STAGE_COLORS = {
@@ -94,9 +95,33 @@ export default function CRM() {
         supabase.from('crm_activities').select('*').order('created_at', { ascending: false }).limit(50),
       ]);
 
-      setContacts(!cRes.error && cRes.data?.length > 0 ? cRes.data : []);
-      setDeals(!dRes.error && dRes.data?.length > 0 ? dRes.data : []);
-      setActivities(!aRes.error && aRes.data?.length > 0 ? aRes.data : []);
+      const hasContacts = !cRes.error && cRes.data?.length > 0;
+      const hasDeals = !dRes.error && dRes.data?.length > 0;
+      const hasActivities = !aRes.error && aRes.data?.length > 0;
+
+      if (!hasContacts) {
+        // Auto-seed if CRM is empty
+        const seeded = await seedCRM(supabase);
+        if (seeded) {
+          // Reload after seeding
+          const [c2, d2, a2] = await Promise.all([
+            supabase.from('crm_contacts').select('*').order('relationship_score', { ascending: false }).limit(100),
+            supabase.from('crm_deals').select('*').order('updated_at', { ascending: false }).limit(100),
+            supabase.from('crm_activities').select('*').order('created_at', { ascending: false }).limit(50),
+          ]);
+          setContacts(c2.data || []);
+          setDeals(d2.data || []);
+          setActivities(a2.data || []);
+        } else {
+          setContacts([]);
+          setDeals([]);
+          setActivities([]);
+        }
+      } else {
+        setContacts(cRes.data);
+        setDeals(dRes.data || []);
+        setActivities(aRes.data || []);
+      }
     } catch {
       setContacts([]);
       setDeals([]);

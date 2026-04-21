@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toNum } from '../lib/utils';
 import { getAIStatus, loadAPIKeys } from '../lib/ai-engine';
+import { seedAiAnalyses } from '../lib/seed-ai-analyses';
 import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
@@ -359,10 +360,21 @@ export default function Dashboard() {
           .order('created_at', { ascending: false })
           .limit(20);
 
-        if (aiData) {
+        let aiItems = aiData;
+        if (!aiItems || aiItems.length === 0) {
+          // Auto-seed if empty
+          await seedAiAnalyses(supabase);
+          const { data: d2 } = await supabase
+            .from('ai_analyses')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(20);
+          aiItems = d2;
+        }
+        if (aiItems) {
           // Strict dedup: keep only ONE per analysis_type (most recent)
           const byType = {};
-          aiData.forEach(a => {
+          aiItems.forEach(a => {
             if (!byType[a.analysis_type]) byType[a.analysis_type] = a;
           });
           const deduped = Object.values(byType);
