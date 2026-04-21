@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { toNum } from '../lib/utils';
 import {
   BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -101,7 +102,8 @@ export default function Forecasts() {
         const byYear = {};
         posRes.data.forEach(r => {
           if (!byYear[r.crop_year]) byYear[r.crop_year] = 0;
-          if (r.receipts_lbs > byYear[r.crop_year]) byYear[r.crop_year] = r.receipts_lbs;
+          const recLbs = toNum(r.receipts_lbs);
+          if (recLbs > byYear[r.crop_year]) byYear[r.crop_year] = recLbs;
         });
         // Convert crop year "2024/25" to calendar year 2024 and build array
         const prodArray = Object.entries(byYear).map(([cy, lbs]) => ({

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { toNum } from '../lib/utils';
 import { getAIStatus, loadAPIKeys } from '../lib/ai-engine';
 import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 import {
@@ -160,15 +161,17 @@ function SupplyPositionWidget({ current, prior }) {
   if (!current) return null;
 
   // Correct formula: Sold = Total Supply - Uncommitted (not shipped + committed)
-  const soldCurrent = (current.total_supply_lbs || 0) - (current.uncommitted_lbs || 0);
-  const soldPctCurrent = current.total_supply_lbs > 0 ? (soldCurrent / current.total_supply_lbs * 100) : 0;
-  const shippedPctCurrent = current.total_supply_lbs > 0 ? ((current.total_shipped_lbs || 0) / current.total_supply_lbs * 100) : 0;
-  const committedPctCurrent = current.total_supply_lbs > 0 ? ((current.total_committed_lbs || 0) / current.total_supply_lbs * 100) : 0;
+  const cSupply = toNum(current.total_supply_lbs);
+  const soldCurrent = cSupply - toNum(current.uncommitted_lbs);
+  const soldPctCurrent = cSupply > 0 ? (soldCurrent / cSupply * 100) : 0;
+  const shippedPctCurrent = cSupply > 0 ? (toNum(current.total_shipped_lbs) / cSupply * 100) : 0;
+  const committedPctCurrent = cSupply > 0 ? (toNum(current.total_committed_lbs) / cSupply * 100) : 0;
 
   let soldPctPrior = null;
-  if (prior && prior.total_supply_lbs > 0) {
-    const soldPrior = (prior.total_supply_lbs || 0) - (prior.uncommitted_lbs || 0);
-    soldPctPrior = (soldPrior / prior.total_supply_lbs * 100);
+  const pSupply = toNum(prior?.total_supply_lbs);
+  if (prior && pSupply > 0) {
+    const soldPrior = pSupply - toNum(prior.uncommitted_lbs);
+    soldPctPrior = (soldPrior / pSupply * 100);
   }
 
   const delta = soldPctPrior !== null ? (soldPctCurrent - soldPctPrior).toFixed(1) : null;
@@ -229,7 +232,7 @@ function SupplyPositionWidget({ current, prior }) {
             <span className="text-[10px] text-gray-400">Shipped</span>
           </div>
           <p className="text-xs text-white font-medium">{shippedPctCurrent.toFixed(1)}%</p>
-          <p className="text-[10px] text-gray-600">{(current.total_shipped_lbs / 1e6).toFixed(0)}M lbs</p>
+          <p className="text-[10px] text-gray-600">{(toNum(current.total_shipped_lbs) / 1e6).toFixed(0)}M lbs</p>
         </div>
         <div>
           <div className="flex items-center gap-1.5 mb-1">
@@ -237,7 +240,7 @@ function SupplyPositionWidget({ current, prior }) {
             <span className="text-[10px] text-gray-400">Committed</span>
           </div>
           <p className="text-xs text-white font-medium">{(soldPctCurrent - shippedPctCurrent).toFixed(1)}%</p>
-          <p className="text-[10px] text-gray-600">{(current.total_committed_lbs / 1e6).toFixed(0)}M lbs</p>
+          <p className="text-[10px] text-gray-600">{(toNum(current.total_committed_lbs) / 1e6).toFixed(0)}M lbs</p>
         </div>
         <div>
           <div className="flex items-center gap-1.5 mb-1">
@@ -245,7 +248,7 @@ function SupplyPositionWidget({ current, prior }) {
             <span className="text-[10px] text-gray-400">Unsold</span>
           </div>
           <p className="text-xs text-white font-medium">{(100 - soldPctCurrent).toFixed(1)}%</p>
-          <p className="text-[10px] text-gray-600">{(current.uncommitted_lbs / 1e6).toFixed(0)}M lbs</p>
+          <p className="text-[10px] text-gray-600">{(toNum(current.uncommitted_lbs) / 1e6).toFixed(0)}M lbs</p>
         </div>
       </div>
     </div>
@@ -433,16 +436,18 @@ export default function Dashboard() {
   }, []);
 
   const formatLbs = (lbs) => {
-    if (!lbs) return '--';
-    if (lbs >= 1e9) return `${(lbs / 1e9).toFixed(1)}B`;
-    if (lbs >= 1e6) return `${(lbs / 1e6).toFixed(0)}M`;
-    if (lbs >= 1e3) return `${(lbs / 1e3).toFixed(0)}K`;
-    return lbs.toLocaleString();
+    const n = toNum(lbs);
+    if (n === 0 && !lbs) return '--';
+    if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+    if (n >= 1e6) return `${(n / 1e6).toFixed(0)}M`;
+    if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
+    return n.toLocaleString();
   };
 
-  const yoyPct = (current, prior) => {
-    if (!current || !prior || prior === 0) return null;
-    return Number(((current - prior) / prior * 100).toFixed(1));
+  const yoyPct = (cur, pri) => {
+    const c = toNum(cur), p = toNum(pri);
+    if (c === 0 || p === 0) return null;
+    return Number(((c - p) / p * 100).toFixed(1));
   };
 
   if (loading) {

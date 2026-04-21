@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { toNum } from '../lib/utils';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -111,27 +112,26 @@ export default function Supply() {
   const latestMetrics = useMemo(() => {
     if (!reports.length) return null;
     const latest = reports[reports.length - 1];
-    const commitRate = latest.total_supply_lbs > 0
-      ? ((latest.total_committed_lbs / latest.total_supply_lbs) * 100).toFixed(1)
-      : 0;
-    const shipRate = latest.total_supply_lbs > 0
-      ? ((latest.total_shipped_lbs / latest.total_supply_lbs) * 100).toFixed(1)
-      : 0;
-    const uncommittedPct = latest.total_supply_lbs > 0
-      ? ((latest.uncommitted_lbs / latest.total_supply_lbs) * 100).toFixed(1)
-      : 0;
+    const supply = toNum(latest.total_supply_lbs);
+    const committed = toNum(latest.total_committed_lbs);
+    const uncommitted = toNum(latest.uncommitted_lbs);
+    const shipped = toNum(latest.total_shipped_lbs);
+    const newCommitments = toNum(latest.total_new_commitments_lbs);
+    const commitRate = supply > 0 ? ((committed / supply) * 100).toFixed(1) : 0;
+    const shipRate = supply > 0 ? ((shipped / supply) * 100).toFixed(1) : 0;
+    const uncommittedPct = supply > 0 ? ((uncommitted / supply) * 100).toFixed(1) : 0;
     return {
       cropYear: latest.crop_year,
       month: latest.report_month,
       year: latest.report_year,
-      supply: latest.total_supply_lbs,
-      committed: latest.total_committed_lbs,
-      uncommitted: latest.uncommitted_lbs,
-      shipped: latest.total_shipped_lbs,
+      supply,
+      committed,
+      uncommitted,
+      shipped,
       commitRate,
       shipRate,
       uncommittedPct,
-      newCommitments: latest.total_new_commitments_lbs,
+      newCommitments,
     };
   }, [reports]);
 
@@ -203,10 +203,10 @@ export default function Supply() {
   const supplyBalance = useMemo(() =>
     reports.map(r => ({
       label: `${r.report_year}/${String(r.report_month).padStart(2, '0')}`,
-      supply: r.total_supply_lbs,
-      committed: r.total_committed_lbs,
-      uncommitted: r.uncommitted_lbs,
-      shipped: r.total_shipped_lbs,
+      supply: toNum(r.total_supply_lbs),
+      committed: toNum(r.total_committed_lbs),
+      uncommitted: toNum(r.uncommitted_lbs),
+      shipped: toNum(r.total_shipped_lbs),
     })),
     [reports]
   );
@@ -536,11 +536,13 @@ export default function Supply() {
                 const cyReports = reports.filter(r => r.crop_year === cy);
                 const last = cyReports[cyReports.length - 1];
                 if (!last) return null;
-                const commitPct = last.total_supply_lbs > 0 ? (last.total_committed_lbs / last.total_supply_lbs * 100) : 0;
-                const shipPct = last.total_supply_lbs > 0 ? (last.total_shipped_lbs / last.total_supply_lbs * 100) : 0;
-                const uncommittedPct = last.total_supply_lbs > 0 ? (last.uncommitted_lbs / last.total_supply_lbs * 100) : 0;
-                const velocity = last.uncommitted_lbs > 0 && last.total_new_commitments_lbs > 0
-                  ? (last.total_new_commitments_lbs / last.uncommitted_lbs * 100) : 0;
+                const lSupply = toNum(last.total_supply_lbs);
+                const commitPct = lSupply > 0 ? (toNum(last.total_committed_lbs) / lSupply * 100) : 0;
+                const shipPct = lSupply > 0 ? (toNum(last.total_shipped_lbs) / lSupply * 100) : 0;
+                const uncommittedPct = lSupply > 0 ? (toNum(last.uncommitted_lbs) / lSupply * 100) : 0;
+                const lUncommitted = toNum(last.uncommitted_lbs);
+                const velocity = lUncommitted > 0 && toNum(last.total_new_commitments_lbs) > 0
+                  ? (toNum(last.total_new_commitments_lbs) / lUncommitted * 100) : 0;
                 const status = uncommittedPct < 15 ? 'Tight' : uncommittedPct < 30 ? 'Balanced' : 'Loose';
                 const statusColor = status === 'Tight' ? 'text-red-400' : status === 'Balanced' ? 'text-green-400' : 'text-amber-400';
 

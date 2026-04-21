@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { toNum } from '../lib/utils';
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -85,13 +86,13 @@ export default function Analysis() {
   const monthlyTrend = useMemo(() =>
     reports.map(r => ({
       label: `${r.report_year}/${String(r.report_month).padStart(2, '0')}`,
-      totalShipped: r.total_shipped_lbs,
-      domShipped: r.domestic_shipped_lbs,
-      expShipped: r.export_shipped_lbs,
-      committed: r.total_committed_lbs,
-      uncommitted: r.uncommitted_lbs,
-      supply: r.total_supply_lbs,
-      newCommit: r.total_new_commitments_lbs,
+      totalShipped: toNum(r.total_shipped_lbs),
+      domShipped: toNum(r.domestic_shipped_lbs),
+      expShipped: toNum(r.export_shipped_lbs),
+      committed: toNum(r.total_committed_lbs),
+      uncommitted: toNum(r.uncommitted_lbs),
+      supply: toNum(r.total_supply_lbs),
+      newCommit: toNum(r.total_new_commitments_lbs),
     })),
     [reports]
   );
@@ -104,11 +105,11 @@ export default function Analysis() {
       for (const cy of selectedCrops) {
         const r = reports.find(rep => rep.crop_year === cy && rep.report_month === month);
         if (r) {
-          row[`ship_${cy}`] = r.total_shipped_lbs;
-          row[`commit_${cy}`] = r.total_committed_lbs;
-          row[`uncommit_${cy}`] = r.uncommitted_lbs;
-          row[`supply_${cy}`] = r.total_supply_lbs;
-          row[`newcommit_${cy}`] = r.total_new_commitments_lbs;
+          row[`ship_${cy}`] = toNum(r.total_shipped_lbs);
+          row[`commit_${cy}`] = toNum(r.total_committed_lbs);
+          row[`uncommit_${cy}`] = toNum(r.uncommitted_lbs);
+          row[`supply_${cy}`] = toNum(r.total_supply_lbs);
+          row[`newcommit_${cy}`] = toNum(r.total_new_commitments_lbs);
         }
       }
       return row;
@@ -120,15 +121,15 @@ export default function Analysis() {
     return allCropYears.map(cy => {
       const cyReports = reports.filter(r => r.crop_year === cy);
       const last = cyReports[cyReports.length - 1];
-      const totalShipped = cyReports.reduce((s, r) => s + (r.total_shipped_lbs || 0), 0);
+      const totalShipped = cyReports.reduce((s, r) => s + toNum(r.total_shipped_lbs), 0);
       return {
         cropYear: cy,
-        supply: last?.total_supply_lbs || 0,
-        carryIn: last?.carry_in_lbs || 0,
-        receipts: last?.receipts_lbs || 0,
+        supply: toNum(last?.total_supply_lbs),
+        carryIn: toNum(last?.carry_in_lbs),
+        receipts: toNum(last?.receipts_lbs),
         totalShipped,
         avgMonthlyShip: totalShipped / cyReports.length,
-        peakShip: Math.max(...cyReports.map(r => r.total_shipped_lbs || 0)),
+        peakShip: Math.max(...cyReports.map(r => toNum(r.total_shipped_lbs))),
         months: cyReports.length,
       };
     });
@@ -137,8 +138,8 @@ export default function Analysis() {
   const exportRatio = useMemo(() =>
     reports.map(r => ({
       label: `${r.report_year}/${String(r.report_month).padStart(2, '0')}`,
-      exportPct: r.total_shipped_lbs > 0 ? (r.export_shipped_lbs / r.total_shipped_lbs * 100) : 0,
-      domesticPct: r.total_shipped_lbs > 0 ? (r.domestic_shipped_lbs / r.total_shipped_lbs * 100) : 0,
+      exportPct: toNum(r.total_shipped_lbs) > 0 ? (toNum(r.export_shipped_lbs) / toNum(r.total_shipped_lbs) * 100) : 0,
+      domesticPct: toNum(r.total_shipped_lbs) > 0 ? (toNum(r.domestic_shipped_lbs) / toNum(r.total_shipped_lbs) * 100) : 0,
     })),
     [reports]
   );

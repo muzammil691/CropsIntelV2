@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { toNum } from '../lib/utils';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -80,10 +81,10 @@ export default function Destinations() {
     const filtered = shipments.filter(r => r.crop_year === selectedCropYear);
     const exportTotal = filtered
       .filter(r => r.destination_region === 'export')
-      .reduce((s, r) => s + (r.monthly_lbs || 0), 0);
+      .reduce((s, r) => s + toNum(r.monthly_lbs), 0);
     const domesticTotal = filtered
       .filter(r => r.destination_region === 'domestic')
-      .reduce((s, r) => s + (r.monthly_lbs || 0), 0);
+      .reduce((s, r) => s + toNum(r.monthly_lbs), 0);
     return [
       { name: 'Export', value: exportTotal, color: COLORS.blue },
       { name: 'Domestic', value: domesticTotal, color: COLORS.green },
@@ -140,9 +141,9 @@ export default function Destinations() {
       return {
         label,
         export: monthData.filter(r => r.destination_region === 'export' && r.destination_country === 'Total Export')
-          .reduce((s, r) => s + (r.monthly_lbs || 0), 0),
+          .reduce((s, r) => s + toNum(r.monthly_lbs), 0),
         domestic: monthData.filter(r => r.destination_region === 'domestic')
-          .reduce((s, r) => s + (r.monthly_lbs || 0), 0),
+          .reduce((s, r) => s + toNum(r.monthly_lbs), 0),
       };
     });
   }, [shipments, selectedCropYear]);
@@ -158,7 +159,7 @@ export default function Destinations() {
     const getTotal = (cy, country) => {
       return shipments
         .filter(r => r.crop_year === cy && r.destination_country === country && r.destination_region === 'export')
-        .reduce((s, r) => s + (r.monthly_lbs || 0), 0);
+        .reduce((s, r) => s + toNum(r.monthly_lbs), 0);
     };
 
     return topDestinations.slice(0, 10).map(d => {

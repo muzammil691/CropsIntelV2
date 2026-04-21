@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { toNum } from '../lib/utils';
 
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -23,16 +24,18 @@ const COLUMNS = [
 ];
 
 function fmtM(lbs) {
-  if (!lbs && lbs !== 0) return '--';
-  if (Math.abs(lbs) >= 1e9) return (lbs / 1e9).toFixed(2) + 'B';
-  if (Math.abs(lbs) >= 1e6) return (lbs / 1e6).toFixed(0) + 'M';
-  if (Math.abs(lbs) >= 1e3) return (lbs / 1e3).toFixed(0) + 'K';
-  return lbs.toLocaleString();
+  const n = toNum(lbs);
+  if (!n && n !== 0) return '--';
+  if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(0) + 'M';
+  if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+  return n.toLocaleString();
 }
 
 function fmtFull(lbs) {
-  if (!lbs && lbs !== 0) return '--';
-  return lbs.toLocaleString();
+  const n = toNum(lbs);
+  if (!n && n !== 0) return '--';
+  return n.toLocaleString();
 }
 
 export default function Reports() {
@@ -120,13 +123,13 @@ export default function Reports() {
   const summary = useMemo(() => {
     if (!filtered.length) return null;
     const latest = [...filtered].sort((a, b) => (b.report_year * 100 + b.report_month) - (a.report_year * 100 + a.report_month))[0];
-    const totalSupply = filtered.reduce((s, r) => s + (r.total_supply_lbs || 0), 0);
-    const totalShipped = filtered.reduce((s, r) => s + (r.total_shipped_lbs || 0), 0);
-    const totalCommitted = filtered.reduce((s, r) => s + (r.total_committed_lbs || 0), 0);
+    const totalSupply = filtered.reduce((s, r) => s + toNum(r.total_supply_lbs), 0);
+    const totalShipped = filtered.reduce((s, r) => s + toNum(r.total_shipped_lbs), 0);
+    const totalCommitted = filtered.reduce((s, r) => s + toNum(r.total_committed_lbs), 0);
     const avgSold = filtered.reduce((s, r) => {
-      if (!r.total_supply_lbs) return s;
-      return s + (r.total_supply_lbs - (r.uncommitted_lbs || 0)) / r.total_supply_lbs;
-    }, 0) / filtered.filter(r => r.total_supply_lbs > 0).length;
+      if (!toNum(r.total_supply_lbs)) return s;
+      return s + (toNum(r.total_supply_lbs) - toNum(r.uncommitted_lbs)) / toNum(r.total_supply_lbs);
+    }, 0) / filtered.filter(r => toNum(r.total_supply_lbs) > 0).length;
     return { latest, totalSupply, totalShipped, totalCommitted, avgSold, count: filtered.length };
   }, [filtered]);
 
@@ -334,8 +337,9 @@ export default function Reports() {
             <tbody>
               {sorted.map((r, idx) => {
                 const py = findPrior(r);
-                const soldPct = r.total_supply_lbs > 0
-                  ? ((r.total_supply_lbs - (r.uncommitted_lbs || 0)) / r.total_supply_lbs * 100).toFixed(1)
+                const rSupply = toNum(r.total_supply_lbs);
+                const soldPct = rSupply > 0
+                  ? ((rSupply - toNum(r.uncommitted_lbs)) / rSupply * 100).toFixed(1)
                   : '--';
                 return (
                   <tr
@@ -367,8 +371,8 @@ export default function Reports() {
                               {soldPct}%
                             </span>
                             {yoyBadge(
-                              r.total_supply_lbs > 0 ? (r.total_supply_lbs - (r.uncommitted_lbs || 0)) / r.total_supply_lbs : 0,
-                              py && py.total_supply_lbs > 0 ? (py.total_supply_lbs - (py.uncommitted_lbs || 0)) / py.total_supply_lbs : 0
+                              rSupply > 0 ? (rSupply - toNum(r.uncommitted_lbs)) / rSupply : 0,
+                              py && toNum(py.total_supply_lbs) > 0 ? (toNum(py.total_supply_lbs) - toNum(py.uncommitted_lbs)) / toNum(py.total_supply_lbs) : 0
                             )}
                           </td>
                         );
