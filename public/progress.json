@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-22T01:50:00Z",
+  "lastUpdated": "2026-04-22T03:15:00Z",
   "updatedBy": "Claude AI",
   "sessionStatus": "building",
-  "overallPercent": 82,
+  "overallPercent": 84,
   "targetPercent": 95,
   "stats": {
     "pagesLive": 13,
@@ -152,7 +152,7 @@
       "id": "auth",
       "name": "Auth & Login System",
       "category": "users",
-      "percent": 92,
+      "percent": 95,
       "icon": "🔐",
       "description": "4 login methods, user migration, profile completion",
       "features": [
@@ -166,7 +166,7 @@
         { "name": "Registration with rich business profile", "status": "done" },
         { "name": "WhatsApp OTP verify step after registration", "status": "done" },
         { "name": "Deploy whatsapp-login edge function", "status": "wip" },
-        { "name": "Admin user creation + role enforcement", "status": "wip" },
+        { "name": "Admin user management + role enforcement", "status": "done" },
         { "name": "Verification tier workflow", "status": "todo" }
       ]
     },
@@ -295,6 +295,7 @@
     { "date": "2026-04-22", "text": "65 V1 users migrated to V2 Supabase with full profiles" },
     { "date": "2026-04-22", "text": "whatsapp-login edge function + profile completion banner" },
     { "date": "2026-04-22", "text": "Settings page: user profile editing section added" },
+    { "date": "2026-04-22", "text": "Role-based access control: ProtectedRoute, admin user mgmt, route gating" },
     { "date": "2026-04-22", "text": "iOS build #39 green — uploaded to TestFlight (V2 URL)" },
     { "date": "2026-04-22", "text": "WhatsApp LIVE: 4 edge functions deployed, Twilio webhook configured" },
     { "date": "2026-04-21", "text": "Cmd+K command palette + OG meta tags + CSV exports" },
@@ -313,7 +314,7 @@
     { "id": "guest", "name": "Guest", "status": "built", "description": "5-min preview, blur after timer" },
     { "id": "registered", "name": "Registered", "status": "built", "description": "Free account, 4 login methods" },
     { "id": "verified", "name": "Verified", "status": "partial", "description": "Admin-approved, role logic exists" },
-    { "id": "maxons", "name": "MAXONS Team", "status": "partial", "description": "CRM built, admin enforcement pending" }
+    { "id": "maxons", "name": "MAXONS Team", "status": "built", "description": "CRM + Trading gated to team roles; admin panel built" }
   ],
   "nextPriorities": [
     { "id": 1, "title": "Deploy whatsapp-login Edge Function", "color": "#8b5cf6", "description": "Deploy to Supabase so WhatsApp OTP login works end-to-end" },
