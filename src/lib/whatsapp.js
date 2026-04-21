@@ -99,6 +99,26 @@ export async function sendWhatsAppMessage(phoneNumber, message) {
   return res.json();
 }
 
+// ─── WhatsApp OTP Login ──────────────────────────────────────
+// Sends OTP, verifies, and returns a Supabase session
+export async function whatsAppLogin(phoneNumber, otpCode) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+    },
+    body: JSON.stringify({
+      phone_number: phoneNumber,
+      otp_code: otpCode,
+    }),
+  });
+
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'Login failed');
+  return data;
+}
+
 // ─── Format phone number for display ──────────────────────────
 export function formatPhone(phone) {
   if (!phone) return '';

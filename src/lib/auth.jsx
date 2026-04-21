@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
+import { sendWhatsAppOTP, whatsAppLogin } from './whatsapp';
 
 const AuthContext = createContext(null);
 
@@ -113,6 +114,33 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  // Send WhatsApp OTP for login
+  const sendLoginOTP = useCallback(async (phoneNumber) => {
+    return await sendWhatsAppOTP(phoneNumber);
+  }, []);
+
+  // Verify WhatsApp OTP and sign in
+  const signInWithOTP = useCallback(async (phoneNumber, otpCode) => {
+    const result = await whatsAppLogin(phoneNumber, otpCode);
+
+    if (result.method === 'session' && result.access_token) {
+      // We got a full session — set it in Supabase client
+      const { data, error } = await supabase.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      });
+      if (error) throw error;
+      return { ...result, session: data.session };
+    }
+
+    if (result.needs_password_login) {
+      // OTP verified but couldn't generate session — return for password fallback
+      return result;
+    }
+
+    return result;
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -138,6 +166,8 @@ export function AuthProvider({ children }) {
       guestTimeLeft,
       signUp,
       signIn,
+      signInWithOTP,
+      sendLoginOTP,
       signOut,
       resetGuestTimer,
       isAuthenticated: !!user,

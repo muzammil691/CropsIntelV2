@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import GuestOverlay from './components/GuestOverlay';
+import ProfileCompletionBanner from './components/ProfileCompletionBanner';
 import ZyraWidget from './components/ZyraWidget';
 import CommandPalette from './components/CommandPalette';
 
@@ -347,6 +348,7 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-auto">
         <MobileHeader />
+        <ProfileCompletionBanner />
         <main className="flex-1 pb-16 lg:pb-0">
           <Suspense fallback={<PageLoader />}>
             <Routes>
