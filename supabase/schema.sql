@@ -551,3 +551,90 @@ CREATE POLICY "Users insert own profile" ON user_profiles FOR INSERT WITH CHECK 
 -- service_role bypasses RLS for insert/update from scrapers
 -- No insert/update policy needed for anon — scrapers use service_role key
 -- email_inbox and email_subscriptions are NOT public — service_role only
+
+-- ============================================================
+-- INTEL SYSTEM — Market report ingestion + AI analysis
+-- Added: 2026-04-21
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS intel_reports (
+  id BIGSERIAL PRIMARY KEY,
+  source_name TEXT NOT NULL,
+  source_type TEXT NOT NULL DEFAULT 'handler',
+  source_email TEXT,
+  title TEXT NOT NULL,
+  format TEXT NOT NULL DEFAULT 'pdf',
+  original_filename TEXT,
+  original_url TEXT,
+  report_date DATE,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  raw_text TEXT,
+  raw_data JSONB DEFAULT '{}',
+  file_size_bytes INTEGER,
+  page_count INTEGER,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error_message TEXT,
+  processed_at TIMESTAMPTZ,
+  tags TEXT[] DEFAULT '{}',
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS intel_insights (
+  id BIGSERIAL PRIMARY KEY,
+  report_id BIGINT REFERENCES intel_reports(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  key_takeaways TEXT[] DEFAULT '{}',
+  trading_implication TEXT,
+  insight_type TEXT NOT NULL DEFAULT 'market_update',
+  sentiment TEXT DEFAULT 'neutral',
+  confidence REAL DEFAULT 0.7,
+  urgency TEXT DEFAULT 'normal',
+  commodities TEXT[] DEFAULT '{almonds}',
+  regions TEXT[] DEFAULT '{}',
+  varieties TEXT[] DEFAULT '{}',
+  price_impact TEXT,
+  is_published BOOLEAN DEFAULT true,
+  is_read BOOLEAN DEFAULT false,
+  is_actionable BOOLEAN DEFAULT false,
+  expires_at TIMESTAMPTZ,
+  ai_model TEXT DEFAULT 'claude',
+  ai_prompt_tokens INTEGER,
+  ai_completion_tokens INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS knowledge_base (
+  id BIGSERIAL PRIMARY KEY,
+  category TEXT NOT NULL,
+  fact TEXT NOT NULL,
+  context TEXT,
+  source_report_ids BIGINT[] DEFAULT '{}',
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_confirmed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  times_confirmed INTEGER DEFAULT 1,
+  is_current BOOLEAN DEFAULT true,
+  superseded_by BIGINT,
+  confidence REAL DEFAULT 0.7,
+  tags TEXT[] DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_intel_reports_status ON intel_reports(status);
+CREATE INDEX IF NOT EXISTS idx_intel_reports_received ON intel_reports(received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_intel_insights_published ON intel_insights(is_published, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_intel_insights_report ON intel_insights(report_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON knowledge_base(category, is_current);
+
+ALTER TABLE intel_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE intel_insights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_base ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role full access" ON intel_reports FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access" ON intel_insights FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Service role full access" ON knowledge_base FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Anon read published insights" ON intel_insights FOR SELECT USING (is_published = true);
+CREATE POLICY "Anon read knowledge" ON knowledge_base FOR SELECT USING (is_current = true);

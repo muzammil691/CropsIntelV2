@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getAIStatus, loadAPIKeys } from '../lib/ai-engine';
+import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 
 // Strip markdown markers, section labels, and truncate text for card previews
 function truncateText(text, maxLen = 150) {
@@ -85,6 +86,70 @@ function SampleBadge() {
     <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2">
       Sample Data
     </span>
+  );
+}
+
+function IntelAlertCard({ insight }) {
+  const sentimentConfig = {
+    bullish: { bg: 'from-green-500/10 to-green-500/5', border: 'border-green-500/30', badge: 'bg-green-500/20 text-green-400', icon: '↑' },
+    bearish: { bg: 'from-red-500/10 to-red-500/5', border: 'border-red-500/30', badge: 'bg-red-500/20 text-red-400', icon: '↓' },
+    neutral: { bg: 'from-gray-500/10 to-gray-500/5', border: 'border-gray-500/30', badge: 'bg-gray-500/20 text-gray-400', icon: '→' },
+    mixed: { bg: 'from-amber-500/10 to-amber-500/5', border: 'border-amber-500/30', badge: 'bg-amber-500/20 text-amber-400', icon: '⇄' },
+  };
+  const urgencyConfig = {
+    critical: 'bg-red-500/20 text-red-400',
+    high: 'bg-amber-500/20 text-amber-400',
+    normal: 'bg-blue-500/20 text-blue-400',
+    low: 'bg-gray-500/20 text-gray-500',
+  };
+  const typeIcons = {
+    market_update: '📊', price_signal: '💰', supply_alert: '⚖️',
+    demand_shift: '📈', trade_policy: '🌍', quality_report: '✅',
+  };
+
+  const s = sentimentConfig[insight.sentiment] || sentimentConfig.neutral;
+  const source = insight.intel_reports?.source_name;
+  const sourceType = insight.intel_reports?.source_type;
+
+  return (
+    <div className={`bg-gradient-to-br ${s.bg} border ${s.border} rounded-xl p-4 transition-all hover:border-opacity-60`}>
+      <div className="flex items-start gap-3">
+        <div className="text-lg shrink-0 mt-0.5">{typeIcons[insight.insight_type] || '📋'}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${s.badge}`}>
+              {s.icon} {insight.sentiment}
+            </span>
+            {insight.urgency && insight.urgency !== 'normal' && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wider ${urgencyConfig[insight.urgency] || ''}`}>
+                {insight.urgency}
+              </span>
+            )}
+            {source && (
+              <span className="text-[9px] text-gray-500">
+                via {source}
+              </span>
+            )}
+          </div>
+          <h4 className="text-sm font-medium text-white mb-1 leading-snug">{insight.title}</h4>
+          <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">{insight.summary}</p>
+          {insight.trading_implication && (
+            <div className="mt-2 pt-2 border-t border-white/5">
+              <p className="text-[10px] text-green-400/80 leading-relaxed">
+                <span className="font-semibold">Trade Signal:</span> {insight.trading_implication}
+              </p>
+            </div>
+          )}
+          {insight.regions?.length > 0 && (
+            <div className="flex gap-1 mt-2 flex-wrap">
+              {insight.regions.slice(0, 4).map(r => (
+                <span key={r} className="text-[9px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">{r}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -244,6 +309,8 @@ export default function Dashboard() {
   const [isSamplePrices, setIsSamplePrices] = useState(false);
   const [isSampleNews, setIsSampleNews] = useState(false);
   const [aiStatus, setAiStatus] = useState(null);
+  const [intelInsights, setIntelInsights] = useState([]);
+  const [knowledgeStats, setKnowledgeStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -336,6 +403,17 @@ export default function Dashboard() {
         } else {
           setRecentNews(DASH_FALLBACK_NEWS);
           setIsSampleNews(true);
+        }
+
+        // Fetch intel insights (from forwarded reports)
+        try {
+          const insights = await getLatestInsights(5);
+          setIntelInsights(insights || []);
+          const stats = await getKnowledgeStats();
+          setKnowledgeStats(stats);
+        } catch (e) {
+          // Intel tables may not exist yet — graceful fallback
+          console.warn('Intel insights not available:', e.message);
         }
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -574,6 +652,33 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Intel Alerts — from forwarded market reports */}
+      {intelInsights.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-white">Market Intel</h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">
+                {intelInsights.length} report{intelInsights.length !== 1 ? 's' : ''}
+              </span>
+              {knowledgeStats?.total > 0 && (
+                <span className="text-[10px] text-gray-600">
+                  Brain: {knowledgeStats.total} facts learned
+                </span>
+              )}
+            </div>
+            <Link to="/intelligence" className="text-xs text-purple-400 hover:text-purple-300 transition-colors">
+              View All &rarr;
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {intelInsights.slice(0, 3).map(ins => (
+              <IntelAlertCard key={ins.id} insight={ins} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Live Pricing, News Feed, System Pipeline */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
