@@ -76,11 +76,11 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: metadata }
+      options: { data: { full_name: metadata.full_name, company: metadata.company } }
     });
     if (error) throw error;
 
-    // Create profile row
+    // Create rich profile row
     if (data.user) {
       await supabase.from('user_profiles').upsert({
         id: data.user.id,
@@ -89,7 +89,17 @@ export function AuthProvider({ children }) {
         company: metadata.company || '',
         role: metadata.role || 'buyer',
         country: metadata.country || '',
+        city: metadata.city || '',
+        phone: metadata.phone || '',
+        whatsapp_number: metadata.whatsapp_number || '',
+        trade_type: metadata.trade_type || '',
+        annual_volume: metadata.annual_volume || '',
         products_of_interest: metadata.products_of_interest || [],
+        preferred_ports: metadata.preferred_ports || [],
+        certifications: metadata.certifications || [],
+        payment_terms: metadata.payment_terms || [],
+        website: metadata.website || '',
+        social_links: metadata.social_links || {},
         created_at: new Date().toISOString()
       });
     }
