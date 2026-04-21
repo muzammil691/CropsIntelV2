@@ -243,17 +243,17 @@ export default function Autonomous() {
         <h3 className="text-sm font-semibold text-white mb-3">Autonomous Pipeline</h3>
         <div className="flex items-center gap-2 text-xs overflow-x-auto pb-2">
           {[
-            { label: 'ABC Website', sub: 'almonds.org', color: 'blue' },
-            { label: 'PDF Scraper', sub: 'Auto-detect new reports', color: 'purple' },
-            { label: 'PDF Parser', sub: 'Extract numeric data', color: 'amber' },
-            { label: 'Supabase DB', sub: `${reportCount} reports stored`, color: 'green' },
-            { label: 'Data Processor', sub: 'YoY + anomalies + signals', color: 'cyan' },
-            { label: 'AI Analyses', sub: `${analysisCount} insights`, color: 'emerald' },
-            { label: 'Dashboard', sub: 'cropsintel.net', color: 'green' },
+            { label: 'ABC Website', sub: 'almonds.org', cls: 'bg-blue-500/10 border-blue-500/20' },
+            { label: 'PDF Scraper', sub: 'Auto-detect new reports', cls: 'bg-purple-500/10 border-purple-500/20' },
+            { label: 'PDF Parser', sub: 'Extract numeric data', cls: 'bg-amber-500/10 border-amber-500/20' },
+            { label: 'Supabase DB', sub: `${reportCount} reports stored`, cls: 'bg-green-500/10 border-green-500/20' },
+            { label: 'Data Processor', sub: 'YoY + anomalies + signals', cls: 'bg-cyan-500/10 border-cyan-500/20' },
+            { label: 'AI Analyses', sub: `${analysisCount} insights`, cls: 'bg-emerald-500/10 border-emerald-500/20' },
+            { label: 'Dashboard', sub: 'cropsintel.net', cls: 'bg-green-500/10 border-green-500/20' },
           ].map((step, i) => (
             <React.Fragment key={i}>
               {i > 0 && <span className="text-gray-600 shrink-0">&rarr;</span>}
-              <div className={`bg-${step.color}-500/10 border border-${step.color}-500/20 rounded-lg px-3 py-2 shrink-0`}>
+              <div className={`border rounded-lg px-3 py-2 shrink-0 ${step.cls}`}>
                 <p className="text-white font-medium">{step.label}</p>
                 <p className="text-gray-500 text-[10px]">{step.sub}</p>
               </div>

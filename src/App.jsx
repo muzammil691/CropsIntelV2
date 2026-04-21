@@ -109,27 +109,72 @@ function MobileHeader() {
   );
 }
 
-// Mobile bottom nav
+// Mobile bottom nav — show top 5 items + "More" drawer for the rest
+const MOBILE_PRIMARY = NAV_ITEMS.slice(0, 4);
+const MOBILE_MORE = NAV_ITEMS.slice(4);
+
 function MobileNav() {
   const location = useLocation();
+  const [showMore, setShowMore] = React.useState(false);
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur border-t border-gray-800 flex lg:hidden z-50">
-      {NAV_ITEMS.map(item => {
-        const isActive = location.pathname === item.path;
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`flex-1 flex flex-col items-center py-2 text-[10px] transition-colors ${
-              isActive ? 'text-green-400' : 'text-gray-500'
-            }`}
-          >
-            <span className="text-lg mb-0.5">{item.icon}</span>
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      {/* More drawer overlay */}
+      {showMore && (
+        <div className="fixed inset-0 z-50 lg:hidden" onClick={() => setShowMore(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="absolute bottom-16 left-0 right-0 bg-gray-900 border-t border-gray-800 rounded-t-2xl p-4 space-y-1"
+               onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-3" />
+            {MOBILE_MORE.map(item => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setShowMore(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
+                    isActive ? 'bg-green-500/10 text-green-400' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                  }`}
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom tab bar */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur border-t border-gray-800 flex lg:hidden z-40">
+        {MOBILE_PRIMARY.map(item => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex-1 flex flex-col items-center py-2.5 text-[10px] transition-colors ${
+                isActive ? 'text-green-400' : 'text-gray-500'
+              }`}
+            >
+              <span className="text-lg mb-0.5">{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+        <button
+          onClick={() => setShowMore(!showMore)}
+          className={`flex-1 flex flex-col items-center py-2.5 text-[10px] transition-colors ${
+            showMore || MOBILE_MORE.some(i => i.path === location.pathname)
+              ? 'text-green-400' : 'text-gray-500'
+          }`}
+        >
+          <span className="text-lg mb-0.5">•••</span>
+          <span>More</span>
+        </button>
+      </nav>
+    </>
   );
 }
 
