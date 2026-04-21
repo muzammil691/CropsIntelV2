@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-22T01:00:00Z",
+  "lastUpdated": "2026-04-22T04:00:00Z",
   "updatedBy": "Claude AI",
   "sessionStatus": "building",
-  "overallPercent": 72,
+  "overallPercent": 75,
   "targetPercent": 85,
   "stats": {
     "pagesLive": 13,
@@ -261,6 +261,7 @@
     }
   ],
   "milestones": [
+    { "date": "2026-04-22", "text": "WhatsApp LIVE: 3 edge functions deployed to Supabase, Twilio webhook configured, secrets stored, JWT off for webhook" },
     { "date": "2026-04-22", "text": "WhatsApp integration: 3 edge functions, OTP verify, Zyra chat webhook, offer/alert delivery" },
     { "date": "2026-04-21", "text": "Cmd+K command palette + OG meta tags + CSV exports" },
     { "date": "2026-04-21", "text": "Cinematic 10-slide tour on Welcome page" },
