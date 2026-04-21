@@ -100,6 +100,7 @@ export default function Forecasts() {
   const [forecasts, setForecasts] = useState([]);
   const [acreage, setAcreage] = useState([]);
   const [sentiment, setSentiment] = useState([]);
+  const [isSample, setIsSample] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -122,11 +123,13 @@ export default function Forecasts() {
 
       setForecasts(dbForecasts || FALLBACK_FORECASTS);
       setAcreage(dbAcreage || FALLBACK_ACREAGE);
+      setIsSample(!dbForecasts && !dbAcreage);
       setSentiment(sentimentRes.data || []);
     } catch (err) {
       console.error('Load error, using fallback data:', err);
       setForecasts(FALLBACK_FORECASTS);
       setAcreage(FALLBACK_ACREAGE);
+      setIsSample(true);
     }
     setLoading(false);
   }
@@ -168,7 +171,10 @@ export default function Forecasts() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Crop Forecasts & Estimates</h1>
+          <h1 className="text-2xl font-bold text-white">
+            Crop Forecasts & Estimates
+            {isSample && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>}
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
             ABC official forecasts + Bountiful.ag community estimates + acreage trends
           </p>

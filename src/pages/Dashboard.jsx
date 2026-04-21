@@ -79,16 +79,103 @@ function InsightCard({ analysis }) {
   );
 }
 
-function MiniBar({ label, value, max, color = 'green' }) {
-  const pct = max > 0 ? (value / max * 100) : 0;
-  const barColor = { green: 'bg-green-500', blue: 'bg-blue-500', amber: 'bg-amber-500' };
+function SampleBadge() {
   return (
-    <div className="flex items-center gap-3 text-xs">
-      <span className="w-20 text-gray-400 shrink-0">{label}</span>
-      <div className="flex-1 bg-gray-800 rounded-full h-2">
-        <div className={`h-2 rounded-full ${barColor[color] || 'bg-green-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2">
+      Sample Data
+    </span>
+  );
+}
+
+function SupplyPositionWidget({ current, prior }) {
+  if (!current) return null;
+
+  const soldCurrent = (current.total_shipped_lbs || 0) + (current.total_committed_lbs || 0);
+  const soldPctCurrent = current.total_supply_lbs > 0 ? (soldCurrent / current.total_supply_lbs * 100) : 0;
+  const shippedPctCurrent = current.total_supply_lbs > 0 ? (current.total_shipped_lbs / current.total_supply_lbs * 100) : 0;
+
+  let soldPctPrior = null;
+  if (prior && prior.total_supply_lbs > 0) {
+    const soldPrior = (prior.total_shipped_lbs || 0) + (prior.total_committed_lbs || 0);
+    soldPctPrior = (soldPrior / prior.total_supply_lbs * 100);
+  }
+
+  const delta = soldPctPrior !== null ? (soldPctCurrent - soldPctPrior).toFixed(1) : null;
+
+  return (
+    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+      <h3 className="text-lg font-semibold text-white mb-1">Crop Sold Progress</h3>
+      <p className="text-[10px] text-gray-500 mb-4">
+        {current.crop_year} — shipped + committed as % of total supply
+      </p>
+
+      {/* Main progress bar */}
+      <div className="relative mb-2">
+        <div className="w-full bg-gray-800 rounded-full h-6 overflow-hidden">
+          {/* Shipped portion */}
+          <div
+            className="absolute top-0 left-0 h-6 bg-green-500 rounded-l-full"
+            style={{ width: `${Math.min(shippedPctCurrent, 100)}%` }}
+          />
+          {/* Committed portion (on top of shipped) */}
+          <div
+            className="absolute top-0 h-6 bg-blue-500/70 rounded-r-full"
+            style={{ left: `${Math.min(shippedPctCurrent, 100)}%`, width: `${Math.min(soldPctCurrent - shippedPctCurrent, 100 - shippedPctCurrent)}%` }}
+          />
+        </div>
+        {/* Prior year marker */}
+        {soldPctPrior !== null && (
+          <div
+            className="absolute top-0 h-6 border-r-2 border-dashed border-amber-400"
+            style={{ left: `${Math.min(soldPctPrior, 100)}%` }}
+            title={`Prior year: ${soldPctPrior.toFixed(1)}%`}
+          >
+            <div className="absolute -top-5 -translate-x-1/2 text-[9px] text-amber-400 whitespace-nowrap">
+              PY {soldPctPrior.toFixed(1)}%
+            </div>
+          </div>
+        )}
       </div>
-      <span className="w-14 text-right text-gray-300">{(value / 1e6).toFixed(0)}M</span>
+
+      {/* Percentage label */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-2xl font-bold text-white">{soldPctCurrent.toFixed(1)}%</span>
+        {delta !== null && (
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+            delta > 0 ? 'bg-green-500/15 text-green-400' : delta < 0 ? 'bg-red-500/15 text-red-400' : 'bg-gray-500/15 text-gray-400'
+          }`}>
+            {delta > 0 ? '+' : ''}{delta}pp vs prior year
+          </span>
+        )}
+      </div>
+
+      {/* Legend and breakdown */}
+      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-800">
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <div className="w-2.5 h-2.5 rounded-sm bg-green-500" />
+            <span className="text-[10px] text-gray-400">Shipped</span>
+          </div>
+          <p className="text-xs text-white font-medium">{shippedPctCurrent.toFixed(1)}%</p>
+          <p className="text-[10px] text-gray-600">{(current.total_shipped_lbs / 1e6).toFixed(0)}M lbs</p>
+        </div>
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <div className="w-2.5 h-2.5 rounded-sm bg-blue-500/70" />
+            <span className="text-[10px] text-gray-400">Committed</span>
+          </div>
+          <p className="text-xs text-white font-medium">{(soldPctCurrent - shippedPctCurrent).toFixed(1)}%</p>
+          <p className="text-[10px] text-gray-600">{(current.total_committed_lbs / 1e6).toFixed(0)}M lbs</p>
+        </div>
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <div className="w-2.5 h-2.5 rounded-sm bg-gray-700" />
+            <span className="text-[10px] text-gray-400">Unsold</span>
+          </div>
+          <p className="text-xs text-white font-medium">{(100 - soldPctCurrent).toFixed(1)}%</p>
+          <p className="text-[10px] text-gray-600">{(current.uncommitted_lbs / 1e6).toFixed(0)}M lbs</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -150,6 +237,8 @@ export default function Dashboard() {
   const [scrapeLogs, setScrapeLogs] = useState([]);
   const [latestPrices, setLatestPrices] = useState([]);
   const [recentNews, setRecentNews] = useState([]);
+  const [isSamplePrices, setIsSamplePrices] = useState(false);
+  const [isSampleNews, setIsSampleNews] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -219,8 +308,10 @@ export default function Dashboard() {
           const byVariety = {};
           prices.forEach(p => { if (!byVariety[p.variety]) byVariety[p.variety] = p; });
           setLatestPrices(Object.values(byVariety).slice(0, 6));
+          setIsSamplePrices(false);
         } else {
           setLatestPrices(DASH_FALLBACK_PRICES);
+          setIsSamplePrices(true);
         }
 
         // Fetch recent news
@@ -232,8 +323,10 @@ export default function Dashboard() {
 
         if (news && news.length > 0) {
           setRecentNews(news);
+          setIsSampleNews(false);
         } else {
           setRecentNews(DASH_FALLBACK_NEWS);
+          setIsSampleNews(true);
         }
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -375,27 +468,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Second row: Supply breakdown + Shipment trend */}
+      {/* Second row: Supply Position + Shipment trend */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Supply Breakdown */}
-        {lr && (
-          <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
-            <h3 className="text-lg font-semibold text-white mb-4">Supply Position</h3>
-            <div className="space-y-3">
-              <MiniBar label="Shipped" value={lr.total_shipped_lbs} max={lr.total_supply_lbs} color="green" />
-              <MiniBar label="Committed" value={lr.total_committed_lbs} max={lr.total_supply_lbs} color="blue" />
-              <MiniBar label="Uncommitted" value={lr.uncommitted_lbs} max={lr.total_supply_lbs} color="amber" />
-            </div>
-            <div className="mt-4 pt-3 border-t border-gray-800">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-500">Sold + Committed</span>
-                <span className="text-white font-medium">
-                  {((lr.total_shipped_lbs + lr.total_committed_lbs) / lr.total_supply_lbs * 100).toFixed(1)}% of supply
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Crop Sold Progress — correct concept: completion bar with prior year reference */}
+        <SupplyPositionWidget current={lr} prior={py} />
 
         {/* Shipment Trend */}
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
@@ -477,7 +553,9 @@ export default function Dashboard() {
         {/* Live Pricing Widget */}
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Live Almond Prices</h3>
+            <h3 className="text-lg font-semibold text-white">
+              Live Almond Prices{isSamplePrices && <SampleBadge />}
+            </h3>
             <Link to="/pricing" className="text-xs text-green-400 hover:text-green-300 transition-colors">
               View All &rarr;
             </Link>
@@ -521,7 +599,9 @@ export default function Dashboard() {
         {/* Industry News Feed Widget */}
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Latest News &amp; Intel</h3>
+            <h3 className="text-lg font-semibold text-white">
+              Latest News &amp; Intel{isSampleNews && <SampleBadge />}
+            </h3>
             <Link to="/news" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
               View All &rarr;
             </Link>

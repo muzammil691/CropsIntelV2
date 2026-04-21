@@ -96,6 +96,7 @@ function PriceCard({ variety, price, maxonsPrice, grade, form, date, trend }) {
 export default function Pricing() {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSample, setIsSample] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'chart'
   const [varietyFilter, setVarietyFilter] = useState('all');
 
@@ -114,12 +115,15 @@ export default function Pricing() {
 
       if (!error && data && data.length > 0) {
         setPrices(data);
+        setIsSample(false);
       } else {
         setPrices(FALLBACK_PRICES);
+        setIsSample(true);
       }
     } catch (err) {
       console.error('Load error, using fallback:', err);
       setPrices(FALLBACK_PRICES);
+      setIsSample(true);
     }
     setLoading(false);
   }
@@ -179,7 +183,10 @@ export default function Pricing() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Live Pricing</h1>
+          <h1 className="text-2xl font-bold text-white">
+            Live Pricing
+            {isSample && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>}
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
             Strata Markets almond prices with MAXONS 3% margin applied
           </p>

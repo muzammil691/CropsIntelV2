@@ -89,6 +89,7 @@ function NewsCard({ article }) {
 export default function News() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSample, setIsSample] = useState(false);
   const [filter, setFilter] = useState('all');
   const [sentimentFilter, setSentimentFilter] = useState('all');
 
@@ -108,12 +109,15 @@ export default function News() {
       // Use DB data if available and non-empty, otherwise use fallback
       if (!error && data && data.length > 0) {
         setNews(data);
+        setIsSample(false);
       } else {
         setNews(FALLBACK_NEWS);
+        setIsSample(true);
       }
     } catch (err) {
       console.error('Load error, using fallback:', err);
       setNews(FALLBACK_NEWS);
+      setIsSample(true);
     }
     setLoading(false);
   }
@@ -147,7 +151,10 @@ export default function News() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Industry News & Intelligence</h1>
+          <h1 className="text-2xl font-bold text-white">
+            Industry News & Intelligence
+            {isSample && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium uppercase tracking-wider ml-2 align-middle">Sample Data</span>}
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
             Auto-scraped from almonds.org, press releases, and industry sources — AI-analyzed for market impact
           </p>
