@@ -1,5 +1,7 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './lib/auth';
+import GuestOverlay from './components/GuestOverlay';
 
 // Lazy-load pages for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -11,6 +13,9 @@ const Destinations = lazy(() => import('./pages/Destinations'));
 const Forecasts = lazy(() => import('./pages/Forecasts'));
 const Pricing = lazy(() => import('./pages/Pricing'));
 const News = lazy(() => import('./pages/News'));
+const Welcome = lazy(() => import('./pages/Welcome'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
 
 function PageLoader() {
   return (
@@ -31,6 +36,83 @@ const NAV_ITEMS = [
   { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/autonomous', label: 'Autonomous', icon: '🤖' }
 ];
+
+function formatTime(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function GuestTimerBadge() {
+  const { isAuthenticated, guestTimeLeft, guestExpired } = useAuth();
+  if (isAuthenticated) return null;
+
+  const pct = (guestTimeLeft / (5 * 60 * 1000)) * 100;
+  const isLow = guestTimeLeft < 60000;
+
+  return (
+    <Link
+      to="/register"
+      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] border transition-colors ${
+        isLow
+          ? 'bg-red-500/10 border-red-500/20 text-red-400'
+          : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+      }`}
+      title="Guest preview time remaining — Register for full access"
+    >
+      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span className="font-mono font-medium">{formatTime(guestTimeLeft)}</span>
+      <span className="hidden sm:inline text-gray-500">guest</span>
+    </Link>
+  );
+}
+
+function UserMenu() {
+  const { isAuthenticated, profile, user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center gap-2">
+        <GuestTimerBadge />
+        <Link
+          to="/login"
+          className="px-3 py-1.5 text-[11px] text-gray-400 hover:text-white border border-gray-700 hover:border-gray-600 rounded-lg transition-colors"
+        >
+          Sign In
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="text-right hidden sm:block">
+        <p className="text-[11px] text-white font-medium leading-tight truncate max-w-[120px]">
+          {profile?.full_name || user?.email?.split('@')[0] || 'User'}
+        </p>
+        <p className="text-[9px] text-gray-500 truncate max-w-[120px]">
+          {profile?.company || user?.email}
+        </p>
+      </div>
+      <div className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-[10px] font-bold">
+        {(profile?.full_name || user?.email || 'U')[0].toUpperCase()}
+      </div>
+      <button
+        onClick={async () => { await signOut(); navigate('/welcome'); }}
+        className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+        title="Sign out"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 function Sidebar() {
   const location = useLocation();
@@ -71,6 +153,11 @@ function Sidebar() {
         })}
       </nav>
 
+      {/* User section */}
+      <div className="p-4 border-t border-gray-800">
+        <UserMenu />
+      </div>
+
       {/* Data Status Footer */}
       <div className="p-4 border-t border-gray-800 space-y-2">
         <div className="flex items-center justify-between text-[10px]">
@@ -101,10 +188,7 @@ function MobileHeader() {
           <p className="text-[9px] text-gray-500 tracking-wide">AUTONOMOUS V2</p>
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-[10px] text-gray-500">Live</span>
-      </div>
+      <UserMenu />
     </header>
   );
 }
@@ -188,6 +272,9 @@ const PAGE_TITLES = {
   '/analysis': 'Market Analysis',
   '/reports': 'Position Reports',
   '/autonomous': 'Autonomous Systems',
+  '/welcome': 'Welcome',
+  '/login': 'Sign In',
+  '/register': 'Create Account',
 };
 
 function usePageTitle() {
@@ -198,8 +285,28 @@ function usePageTitle() {
   }, [location.pathname]);
 }
 
+// Full-page routes (no sidebar/nav chrome)
+const STANDALONE_ROUTES = ['/welcome', '/login', '/register'];
+
 export default function App() {
   usePageTitle();
+  const location = useLocation();
+  const isStandalone = STANDALONE_ROUTES.includes(location.pathname);
+
+  // Standalone pages (Welcome, Login, Register) — no sidebar/nav
+  if (isStandalone) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/welcome" element={<Welcome />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
+  // Main app layout with sidebar
   return (
     <div className="flex min-h-screen bg-gray-950">
       {/* Desktop sidebar */}
@@ -230,6 +337,9 @@ export default function App() {
 
       {/* Mobile bottom nav */}
       <MobileNav />
+
+      {/* Guest timer overlay */}
+      <GuestOverlay />
     </div>
   );
 }

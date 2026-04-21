@@ -359,6 +359,26 @@ CREATE TABLE IF NOT EXISTS crm_contacts (
 );
 
 -- ============================================================
+-- User Profiles (extends Supabase auth.users)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  full_name TEXT DEFAULT '',
+  company TEXT DEFAULT '',
+  role TEXT DEFAULT 'buyer',           -- 'buyer', 'supplier', 'broker', 'grower', 'analyst', 'other'
+  country TEXT DEFAULT '',
+  products_of_interest TEXT[] DEFAULT '{}',
+  access_tier TEXT DEFAULT 'registered', -- 'registered', 'complete', 'vip', 'admin'
+  is_active BOOLEAN DEFAULT TRUE,
+  last_login_at TIMESTAMPTZ,
+  login_count INT DEFAULT 0,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- System Config (scraping schedules, API keys, settings)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS system_config (
@@ -399,6 +419,8 @@ CREATE INDEX IF NOT EXISTS idx_email_inbox_processed ON email_inbox(is_processed
 CREATE INDEX IF NOT EXISTS idx_email_inbox_routing ON email_inbox(routed_to, ai_priority);
 CREATE INDEX IF NOT EXISTS idx_crm_contacts_type ON crm_contacts(contact_type, country);
 CREATE INDEX IF NOT EXISTS idx_crm_contacts_score ON crm_contacts(relationship_score DESC);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON user_profiles(role, access_tier);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_company ON user_profiles(company);
 
 -- ============================================================
 -- RLS Policies (enable for frontend, bypass with service_role)
@@ -420,6 +442,7 @@ ALTER TABLE pipeline_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_inbox ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crm_contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Public read for anon (dashboard data)
 CREATE POLICY "Public read position reports" ON abc_position_reports FOR SELECT USING (true);
@@ -435,6 +458,11 @@ CREATE POLICY "Public read analyses" ON ai_analyses FOR SELECT USING (true);
 
 CREATE POLICY "Public read pipeline runs" ON pipeline_runs FOR SELECT USING (true);
 CREATE POLICY "Public read crm contacts" ON crm_contacts FOR SELECT USING (true);
+
+-- User profiles: users can read/update their own profile, admins can read all
+CREATE POLICY "Users read own profile" ON user_profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users update own profile" ON user_profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users insert own profile" ON user_profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- service_role bypasses RLS for insert/update from scrapers
 -- No insert/update policy needed for anon — scrapers use service_role key
