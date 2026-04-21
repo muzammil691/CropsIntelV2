@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
-// Strip markdown markers and truncate text for card previews
+// Strip markdown markers, section labels, and truncate text for card previews
 function truncateText(text, maxLen = 150) {
   if (!text) return '';
   const clean = text
@@ -11,6 +11,8 @@ function truncateText(text, maxLen = 150) {
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/---+|___+|\*\*\*+/g, ' ')
     .replace(/[-*]\s+/g, '')
+    // Strip known section headers from AI briefs
+    .replace(/(?:KEY HEADLINE|SUPPLY SITUATION|DEMAND SITUATION|MARKET OUTLOOK|TRADE SIGNAL|SUMMARY|OVERVIEW|CONCLUSION|RECOMMENDATION)\s*[:—\-]?\s*/gi, '')
     .replace(/\n+/g, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim();
