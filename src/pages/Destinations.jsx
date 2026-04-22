@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
+import FilterBar, { CROP_YEAR_COLORS } from '../components/FilterBar';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -53,6 +54,9 @@ export default function Destinations() {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCropYear, setSelectedCropYear] = useState(null);
+  // Phase C2 compare-mode state: multi-year + multi-country overlay
+  const [comparedYears, setComparedYears] = useState([]);
+  const [comparedCountries, setComparedCountries] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -65,6 +69,8 @@ export default function Destinations() {
         setShipments(data);
         const crops = [...new Set(data.map(r => r.crop_year))].sort();
         setSelectedCropYear(crops[crops.length - 1]);
+        // Default compare: last 3 crop years
+        setComparedYears(crops.slice(-3));
       }
       setLoading(false);
     }
@@ -169,6 +175,51 @@ export default function Destinations() {
       return { country: d.country, current, prior, change };
     });
   }, [shipments, selectedCropYear, topDestinations, allCropYears]);
+
+  // Phase C2: initialize comparedCountries to top 5 once data is loaded
+  useEffect(() => {
+    if (comparedCountries.length === 0 && topDestinations.length > 0) {
+      setComparedCountries(topDestinations.slice(0, 5).map(d => d.country));
+    }
+  }, [topDestinations, comparedCountries.length]);
+
+  // Phase C2: cross-year × country compare — one row per crop year with a
+  // column per selected country (total export lbs for that year/country).
+  const crossYearCountry = useMemo(() => {
+    return comparedYears.map(cy => {
+      const row = { crop_year: cy };
+      for (const c of comparedCountries) {
+        row[c] = shipments
+          .filter(r => r.crop_year === cy && r.destination_country === c && r.destination_region === 'export')
+          .reduce((s, r) => s + toNum(r.monthly_lbs), 0);
+      }
+      return row;
+    });
+  }, [shipments, comparedYears, comparedCountries]);
+
+  // Phase C2: rankings table — for each selected country, its total + rank in each selected year
+  const compareRankings = useMemo(() => {
+    return comparedCountries.map(country => {
+      const row = { country };
+      for (const cy of comparedYears) {
+        const yearDests = shipments
+          .filter(r => r.crop_year === cy && r.destination_region === 'export' && r.destination_country !== 'Total Export');
+        const byCountry = {};
+        for (const r of yearDests) {
+          byCountry[r.destination_country] = (byCountry[r.destination_country] || 0) + (r.monthly_lbs || 0);
+        }
+        const sorted = Object.entries(byCountry).sort((a, b) => b[1] - a[1]);
+        const rank = sorted.findIndex(([c]) => c === country) + 1;
+        const total = byCountry[country] || 0;
+        row[`rank_${cy}`] = rank || null;
+        row[`total_${cy}`] = total;
+      }
+      return row;
+    });
+  }, [shipments, comparedYears, comparedCountries]);
+
+  const toggleYear = (y) => setComparedYears(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y]);
+  const toggleCountry = (c) => setComparedCountries(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
 
   if (loading) {
     return (
@@ -438,6 +489,120 @@ export default function Destinations() {
             </table>
           </div>
         </ChartCard>
+      </div>
+
+      {/* ─── Phase C2: Cross-Year × Country Compare ─── */}
+      <div className="mt-6">
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-white">Cross-Year × Country Compare</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Pick any set of crop years and any set of countries to overlay — answer trader questions like "India in 2023/24 vs 2024/25" or "Spain vs UAE across the last 5 years" directly.
+            </p>
+          </div>
+
+          <FilterBar
+            label="Crop years to compare"
+            options={allCropYears.map(y => ({ value: y, label: y, color: CROP_YEAR_COLORS[y] }))}
+            selected={comparedYears}
+            onToggle={toggleYear}
+            quickActions={[
+              { label: 'All', action: () => setComparedYears(allCropYears) },
+              { label: 'Last 3', action: () => setComparedYears(allCropYears.slice(-3)) },
+              { label: 'Last 5', action: () => setComparedYears(allCropYears.slice(-5)) },
+              { label: 'Clear', action: () => setComparedYears([]) },
+            ]}
+            emptyHint="Pick at least one year"
+          />
+
+          <FilterBar
+            label="Countries to compare"
+            options={topDestinations.slice(0, 15).map((d, i) => ({
+              value: d.country,
+              label: d.country,
+              color: DEST_COLORS[i % DEST_COLORS.length],
+            }))}
+            selected={comparedCountries}
+            onToggle={toggleCountry}
+            quickActions={[
+              { label: 'Top 5', action: () => setComparedCountries(topDestinations.slice(0, 5).map(d => d.country)) },
+              { label: 'Top 10', action: () => setComparedCountries(topDestinations.slice(0, 10).map(d => d.country)) },
+              { label: 'Clear', action: () => setComparedCountries([]) },
+            ]}
+            emptyHint="Pick at least one country"
+          />
+
+          {comparedYears.length > 0 && comparedCountries.length > 0 ? (
+            <>
+              {/* Grouped bar: countries × years */}
+              <div className="mt-5">
+                <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">
+                  Export volume by country × year
+                </h4>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={crossYearCountry}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                    <XAxis dataKey="crop_year" tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                    <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={v => (v / 1e6).toFixed(0) + 'M'} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                      labelStyle={{ color: '#9ca3af' }}
+                      formatter={v => `${(v / 1e6).toFixed(1)}M lbs`}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    {comparedCountries.map((c, i) => (
+                      <Bar key={c} dataKey={c} name={c} fill={DEST_COLORS[topDestinations.findIndex(d => d.country === c) % DEST_COLORS.length] || '#3b82f6'} fillOpacity={0.8} />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Rankings table */}
+              <div className="mt-5 overflow-x-auto">
+                <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">
+                  Rank + total per year
+                </h4>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-2 px-3 text-gray-400">Country</th>
+                      {comparedYears.map(cy => (
+                        <th key={cy} className="text-right py-2 px-3 text-gray-400">{cy}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compareRankings.map(r => (
+                      <tr key={r.country} className="border-b border-gray-800/50 hover:bg-gray-900/50">
+                        <td className="py-2 px-3 text-white font-medium">{r.country}</td>
+                        {comparedYears.map(cy => {
+                          const rank = r[`rank_${cy}`];
+                          const total = r[`total_${cy}`];
+                          return (
+                            <td key={cy} className="py-2 px-3 text-right">
+                              {total > 0 ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="text-[9px] text-gray-500 font-mono bg-gray-800 px-1.5 py-0.5 rounded">#{rank}</span>
+                                  <span className="text-blue-400 font-mono">{(total / 1e6).toFixed(1)}M</span>
+                                </span>
+                              ) : (
+                                <span className="text-gray-700">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="mt-5 flex items-center justify-center h-32 border border-dashed border-gray-800 rounded text-xs text-gray-600">
+              Pick at least one crop year AND one country above.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
