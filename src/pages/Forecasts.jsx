@@ -9,6 +9,7 @@ import {
 import VarietySection from '../components/VarietySection';
 import ForecastsComparisonSection from '../components/ForecastsComparisonSection';
 import CountySection from '../components/CountySection';
+import AlmanacSection from '../components/AlmanacSection';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -303,6 +304,9 @@ export default function Forecasts() {
 
       {/* County Intelligence — reads abc_acreage_reports (Land IQ) */}
       <CountySection />
+
+      {/* Almanac Intelligence — reads abc_almanac (annual year-end reports) */}
+      <AlmanacSection />
 
       {/* Sentiment Timeline */}
       {sentiment.length > 0 && (
