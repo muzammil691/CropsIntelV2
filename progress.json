@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-23T18:00:00Z",
+  "lastUpdated": "2026-04-23T19:00:00Z",
   "updatedBy": "Claude AI (V2 migration + launch prep)",
   "domain": "cropsintel.com",
   "sessionStatus": "soft-launch-active",
@@ -11,16 +11,529 @@
     "cropYears": 9,
     "countriesTracked": 50,
     "usersImported": 65,
-    "loginMethods": 4,
-    "aiModel": "Claude (Sonnet)",
-    "phasesComplete": 5,
-    "totalPhases": 6
+    "loginMethods": 4
   },
+  "phases": [
+    {
+      "id": 1,
+      "name": "Widget & Data Foundation",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-03-15",
+      "summary": "339+ widgets built, 116 ABC reports ingested, 9 crop years of real data loaded"
+    },
+    {
+      "id": 2,
+      "name": "Stabilization & Auth",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-03-25",
+      "summary": "Auth rebuilt with 4 login methods, widget stability fixes, durable architecture patterns established"
+    },
+    {
+      "id": 3,
+      "name": "AI Systems",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-04-01",
+      "summary": "All 4 edge functions capturing intelligence, Claude API unified, Zyra chat/voice/WhatsApp live"
+    },
+    {
+      "id": 4,
+      "name": "CRM & Pre-Launch",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-04-10",
+      "summary": "15 audit issues resolved, 12 AI enhancements shipped, soft launch gate reached"
+    },
+    {
+      "id": 5,
+      "name": "V2 Migration & Domain",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-04-23",
+      "summary": "GitHub Pages deployment, DNS cutover to cropsintel.com, edge functions redeployed, SW killer deployed"
+    },
+    {
+      "id": 6,
+      "name": "Launch & Growth",
+      "status": "active",
+      "percent": 35,
+      "summary": "V1 user verification, WhatsApp AI upgrade, live scrapers, user notifications, MAXONS portal"
+    }
+  ],
+  "systems": [
+    {
+      "id": "abc-reports",
+      "name": "ABC Position Reports",
+      "category": "data",
+      "percent": 100,
+      "icon": "📊",
+      "description": "Monthly almond position reports from ABC — 116 reports across 9 crop years",
+      "features": [
+        {
+          "name": "72 real PDFs scraped from almonds.org",
+          "status": "done"
+        },
+        {
+          "name": "Database rebuilt with validated data",
+          "status": "done"
+        },
+        {
+          "name": "Domestic + Export commitments calculated",
+          "status": "done"
+        },
+        {
+          "name": "Sold% = supply minus uncommitted",
+          "status": "done"
+        },
+        {
+          "name": "114 PDFs audited, 12 DB fixes applied",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "intel-ingestion",
+      "name": "Intelligence Ingestion",
+      "category": "data",
+      "percent": 85,
+      "icon": "🧠",
+      "description": "Automated data pipelines for ABC reports, Google Drive uploads, and market intelligence",
+      "features": [
+        {
+          "name": "Google Drive PDF auto-ingest",
+          "status": "done"
+        },
+        {
+          "name": "ABC monthly report parsing",
+          "status": "done"
+        },
+        {
+          "name": "Live ABC scraper from almonds.org",
+          "status": "todo"
+        },
+        {
+          "name": "Bountiful.ag crop estimates integration",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "id": "live-pricing",
+      "name": "Live Pricing Engine",
+      "category": "data",
+      "percent": 70,
+      "icon": "💰",
+      "description": "Real-time almond pricing with 3% margin calculations and Strata integration",
+      "features": [
+        {
+          "name": "Price calculation engine",
+          "status": "done"
+        },
+        {
+          "name": "3% margin live pricing",
+          "status": "done"
+        },
+        {
+          "name": "Strata pricing integration",
+          "status": "todo"
+        },
+        {
+          "name": "Historical price trends",
+          "status": "wip"
+        }
+      ]
+    },
+    {
+      "id": "news",
+      "name": "Market News & Intelligence",
+      "category": "data",
+      "percent": 75,
+      "icon": "📰",
+      "description": "Aggregated almond industry news, podcasts, and market signals",
+      "features": [
+        {
+          "name": "News feed aggregation",
+          "status": "done"
+        },
+        {
+          "name": "Industry source tracking",
+          "status": "done"
+        },
+        {
+          "name": "Automated news scraping",
+          "status": "wip"
+        },
+        {
+          "name": "Sentiment analysis",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "id": "destinations",
+      "name": "Destination Intelligence",
+      "category": "data",
+      "percent": 90,
+      "icon": "🌍",
+      "description": "50+ country export data with YoY analysis and market share tracking",
+      "features": [
+        {
+          "name": "50 countries tracked",
+          "status": "done"
+        },
+        {
+          "name": "YoY comparison default view",
+          "status": "done"
+        },
+        {
+          "name": "Country-level drill-down",
+          "status": "done"
+        },
+        {
+          "name": "Market share visualization",
+          "status": "done"
+        },
+        {
+          "name": "Regional grouping",
+          "status": "wip"
+        }
+      ]
+    },
+    {
+      "id": "zyra",
+      "name": "Zyra AI Assistant",
+      "category": "ai",
+      "percent": 70,
+      "icon": "🧑‍💻",
+      "description": "AI-powered assistant with chat, voice, and WhatsApp channels",
+      "features": [
+        {
+          "name": "Chat widget on all pages",
+          "status": "done"
+        },
+        {
+          "name": "Voice via ElevenLabs",
+          "status": "wip"
+        },
+        {
+          "name": "WhatsApp integration via Twilio",
+          "status": "done"
+        },
+        {
+          "name": "Conversational AI (not keyword)",
+          "status": "wip"
+        },
+        {
+          "name": "Multilingual support",
+          "status": "todo"
+        },
+        {
+          "name": "Database-aware responses via dr-atlas",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "multi-ai",
+      "name": "Multi-AI Architecture",
+      "category": "ai",
+      "percent": 85,
+      "icon": "🤖",
+      "description": "Claude-primary AI with Guardian, agents, assistants, and 5 memory layers",
+      "features": [
+        {
+          "name": "Claude API unified across all channels",
+          "status": "done"
+        },
+        {
+          "name": "Guardian AI safety layer",
+          "status": "done"
+        },
+        {
+          "name": "Dr. Atlas database intelligence",
+          "status": "done"
+        },
+        {
+          "name": "Brain AI orchestration",
+          "status": "done"
+        },
+        {
+          "name": "GPT + Gemini council (deferred)",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "id": "auth",
+      "name": "Authentication System",
+      "category": "users",
+      "percent": 90,
+      "icon": "🔐",
+      "description": "4-method login: email/password, magic link, Google OAuth, WhatsApp OTP",
+      "features": [
+        {
+          "name": "Email/password login",
+          "status": "done"
+        },
+        {
+          "name": "Magic link login",
+          "status": "done"
+        },
+        {
+          "name": "Google OAuth",
+          "status": "done"
+        },
+        {
+          "name": "WhatsApp OTP login",
+          "status": "done"
+        },
+        {
+          "name": "V1 user migration",
+          "status": "wip"
+        },
+        {
+          "name": "Password reset flow",
+          "status": "wip"
+        }
+      ]
+    },
+    {
+      "id": "crm",
+      "name": "CRM System",
+      "category": "users",
+      "percent": 75,
+      "icon": "💼",
+      "description": "Contact and relationship management for BRM and SRM modules",
+      "features": [
+        {
+          "name": "Contact management",
+          "status": "done"
+        },
+        {
+          "name": "User profiles with 23 columns",
+          "status": "done"
+        },
+        {
+          "name": "Progressive profiling",
+          "status": "wip"
+        },
+        {
+          "name": "BRM module",
+          "status": "todo"
+        },
+        {
+          "name": "SRM module",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "id": "welcome",
+      "name": "Welcome & Onboarding",
+      "category": "platform",
+      "percent": 85,
+      "icon": "🏠",
+      "description": "Welcome page with Zyra intro, 3 pillars, 6 capabilities, cinematic tour",
+      "features": [
+        {
+          "name": "Welcome page with Zyra branding",
+          "status": "done"
+        },
+        {
+          "name": "3 pillars + 6 capabilities display",
+          "status": "done"
+        },
+        {
+          "name": "Cinematic 10-slide tour",
+          "status": "done"
+        },
+        {
+          "name": "Guest 5-min preview timer",
+          "status": "done"
+        },
+        {
+          "name": "Progressive access gates",
+          "status": "wip"
+        }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "category": "platform",
+      "percent": 95,
+      "icon": "📊",
+      "description": "Main analytics dashboard with 10-widget cap per tab, lazy loading, 2-3s load time",
+      "features": [
+        {
+          "name": "Multi-tab layout",
+          "status": "done"
+        },
+        {
+          "name": "10-widget cap per tab",
+          "status": "done"
+        },
+        {
+          "name": "Lazy tab loading",
+          "status": "done"
+        },
+        {
+          "name": "30s to 2-3s performance fix",
+          "status": "done"
+        },
+        {
+          "name": "YoY default views",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "app-shell",
+      "name": "App Shell & Navigation",
+      "category": "platform",
+      "percent": 95,
+      "icon": "⚙️",
+      "description": "18 pages, code-split routing, responsive layout, service worker management",
+      "features": [
+        {
+          "name": "18 pages live",
+          "status": "done"
+        },
+        {
+          "name": "Code-split lazy routes",
+          "status": "done"
+        },
+        {
+          "name": "Responsive mobile layout",
+          "status": "done"
+        },
+        {
+          "name": "Service worker killer",
+          "status": "done"
+        },
+        {
+          "name": "iOS app (TestFlight)",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": "reports",
+      "name": "Reports & Exports",
+      "category": "platform",
+      "percent": 85,
+      "icon": "📄",
+      "description": "116 report views with CSV export, data tables, and visualization widgets",
+      "features": [
+        {
+          "name": "116 report views",
+          "status": "done"
+        },
+        {
+          "name": "CSV export functionality",
+          "status": "done"
+        },
+        {
+          "name": "Data table components",
+          "status": "done"
+        },
+        {
+          "name": "Real data display (not mock)",
+          "status": "done"
+        },
+        {
+          "name": "PDF export",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "id": "portals",
+      "name": "MAXONS Portals",
+      "category": "future",
+      "percent": 20,
+      "icon": "🏢",
+      "description": "Dedicated portals for MAXONS team operations",
+      "features": [
+        {
+          "name": "Operations page (/ops)",
+          "status": "done"
+        },
+        {
+          "name": "Products & Freight management",
+          "status": "wip"
+        },
+        {
+          "name": "Offers portal (6th tab)",
+          "status": "todo"
+        },
+        {
+          "name": "Trading Hub",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "id": "atlas-brain",
+      "name": "Atlas Brain Platform",
+      "category": "future",
+      "percent": 15,
+      "icon": "🧠",
+      "description": "Standalone AI project management platform",
+      "features": [
+        {
+          "name": "React + TS + Vite scaffold",
+          "status": "done"
+        },
+        {
+          "name": "5 pages built",
+          "status": "done"
+        },
+        {
+          "name": "CropsIntel integration",
+          "status": "todo"
+        },
+        {
+          "name": "Multi-tenant support",
+          "status": "todo"
+        }
+      ]
+    }
+  ],
+  "accessTiers": [
+    {
+      "id": "guest",
+      "name": "Guest Preview",
+      "status": "built",
+      "description": "5-minute preview with blur + CTA gates, real data visible"
+    },
+    {
+      "id": "registered",
+      "name": "Registered User",
+      "status": "built",
+      "description": "Full dashboard access, basic exports, Zyra chat"
+    },
+    {
+      "id": "verified",
+      "name": "Verified Trader",
+      "status": "partial",
+      "description": "Advanced analytics, pricing tools, market intelligence"
+    },
+    {
+      "id": "maxons",
+      "name": "MAXONS Team",
+      "status": "partial",
+      "description": "Full CRM, operations portal, trading tools, admin access"
+    }
+  ],
   "v2Migration": {
     "title": "V2 Migration to cropsintel.com",
-    "description": "V2 LIVE at cropsintel.com. DNS complete. Edge functions redeployed. SW killer active.",
+    "description": "Complete migration from Lovable V1 to GitHub Pages V2 with custom domain",
     "overallPercent": 95,
     "completedDate": "2026-04-23",
+    "actionRequired": "V1 users need login verification and WhatsApp AI needs conversational upgrade",
     "items": [
       {
         "id": "m1",
@@ -66,54 +579,220 @@
       },
       {
         "id": "m8",
-        "name": "V1 user data verified",
-        "status": "in-progress"
+        "name": "V1 user login verification",
+        "status": "in-progress",
+        "priority": "high",
+        "note": "Need to verify all 65 V1 users can login with WhatsApp OTP"
       },
       {
         "id": "m9",
-        "name": "WhatsApp AI conversational",
-        "status": "pending"
+        "name": "WhatsApp AI conversational upgrade",
+        "status": "pending",
+        "priority": "high",
+        "note": "Switch from keyword-static to human-like conversational AI"
       }
     ]
   },
-  "phases": [
+  "nextPriorities": [
     {
       "id": 1,
-      "name": "Widget & Data Foundation",
-      "status": "done",
-      "percent": 100
+      "title": "V1 User Login Verification",
+      "color": "#ef4444",
+      "description": "Verify all 65 V1 users can login via WhatsApp OTP and populate all 23 profile columns"
     },
     {
       "id": 2,
-      "name": "Stabilization & Auth",
-      "status": "done",
-      "percent": 100
+      "title": "WhatsApp AI Conversational",
+      "color": "#f59e0b",
+      "description": "Upgrade Zyra from keyword-static to human-like conversational AI in any language"
     },
     {
       "id": 3,
-      "name": "AI Systems",
-      "status": "done",
-      "percent": 100
+      "title": "ElevenLabs Voice Integration",
+      "color": "#8b5cf6",
+      "description": "Natural voice for all Zyra channels with Arabic, Hindi, Turkish, Spanish support"
     },
     {
       "id": 4,
-      "name": "CRM & Pre-Launch",
-      "status": "done",
-      "percent": 100
+      "title": "Live ABC Scrapers",
+      "color": "#3b82f6",
+      "description": "Automated monthly scraping from almonds.org with 10-day lag detection"
     },
     {
       "id": 5,
-      "name": "V2 Migration & Domain",
-      "status": "done",
-      "percent": 100
+      "title": "V2 Notification to 65 Users",
+      "color": "#10b981",
+      "description": "Notify all imported users about the new cropsintel.com platform"
     },
     {
       "id": 6,
-      "name": "Launch & Growth",
-      "status": "active",
-      "percent": 35
+      "title": "MAXONS Offers Portal",
+      "color": "#6366f1",
+      "description": "6th tab for MAXONS trading offers with live pricing and freight rates"
     }
   ],
+  "milestones": [
+    {
+      "date": "2026-04-23",
+      "text": "Domain cutover complete, cropsintel.com live with all edge functions"
+    },
+    {
+      "date": "2026-04-22",
+      "text": "DNS migrated to GitHub Pages, 4-method auth verified"
+    },
+    {
+      "date": "2026-04-19",
+      "text": "Soft launch gate reached, V2 deployed to GitHub Pages"
+    },
+    {
+      "date": "2026-04-11",
+      "text": "iOS app uploaded to TestFlight"
+    },
+    {
+      "date": "2026-04-10",
+      "text": "Data integrity audit complete, 114 PDFs, 12 DB fixes, 116 rows clean"
+    },
+    {
+      "date": "2026-04-10",
+      "text": "Pre-launch signoff, R1-R3 gates passed"
+    },
+    {
+      "date": "2026-04-01",
+      "text": "Phase 3 AI systems complete, all 4 edge functions live"
+    },
+    {
+      "date": "2026-03-25",
+      "text": "Phase 2 stabilization complete, auth rebuilt, widgets stable"
+    },
+    {
+      "date": "2026-03-15",
+      "text": "Phase 1 foundation complete, 339+ widgets, 116 reports ingested"
+    }
+  ],
+  "launchChecklist": {
+    "infrastructure": [
+      {
+        "item": "GitHub Pages deployment",
+        "done": true
+      },
+      {
+        "item": "DNS cutover to cropsintel.com",
+        "done": true
+      },
+      {
+        "item": "cropsintel.net 301 redirect",
+        "done": true
+      },
+      {
+        "item": "Service worker killer",
+        "done": true
+      },
+      {
+        "item": "Edge functions redeployed",
+        "done": true
+      },
+      {
+        "item": "iOS app on TestFlight",
+        "done": true
+      }
+    ],
+    "auth": [
+      {
+        "item": "Email/password login",
+        "done": true
+      },
+      {
+        "item": "Magic link login",
+        "done": true
+      },
+      {
+        "item": "Google OAuth",
+        "done": true
+      },
+      {
+        "item": "WhatsApp OTP login",
+        "done": true
+      },
+      {
+        "item": "V1 users can login",
+        "done": false
+      },
+      {
+        "item": "Password reset flow",
+        "done": false
+      }
+    ],
+    "ai": [
+      {
+        "item": "Claude API unified",
+        "done": true
+      },
+      {
+        "item": "Zyra chat widget",
+        "done": true
+      },
+      {
+        "item": "WhatsApp via Twilio",
+        "done": true
+      },
+      {
+        "item": "Conversational AI (not keyword)",
+        "done": false
+      },
+      {
+        "item": "Multilingual support",
+        "done": false
+      },
+      {
+        "item": "ElevenLabs voice",
+        "done": false
+      }
+    ],
+    "data": [
+      {
+        "item": "116 ABC reports loaded",
+        "done": true
+      },
+      {
+        "item": "Data integrity audit passed",
+        "done": true
+      },
+      {
+        "item": "CSV exports working",
+        "done": true
+      },
+      {
+        "item": "Live ABC scraper",
+        "done": false
+      },
+      {
+        "item": "Strata pricing integration",
+        "done": false
+      }
+    ],
+    "users": [
+      {
+        "item": "65 users imported from V1",
+        "done": true
+      },
+      {
+        "item": "23-column profiles schema",
+        "done": true
+      },
+      {
+        "item": "V1 user data verification",
+        "done": false
+      },
+      {
+        "item": "V2 upgrade notification",
+        "done": false
+      },
+      {
+        "item": "Progressive profiling",
+        "done": false
+      }
+    ]
+  },
   "features": {
     "dashboard": {
       "percent": 95
@@ -139,156 +818,5 @@
     "welcome": {
       "percent": 85
     }
-  },
-  "launchChecklist": {
-    "infrastructure": [
-      {
-        "item": "Domain live",
-        "done": true
-      },
-      {
-        "item": "HTTPS",
-        "done": true
-      },
-      {
-        "item": "Auto-deploy",
-        "done": true
-      },
-      {
-        "item": ".net redirect",
-        "done": true
-      },
-      {
-        "item": "SW killer",
-        "done": true
-      },
-      {
-        "item": "Edge functions V2",
-        "done": true
-      }
-    ],
-    "auth": [
-      {
-        "item": "WhatsApp+Pass",
-        "done": true
-      },
-      {
-        "item": "WhatsApp OTP",
-        "done": true
-      },
-      {
-        "item": "Email+Pass",
-        "done": true
-      },
-      {
-        "item": "Email OTP",
-        "done": true
-      },
-      {
-        "item": "V1 users login",
-        "done": false
-      },
-      {
-        "item": "Password reset",
-        "done": false
-      }
-    ],
-    "ai": [
-      {
-        "item": "Zyra chat",
-        "done": true
-      },
-      {
-        "item": "Voice",
-        "done": true
-      },
-      {
-        "item": "WhatsApp",
-        "done": true
-      },
-      {
-        "item": "Conversational AI",
-        "done": false
-      },
-      {
-        "item": "Multilingual",
-        "done": false
-      },
-      {
-        "item": "ElevenLabs",
-        "done": false
-      }
-    ],
-    "data": [
-      {
-        "item": "116 reports",
-        "done": true
-      },
-      {
-        "item": "9 crop years",
-        "done": true
-      },
-      {
-        "item": "50 countries",
-        "done": true
-      },
-      {
-        "item": "Live scraper",
-        "done": false
-      },
-      {
-        "item": "Strata pricing",
-        "done": false
-      }
-    ],
-    "users": [
-      {
-        "item": "65 migrated",
-        "done": true
-      },
-      {
-        "item": "23-col schema",
-        "done": true
-      },
-      {
-        "item": "V1 data verify",
-        "done": false
-      },
-      {
-        "item": "V2 notification",
-        "done": false
-      },
-      {
-        "item": "Progressive profiling",
-        "done": false
-      }
-    ]
-  },
-  "nextPriorities": [
-    "V1 user login verification",
-    "WhatsApp AI conversational upgrade",
-    "Live ABC scrapers",
-    "V2 notification to 65 users",
-    "MAXONS Offers portal",
-    "ElevenLabs voice",
-    "Handoff document"
-  ],
-  "milestones": [
-    {
-      "date": "2026-04-10",
-      "event": "Data audit complete"
-    },
-    {
-      "date": "2026-04-19",
-      "event": "SOFT LAUNCH GATE"
-    },
-    {
-      "date": "2026-04-22",
-      "event": "Domain cutover"
-    },
-    {
-      "date": "2026-04-23",
-      "event": "SW killer + edge functions + redirect"
-    }
-  ]
+  }
 }
