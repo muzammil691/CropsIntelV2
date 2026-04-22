@@ -3,6 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <title>CropsIntel</title>
+    <!-- CRITICAL: Kill any V1 Lovable/Workbox service workers BEFORE app loads -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          registrations.forEach(function(registration) {
+            registration.unregister();
+            console.log('[CropsIntel V2] Unregistered old service worker:', registration.scope);
+          });
+        });
+        if ('caches' in window) {
+          caches.keys().then(function(cacheNames) {
+            cacheNames.forEach(function(cacheName) {
+              caches.delete(cacheName);
+              console.log('[CropsIntel V2] Deleted cache:', cacheName);
+            });
+          });
+        }
+      }
+    </script>
     <script>
       // GitHub Pages SPA redirect
       // Stores the path in sessionStorage and redirects to /
