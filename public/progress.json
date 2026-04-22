@@ -1,22 +1,23 @@
 {
-  "lastUpdated": "2026-04-24T02:45:00Z",
-  "updatedBy": "Claude AI — Phase F3a: scraper default mode 'position' → 'all' (unlocks Forecasts/Acreage/Almanac real data)",
+  "lastUpdated": "2026-04-24T03:00:00Z",
+  "updatedBy": "Claude AI — Phase D MVP: PersonaBanner on /dashboard (role-aware welcome + 9-persona shortcuts)",
   "sessionStatus": "stable-deploys-active",
-  "overallPercent": 95,
+  "overallPercent": 96,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "F",
-    "step": "F3a shipped — scraper default mode 'position' → 'all' (unlocks 4 dormant scrapers)",
-    "description": "One-line change in src/scrapers/abc-scraper.js: default mode for `node abc-scraper.js` (no arg) is now 'all' instead of 'position'. That single switch means scrapeAllReportTypes runs on every workflow trigger — firing scrapeSubjectiveForecasts, scrapeObjectiveForecasts, scrapeAcreageReports, and scrapeAlmanac, which previously NEVER ran in production. On the next workflow run, abc_forecasts/abc_acreage_reports/abc_almanac tables get populated for the first time with real almonds.org data. This fixes the 'built, not running' gap I flagged during the Systems audit. Related system bumps: Forecasts 50%→75%, Acreage 60%→70%, Almanac 45%→65%, Deploy Pipeline 85%→92%.",
-    "phaseProgress": 75,
+    "phase": "D",
+    "step": "D MVP shipped — PersonaBanner on /dashboard (role-aware welcome + 3 shortcuts per persona)",
+    "description": "First real persona-aware UI in V2. Previously every role (Grower/Handler/Trader/Buyer/Broker/Analyst/Processor/Logistics/Finance) saw the exact same dashboard. New <PersonaBanner> reads profile.role from useAuth and renders a role-specific tagline + 3 curated shortcuts. Ships persona awareness across the whole app immediately. Full role-specific pages remain TODO. persona-views system 0%→30%.",
+    "phaseProgress": 85,
     "startedAt": "2026-04-24T01:00:00Z",
     "claudeSession": "ongoing"
   },
   "blockers": [],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase F3a: scraper default mode 'position' → 'all' (unlocks 4 dormant scrapers)", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "pending", "message": "Phase D MVP: PersonaBanner on /dashboard (9 personas × role-aware shortcuts)", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "9af32a4", "message": "Phase F3a: scraper default mode 'position' → 'all' (unlocks 4 dormant scrapers)", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "e256faf", "message": "Fix pass (honest Systems %s + 2 new systems) + B6 Almanac section", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "0a26853", "message": "Phase C4: News Sentiment Compare + Phase 6 percent refresh to 65%", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "ea7c706", "message": "Phase C3: Pricing Variety × Grade Compare view mode", "branch": "main", "date": "2026-04-24", "landed": true },
@@ -387,17 +388,17 @@
       "id": "persona-views",
       "name": "Persona Views (new)",
       "category": "users",
-      "percent": 0,
+      "percent": 30,
       "icon": "🧑‍🌾",
-      "description": "Role-aware views for Growers, Packers/Handlers, Traders, Buyers, Brokers, Analysts. Currently ALL roles see the SAME UI. Previous 5% was misleading (register form + Welcome cards are discovery, not persona views). True persona-view work has not started.",
+      "description": "Role-aware Persona Banner on /dashboard reads profile.role and renders a curated tagline + 3 shortcuts for 9 personas (Grower/Handler/Processor/Broker/Buyer/Trader/Analyst/Logistics/Finance). Full role-specific pages still pending — MVP ships persona awareness across the whole app.",
       "features": [
-        { "name": "Role-aware layout bootstrap (reads profile.role)", "status": "todo" },
-        { "name": "Grower view (pool position, harvest timing, packer-call list)", "status": "todo" },
-        { "name": "Packer/Handler view (handler-level position, pool selling, quality mix)", "status": "todo" },
-        { "name": "Buyer view (sourcing strategies, price alerts, personal briefs)", "status": "todo" },
-        { "name": "Trader view (signals, deal analytics, trade prescriptions)", "status": "todo" },
-        { "name": "Broker view (arbitrage intel, offer building)", "status": "todo" },
-        { "name": "Analyst view (conference-ready reports, 10+ year trends)", "status": "todo" }
+        { "name": "PersonaBanner component (role-aware welcome + 3 shortcuts)", "status": "done" },
+        { "name": "Dashboard renders PersonaBanner at top", "status": "done" },
+        { "name": "9 persona configs mapped to register roles", "status": "done" },
+        { "name": "Full Grower page (pool position, harvest timing, packer-call list)", "status": "todo" },
+        { "name": "Full Packer/Handler page (handler position, pool selling, quality mix)", "status": "todo" },
+        { "name": "Role-aware nav items (filter sidebar by relevance to role)", "status": "todo" },
+        { "name": "Role-aware Zyra prompts", "status": "todo" }
       ]
     },
     {

@@ -5,6 +5,7 @@ import { toNum } from '../lib/utils';
 import { getAIStatus, loadAPIKeys } from '../lib/ai-engine';
 import { seedAiAnalyses } from '../lib/seed-ai-analyses';
 import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
+import PersonaBanner from '../components/PersonaBanner';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts';
@@ -486,6 +487,9 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl">
+      {/* Phase D MVP: role-aware welcome + shortcuts */}
+      <PersonaBanner />
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-start justify-between">
