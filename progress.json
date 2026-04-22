@@ -1,16 +1,16 @@
 {
-  "lastUpdated": "2026-04-24T00:00:00Z",
-  "updatedBy": "Claude AI — Phase E3a shipped (fix /map counter reset-to-0 animation bug)",
+  "lastUpdated": "2026-04-24T00:30:00Z",
+  "updatedBy": "Claude AI — Phase C2 shipped (Destinations Cross-Year × Country Compare)",
   "sessionStatus": "autonomous-sprint-phase-B-active",
-  "overallPercent": 82,
+  "overallPercent": 85,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "B/E",
-    "step": "E3a shipped — fix /map counter reset-to-0 bug (no more 'blank map' on refresh)",
-    "description": "The AnimatedCounter on /map was re-running from 0 every 30s when progress.json auto-refreshed — so anyone landing mid-animation saw truncated numbers ('10 overall' instead of '81'). Rewrote the component to only animate when the target value ACTUALLY changes (React.useRef tracks prev), using requestAnimationFrame with ease-out cubic. Now the numbers sit stable between refreshes and animate cleanly on real changes. Next: B6 Almanac + C2 Destinations retrofit.",
-    "phaseProgress": 90,
+    "phase": "C",
+    "step": "C2 shipped — Destinations now has Cross-Year × Country Compare (your original ask)",
+    "description": "Destinations page gets a new compare section at the bottom: pick any set of crop years × any set of countries and get a grouped bar chart + rank/total table for each year. Uses the reusable <FilterBar> from Phase C1. Answers trader questions like 'India 2023/24 vs 2024/25' or 'Spain vs UAE last 5 years' directly. Non-destructive — all existing charts preserved. Next: B6 Almanac + C3 Pricing retrofit.",
+    "phaseProgress": 95,
     "startedAt": "2026-04-23T18:00:00Z",
     "claudeSession": "ongoing"
   },
@@ -25,7 +25,9 @@
     }
   ],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase E3a: fix /map AnimatedCounter reset-to-0 on 30s refresh (cause of 'blank map')", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "pending", "message": "Phase C2: Destinations Cross-Year × Country Compare section", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "dda7059", "message": "Phase E3a (2/2): actually land the AnimatedCounter fix", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "fb3d839", "message": "Phase E3a: fix /map AnimatedCounter reset-to-0 on 30s refresh", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "a0c0e7a", "message": "Phase B5: County Intelligence section with Land IQ empty state", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "4ab5bbc", "message": "Phase B4: Forecast Accuracy section (Subjective vs Objective vs Actual)", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "7d6dfb3", "message": "Phase B3 + C1: Variety Intelligence section on /forecasts + reusable FilterBar", "branch": "main", "date": "2026-04-23", "landed": true },
