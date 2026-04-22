@@ -1,22 +1,23 @@
 {
-  "lastUpdated": "2026-04-24T04:00:00Z",
-  "updatedBy": "Claude AI — Phase C5b (dual-channel) + C5a (tier filter + V1 badge) + C5d (admin verify user)",
+  "lastUpdated": "2026-04-24T04:30:00Z",
+  "updatedBy": "Claude AI — Phase F1a shipped: V1 Returning-User Popup (OTP verify + set new password)",
   "sessionStatus": "stable-deploys-active",
-  "overallPercent": 96,
+  "overallPercent": 97,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "C5",
-    "step": "C5a/b/d shipped — dual-channel bulk invite + tier filter + V1 badge + admin Verify User",
-    "description": "Second round of user-added scope captured and shipped: (1) Bulk invite now supports WhatsApp + Email + Both (email queued in crm_contacts.metadata.email_queued awaiting F1b SMTP edge function). Accepts paste lines with any mix of phone/email/name. (2) CRM Users tab: tier filter chips now ACTUALLY filter with per-tier counts; new V1-migrated amber badge; WhatsApp-verified blue badge. (3) Team/admin can click ✓ Verify on any user to elevate them to access_tier='verified' — delivers the 'verified people' promise on Welcome. access-tier 'verified' now shows 'built' instead of 'partial'.",
-    "phaseProgress": 95,
+    "phase": "F1a",
+    "step": "F1a shipped — V1 Returning-User Popup (3-step OTP verify + password set, global modal)",
+    "description": "New <V1ReturningUserModal> renders globally (App.jsx) for any authenticated user whose profile.metadata flags them migrated_from_v1 AND has not completed v1_onboarded_at. Three steps: (1) confirm WhatsApp number prefilled from profile, send OTP via whatsapp-send edge function. (2) enter 6-digit code, verify via whatsapp-verify, stamp whatsapp_verified=true. (3) set new password via supabase.auth.updateUser, stamp metadata.v1_onboarded_at. Closes with success state. Users can dismiss to 'remind me later'. Converts V1 migrated users to full V2 users — the completion of the V1→V2 migration arc. auth system 88%→94%.",
+    "phaseProgress": 98,
     "startedAt": "2026-04-24T01:00:00Z",
     "claudeSession": "ongoing"
   },
   "blockers": [],
   "recentCommits": [
-    { "sha": "pending", "message": "C5 round 2: dual-channel invite + tier filter + V1 badge + admin Verify User", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "pending", "message": "Phase F1a: V1 Returning-User Popup (OTP verify + password set, global modal)", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "9042da8", "message": "C5 round 2: dual-channel invite + tier filter + V1 badge + admin Verify User", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "697ed05", "message": "Phase C5b + scope capture: CRM Bulk WhatsApp Invite + V1 popup/C5a/C5c on roadmap", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "fd05d49", "message": "Phase D MVP: PersonaBanner on /dashboard (9 personas × role-aware shortcuts)", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "9af32a4", "message": "Phase F3a: scraper default mode 'position' → 'all' (unlocks 4 dormant scrapers)", "branch": "main", "date": "2026-04-24", "landed": true },
@@ -267,7 +268,7 @@
       "id": "auth",
       "name": "Auth & Registration",
       "category": "users",
-      "percent": 88,
+      "percent": 94,
       "icon": "🔐",
       "description": "4 login methods live, 65 V1 users migrated, admin controls built. Scope expanded 2026-04-24: V1 returning-user popup flow — when a V1 user logs in for the first time on V2, they get a modal to verify WhatsApp (OTP) and set a new password, converting them from V1 → full V2 user.",
       "features": [
@@ -282,7 +283,7 @@
         { "name": "5-min guest timer + blur overlay", "status": "done" },
         { "name": "Forgot/Reset password + branded emails", "status": "done" },
         { "name": "Admin Add/Delete + Change Password in Settings", "status": "done" },
-        { "name": "V1 returning-user popup: detect + OTP verify + set new password (F1a)", "status": "todo" },
+        { "name": "V1 returning-user popup: detect + OTP verify + set new password (F1a)", "status": "done" },
         { "name": "V1 user end-to-end OTP login verification (live test)", "status": "todo" },
         { "name": "Verification tier workflow (verified badge)", "status": "todo" }
       ]

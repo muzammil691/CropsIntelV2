@@ -6,6 +6,7 @@ import ProfileCompletionBanner from './components/ProfileCompletionBanner';
 import ProtectedRoute, { AdminRoute, TeamRoute, AuthRoute } from './components/ProtectedRoute';
 import ZyraWidget from './components/ZyraWidget';
 import CommandPalette from './components/CommandPalette';
+import V1ReturningUserModal from './components/V1ReturningUserModal';
 
 // Lazy-load pages for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -421,6 +422,9 @@ export default function App() {
 
       {/* Command palette — Cmd+K quick navigation */}
       <CommandPalette />
+
+      {/* Phase F1a — V1 returning-user upgrade popup (auto-shown for migrated users) */}
+      <V1ReturningUserModal />
     </div>
   );
 }
