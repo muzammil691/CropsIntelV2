@@ -26,6 +26,7 @@ const CRM = lazy(() => import('./pages/CRM'));
 const Intelligence = lazy(() => import('./pages/Intelligence'));
 const Trading = lazy(() => import('./pages/Trading'));
 const Settings = lazy(() => import('./pages/Settings'));
+const ProjectMap = lazy(() => import('./pages/ProjectMap'));
 
 function PageLoader() {
   return (
@@ -339,6 +340,7 @@ const PAGE_TITLES = {
   '/register': 'Create Account',
   '/reset-password': 'Reset Password',
   '/set-password': 'Set Password',
+  '/map': 'Project Map',
 };
 
 function usePageTitle() {
@@ -350,7 +352,7 @@ function usePageTitle() {
 }
 
 // Full-page routes (no sidebar/nav chrome)
-const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password', '/set-password'];
+const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password', '/set-password', '/map'];
 
 export default function App() {
   usePageTitle();
@@ -368,6 +370,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/set-password" element={<SetPassword />} />
+          <Route path="/map" element={<ProjectMap />} />
         </Routes>
       </Suspense>
     );
