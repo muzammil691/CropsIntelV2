@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import VarietySection from '../components/VarietySection';
 import ForecastsComparisonSection from '../components/ForecastsComparisonSection';
+import CountySection from '../components/CountySection';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -299,6 +300,9 @@ export default function Forecasts() {
 
       {/* Variety Intelligence — reads abc_crop_receipts */}
       <VarietySection />
+
+      {/* County Intelligence — reads abc_acreage_reports (Land IQ) */}
+      <CountySection />
 
       {/* Sentiment Timeline */}
       {sentiment.length > 0 && (
