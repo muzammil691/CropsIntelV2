@@ -21,177 +21,35 @@
     "overallPercent": 75,
     "actionRequired": "DNS CUTOVER BLOCKED: GoDaddy sent SMS verification code to your phone (***-739701). Come back to this session to enter the code and I'll complete the DNS changes. Current A record @ → 185.199.108.153 (pending save). Still need: 3 more A records, www CNAME, delete Lovable NS records, configure GitHub Pages custom domain.",
     "items": [
-      {
-        "id": "m1",
-        "name": "V2 app live at cropsintel.net",
-        "status": "done",
-        "date": "2026-04-20"
-      },
-      {
-        "id": "m2",
-        "name": "65 V1 users migrated to V2 Supabase",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m3",
-        "name": "4-method login system built (WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email OTP)",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m4",
-        "name": "whatsapp-login edge function created",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m5",
-        "name": "Profile completion banner for missing data",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m5b",
-        "name": "Forgot Password flow + ResetPassword page",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m5c",
-        "name": "Supabase email templates branded (Reset, Magic Link, Confirm)",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m5d",
-        "name": "Supabase redirect URLs configured for cropsintel.net + .com",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m5e",
-        "name": "Forgot password tested live — email sent to muzammil.akhtar@me.com",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m6",
-        "name": "Deploy whatsapp-login edge function to Supabase",
-        "status": "todo",
-        "priority": "high"
-      },
-      {
-        "id": "m6b",
-        "name": "Settings page: profile editing section",
-        "status": "done",
-        "date": "2026-04-22"
-      },
-      {
-        "id": "m7",
-        "name": "iOS TestFlight pointing to V2 (cropsintel.net)",
-        "status": "done",
-        "date": "2026-04-22",
-        "note": "Build #39 green, uploaded to TestFlight"
-      },
-      {
-        "id": "m8",
-        "name": "Point cropsintel.com DNS to V2 (GitHub Pages IPs)",
-        "status": "blocked",
-        "priority": "high",
-        "note": "GoDaddy requires SMS verification code (sent to ***-739701). A record changed to 185.199.108.153 but needs code to save. Need 3 more A records (185.199.109/110/111.153), www CNAME to muzammil691.github.io, and delete Lovable NS records"
-      },
-      {
-        "id": "m9",
-        "name": "Configure CNAME for cropsintel.com in GitHub Pages",
-        "status": "todo",
-        "priority": "high"
-      },
-      {
-        "id": "m10",
-        "name": "Verify Muzammil admin login on cropsintel.com",
-        "status": "todo",
-        "priority": "high"
-      },
-      {
-        "id": "m11",
-        "name": "Verify WhatsApp OTP login end-to-end",
-        "status": "todo",
-        "priority": "high"
-      },
-      {
-        "id": "m12",
-        "name": "Verify email+password login for migrated users",
-        "status": "todo",
-        "priority": "medium"
-      },
-      {
-        "id": "m13",
-        "name": "Test guest → register → verify flow",
-        "status": "todo",
-        "priority": "medium"
-      },
-      {
-        "id": "m14",
-        "name": "V1 app (Lovable) redirect to V2",
-        "status": "todo",
-        "priority": "low"
-      },
-      {
-        "id": "m15",
-        "name": "Send V2 upgrade notification to 65 users",
-        "status": "todo",
-        "priority": "medium"
-      }
+      { "id": "m1", "name": "V2 app live at cropsintel.net", "status": "done", "date": "2026-04-20" },
+      { "id": "m2", "name": "65 V1 users migrated to V2 Supabase", "status": "done", "date": "2026-04-22" },
+      { "id": "m3", "name": "4-method login system built (WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email OTP)", "status": "done", "date": "2026-04-22" },
+      { "id": "m4", "name": "whatsapp-login edge function created", "status": "done", "date": "2026-04-22" },
+      { "id": "m5", "name": "Profile completion banner for missing data", "status": "done", "date": "2026-04-22" },
+      { "id": "m5b", "name": "Forgot Password flow + ResetPassword page", "status": "done", "date": "2026-04-22" },
+      { "id": "m5c", "name": "Supabase email templates branded (Reset, Magic Link, Confirm)", "status": "done", "date": "2026-04-22" },
+      { "id": "m5d", "name": "Supabase redirect URLs configured for cropsintel.net + .com", "status": "done", "date": "2026-04-22" },
+      { "id": "m5e", "name": "Forgot password tested live — email sent to muzammil.akhtar@me.com", "status": "done", "date": "2026-04-22" },
+      { "id": "m6", "name": "Deploy whatsapp-login edge function to Supabase", "status": "todo", "priority": "high" },
+      { "id": "m6b", "name": "Settings page: profile editing section", "status": "done", "date": "2026-04-22" },
+      { "id": "m7", "name": "iOS TestFlight pointing to V2 (cropsintel.net)", "status": "done", "date": "2026-04-22", "note": "Build #39 green, uploaded to TestFlight" },
+      { "id": "m8", "name": "Point cropsintel.com DNS to V2 (GitHub Pages IPs)", "status": "blocked", "priority": "high", "note": "GoDaddy requires SMS verification code (sent to ***-739701). A record changed to 185.199.108.153 but needs code to save. Need 3 more A records (185.199.109/110/111.153), www CNAME to muzammil691.github.io, and delete Lovable NS records" },
+      { "id": "m9", "name": "Configure CNAME for cropsintel.com in GitHub Pages", "status": "todo", "priority": "high" },
+      { "id": "m10", "name": "Verify Muzammil admin login on cropsintel.com", "status": "todo", "priority": "high" },
+      { "id": "m11", "name": "Verify WhatsApp OTP login end-to-end", "status": "todo", "priority": "high" },
+      { "id": "m12", "name": "Verify email+password login for migrated users", "status": "todo", "priority": "medium" },
+      { "id": "m13", "name": "Test guest → register → verify flow", "status": "todo", "priority": "medium" },
+      { "id": "m14", "name": "V1 app (Lovable) redirect to V2", "status": "todo", "priority": "low" },
+      { "id": "m15", "name": "Send V2 upgrade notification to 65 users", "status": "todo", "priority": "medium" }
     ]
   },
   "phases": [
-    {
-      "id": 1,
-      "name": "Data Foundation",
-      "status": "done",
-      "percent": 100,
-      "completedDate": "2026-03-15",
-      "summary": "116 ABC reports, 9 crop years, PDF scraping, data integrity audit"
-    },
-    {
-      "id": 2,
-      "name": "Stabilization",
-      "status": "done",
-      "percent": 100,
-      "completedDate": "2026-03-28",
-      "summary": "Auth rebuilt, 30+ fixes, widgets stable, architecture lessons"
-    },
-    {
-      "id": 3,
-      "name": "AI Systems",
-      "status": "done",
-      "percent": 100,
-      "completedDate": "2026-04-08",
-      "summary": "Claude API unified, Zyra widget, ElevenLabs voice, 4 edge functions"
-    },
-    {
-      "id": 4,
-      "name": "CRM + Soft Launch Gate",
-      "status": "done",
-      "percent": 100,
-      "completedDate": "2026-04-19",
-      "summary": "6-tab CRM, 15 audit fixes, 12 AI enhancements, perf 30s→2-3s"
-    },
-    {
-      "id": 5,
-      "name": "V2 Autonomous Rebuild",
-      "status": "active",
-      "percent": 90,
-      "summary": "13 pages, code splitting, auto-deploy, 65 users migrated, 4-method login"
-    },
-    {
-      "id": 6,
-      "name": "V2 Go-Live + Growth",
-      "status": "active",
-      "percent": 42,
-      "summary": "Domain cutover, iOS TestFlight, WhatsApp deploy, offer system, trading portals"
-    }
+    { "id": 1, "name": "Data Foundation", "status": "done", "percent": 100, "completedDate": "2026-03-15", "summary": "116 ABC reports, 9 crop years, PDF scraping, data integrity audit" },
+    { "id": 2, "name": "Stabilization", "status": "done", "percent": 100, "completedDate": "2026-03-28", "summary": "Auth rebuilt, 30+ fixes, widgets stable, architecture lessons" },
+    { "id": 3, "name": "AI Systems", "status": "done", "percent": 100, "completedDate": "2026-04-08", "summary": "Claude API unified, Zyra widget, ElevenLabs voice, 4 edge functions" },
+    { "id": 4, "name": "CRM + Soft Launch Gate", "status": "done", "percent": 100, "completedDate": "2026-04-19", "summary": "6-tab CRM, 15 audit fixes, 12 AI enhancements, perf 30s→2-3s" },
+    { "id": 5, "name": "V2 Autonomous Rebuild", "status": "active", "percent": 90, "summary": "13 pages, code splitting, auto-deploy, 65 users migrated, 4-method login" },
+    { "id": 6, "name": "V2 Go-Live + Growth", "status": "active", "percent": 42, "summary": "Domain cutover, iOS TestFlight, WhatsApp deploy, offer system, trading portals" }
   ],
   "systems": [
     {
@@ -202,34 +60,13 @@
       "icon": "📦",
       "description": "10 years of real data from Almond Board of California",
       "features": [
-        {
-          "name": "116 reports in DB (9 crop years, 2016/17–2025/26)",
-          "status": "done"
-        },
-        {
-          "name": "72 real PDFs scraped from almonds.org",
-          "status": "done"
-        },
-        {
-          "name": "PDF parser + domestic/export breakdowns",
-          "status": "done"
-        },
-        {
-          "name": "Sold% formula corrected",
-          "status": "done"
-        },
-        {
-          "name": "Data integrity audit: all 116 rows verified",
-          "status": "done"
-        },
-        {
-          "name": "CSV export on Supply & Demand page",
-          "status": "done"
-        },
-        {
-          "name": "Auto-scraper cron for new monthly reports",
-          "status": "wip"
-        }
+        { "name": "116 reports in DB (9 crop years, 2016/17–2025/26)", "status": "done" },
+        { "name": "72 real PDFs scraped from almonds.org", "status": "done" },
+        { "name": "PDF parser + domestic/export breakdowns", "status": "done" },
+        { "name": "Sold% formula corrected", "status": "done" },
+        { "name": "Data integrity audit: all 116 rows verified", "status": "done" },
+        { "name": "CSV export on Supply & Demand page", "status": "done" },
+        { "name": "Auto-scraper cron for new monthly reports", "status": "wip" }
       ]
     },
     {
@@ -240,30 +77,12 @@
       "icon": "🧠",
       "description": "Market reports → Claude AI → Dashboard alerts + knowledge base",
       "features": [
-        {
-          "name": "Upload UI (paste/file/URL) with source presets",
-          "status": "done"
-        },
-        {
-          "name": "Claude AI analysis pipeline — E2E verified",
-          "status": "done"
-        },
-        {
-          "name": "Knowledge base accumulation",
-          "status": "done"
-        },
-        {
-          "name": "4 edge functions capturing intelligence",
-          "status": "done"
-        },
-        {
-          "name": "Email ingestion from intel@cropsintel.com",
-          "status": "todo"
-        },
-        {
-          "name": "Batch auto-process on receive",
-          "status": "todo"
-        }
+        { "name": "Upload UI (paste/file/URL) with source presets", "status": "done" },
+        { "name": "Claude AI analysis pipeline — E2E verified", "status": "done" },
+        { "name": "Knowledge base accumulation", "status": "done" },
+        { "name": "4 edge functions capturing intelligence", "status": "done" },
+        { "name": "Email ingestion from intel@cropsintel.com", "status": "todo" },
+        { "name": "Batch auto-process on receive", "status": "todo" }
       ]
     },
     {
@@ -274,34 +93,13 @@
       "icon": "💰",
       "description": "Strata Markets prices + MAXONS 3% margin calculator",
       "features": [
-        {
-          "name": "Full Pricing page with variety/grade/form",
-          "status": "done"
-        },
-        {
-          "name": "MAXONS 3% margin calculator",
-          "status": "done"
-        },
-        {
-          "name": "Bid/Ask spread display",
-          "status": "done"
-        },
-        {
-          "name": "CSV export for pricing data",
-          "status": "done"
-        },
-        {
-          "name": "Seeded data for all major varieties",
-          "status": "done"
-        },
-        {
-          "name": "Deploy Strata scraper on daily cron",
-          "status": "wip"
-        },
-        {
-          "name": "Historical price trend charts",
-          "status": "todo"
-        }
+        { "name": "Full Pricing page with variety/grade/form", "status": "done" },
+        { "name": "MAXONS 3% margin calculator", "status": "done" },
+        { "name": "Bid/Ask spread display", "status": "done" },
+        { "name": "CSV export for pricing data", "status": "done" },
+        { "name": "Seeded data for all major varieties", "status": "done" },
+        { "name": "Deploy Strata scraper on daily cron", "status": "wip" },
+        { "name": "Historical price trend charts", "status": "todo" }
       ]
     },
     {
@@ -312,26 +110,11 @@
       "icon": "📰",
       "description": "Industry news, crop forecasts, market intelligence",
       "features": [
-        {
-          "name": "News page with sentiment + market impact",
-          "status": "done"
-        },
-        {
-          "name": "Real articles from multiple sources",
-          "status": "done"
-        },
-        {
-          "name": "CSV export for news data",
-          "status": "done"
-        },
-        {
-          "name": "Forecasts page with crop year data + CSV",
-          "status": "done"
-        },
-        {
-          "name": "Deploy scrapers on cron (almonds.org, USDA, Bountiful.ag)",
-          "status": "wip"
-        }
+        { "name": "News page with sentiment + market impact", "status": "done" },
+        { "name": "Real articles from multiple sources", "status": "done" },
+        { "name": "CSV export for news data", "status": "done" },
+        { "name": "Forecasts page with crop year data + CSV", "status": "done" },
+        { "name": "Deploy scrapers on cron (almonds.org, USDA, Bountiful.ag)", "status": "wip" }
       ]
     },
     {
@@ -342,22 +125,10 @@
       "icon": "🌍",
       "description": "50+ country export/import data with YoY comparison",
       "features": [
-        {
-          "name": "Destinations page with country breakdowns",
-          "status": "done"
-        },
-        {
-          "name": "Real export data from ABC reports",
-          "status": "done"
-        },
-        {
-          "name": "Prior-year YoY comparison",
-          "status": "done"
-        },
-        {
-          "name": "Country-specific deep drill pages",
-          "status": "wip"
-        }
+        { "name": "Destinations page with country breakdowns", "status": "done" },
+        { "name": "Real export data from ABC reports", "status": "done" },
+        { "name": "Prior-year YoY comparison", "status": "done" },
+        { "name": "Country-specific deep drill pages", "status": "wip" }
       ]
     },
     {
@@ -369,50 +140,17 @@
       "description": "AI co-pilot: guides, speaks, provides market prescriptions",
       "priority": true,
       "features": [
-        {
-          "name": "Floating chat widget on all 13 pages",
-          "status": "done"
-        },
-        {
-          "name": "Real Claude API conversations with market context",
-          "status": "done"
-        },
-        {
-          "name": "ElevenLabs voice toggle",
-          "status": "done"
-        },
-        {
-          "name": "4-tier role-aware quick-ask topics",
-          "status": "done"
-        },
-        {
-          "name": "Multi-turn conversation history",
-          "status": "done"
-        },
-        {
-          "name": "Mobile-responsive panel",
-          "status": "done"
-        },
-        {
-          "name": "Intelligence page with full Zyra chat",
-          "status": "done"
-        },
-        {
-          "name": "WhatsApp Zyra chat via Twilio webhook + Claude API",
-          "status": "done"
-        },
-        {
-          "name": "WhatsApp OTP verification for registration",
-          "status": "done"
-        },
-        {
-          "name": "WhatsApp trade alert + offer delivery",
-          "status": "done"
-        },
-        {
-          "name": "Proactive trade prescriptions",
-          "status": "todo"
-        }
+        { "name": "Floating chat widget on all 13 pages", "status": "done" },
+        { "name": "Real Claude API conversations with market context", "status": "done" },
+        { "name": "ElevenLabs voice toggle", "status": "done" },
+        { "name": "4-tier role-aware quick-ask topics", "status": "done" },
+        { "name": "Multi-turn conversation history", "status": "done" },
+        { "name": "Mobile-responsive panel", "status": "done" },
+        { "name": "Intelligence page with full Zyra chat", "status": "done" },
+        { "name": "WhatsApp Zyra chat via Twilio webhook + Claude API", "status": "done" },
+        { "name": "WhatsApp OTP verification for registration", "status": "done" },
+        { "name": "WhatsApp trade alert + offer delivery", "status": "done" },
+        { "name": "Proactive trade prescriptions", "status": "todo" }
       ]
     },
     {
@@ -423,70 +161,22 @@
       "icon": "🔐",
       "description": "4 login methods, user migration, profile completion",
       "features": [
-        {
-          "name": "WhatsApp + Password login",
-          "status": "done"
-        },
-        {
-          "name": "WhatsApp OTP login (passwordless)",
-          "status": "done"
-        },
-        {
-          "name": "Email + Password login",
-          "status": "done"
-        },
-        {
-          "name": "Email Magic Link (Supabase OTP)",
-          "status": "done"
-        },
-        {
-          "name": "65 V1 users migrated to V2 with profiles",
-          "status": "done"
-        },
-        {
-          "name": "Profile completion banner (missing email/WhatsApp)",
-          "status": "done"
-        },
-        {
-          "name": "5-minute guest timer with blur overlay",
-          "status": "done"
-        },
-        {
-          "name": "Registration with rich business profile",
-          "status": "done"
-        },
-        {
-          "name": "WhatsApp OTP verify step after registration",
-          "status": "done"
-        },
-        {
-          "name": "Forgot Password flow with branded email",
-          "status": "done"
-        },
-        {
-          "name": "ResetPassword page (handles Supabase callback)",
-          "status": "done"
-        },
-        {
-          "name": "3 Supabase email templates branded (Reset, Magic Link, Confirm)",
-          "status": "done"
-        },
-        {
-          "name": "Supabase Site URL + Redirect URLs configured",
-          "status": "done"
-        },
-        {
-          "name": "Deploy whatsapp-login edge function",
-          "status": "wip"
-        },
-        {
-          "name": "Admin user management + role enforcement",
-          "status": "done"
-        },
-        {
-          "name": "Verification tier workflow",
-          "status": "todo"
-        }
+        { "name": "WhatsApp + Password login", "status": "done" },
+        { "name": "WhatsApp OTP login (passwordless)", "status": "done" },
+        { "name": "Email + Password login", "status": "done" },
+        { "name": "Email Magic Link (Supabase OTP)", "status": "done" },
+        { "name": "65 V1 users migrated to V2 with profiles", "status": "done" },
+        { "name": "Profile completion banner (missing email/WhatsApp)", "status": "done" },
+        { "name": "5-minute guest timer with blur overlay", "status": "done" },
+        { "name": "Registration with rich business profile", "status": "done" },
+        { "name": "WhatsApp OTP verify step after registration", "status": "done" },
+        { "name": "Forgot Password flow with branded email", "status": "done" },
+        { "name": "ResetPassword page (handles Supabase callback)", "status": "done" },
+        { "name": "3 Supabase email templates branded (Reset, Magic Link, Confirm)", "status": "done" },
+        { "name": "Supabase Site URL + Redirect URLs configured", "status": "done" },
+        { "name": "Deploy whatsapp-login edge function", "status": "wip" },
+        { "name": "Admin user management + role enforcement", "status": "done" },
+        { "name": "Verification tier workflow", "status": "todo" }
       ]
     },
     {
@@ -497,42 +187,15 @@
       "icon": "🤝",
       "description": "Full CRM with contacts, pipeline, activities, invitations, detail panels",
       "features": [
-        {
-          "name": "CRM Dashboard with pipeline view",
-          "status": "done"
-        },
-        {
-          "name": "Contact management + activities",
-          "status": "done"
-        },
-        {
-          "name": "6-tab interface",
-          "status": "done"
-        },
-        {
-          "name": "15 audit issues fixed (A-O)",
-          "status": "done"
-        },
-        {
-          "name": "12 AI enhancements shipped",
-          "status": "done"
-        },
-        {
-          "name": "WhatsApp/email customer invitations (individual + bulk)",
-          "status": "done"
-        },
-        {
-          "name": "Customer CSV bulk import",
-          "status": "done"
-        },
-        {
-          "name": "Contact detail panel with deals + activity timeline",
-          "status": "done"
-        },
-        {
-          "name": "MAXONS offer builder + Supabase + WhatsApp delivery",
-          "status": "done"
-        }
+        { "name": "CRM Dashboard with pipeline view", "status": "done" },
+        { "name": "Contact management + activities", "status": "done" },
+        { "name": "6-tab interface", "status": "done" },
+        { "name": "15 audit issues fixed (A-O)", "status": "done" },
+        { "name": "12 AI enhancements shipped", "status": "done" },
+        { "name": "WhatsApp/email customer invitations (individual + bulk)", "status": "done" },
+        { "name": "Customer CSV bulk import", "status": "done" },
+        { "name": "Contact detail panel with deals + activity timeline", "status": "done" },
+        { "name": "MAXONS offer builder + Supabase + WhatsApp delivery", "status": "done" }
       ]
     },
     {
@@ -543,42 +206,15 @@
       "icon": "🌐",
       "description": "13 pages, code splitting, responsive, auto-deploy, iOS app",
       "features": [
-        {
-          "name": "13 lazy-loaded pages with code splitting",
-          "status": "done"
-        },
-        {
-          "name": "Desktop sidebar + mobile bottom nav",
-          "status": "done"
-        },
-        {
-          "name": "Cmd+K command palette",
-          "status": "done"
-        },
-        {
-          "name": "GitHub Pages auto-deploy on push",
-          "status": "done"
-        },
-        {
-          "name": "SPA routing with 404.html handler",
-          "status": "done"
-        },
-        {
-          "name": "OG/Twitter meta tags",
-          "status": "done"
-        },
-        {
-          "name": "iOS app WKWebView → cropsintel.net",
-          "status": "done"
-        },
-        {
-          "name": "iOS TestFlight build uploading (build #39)",
-          "status": "wip"
-        },
-        {
-          "name": "cropsintel.com DNS pointed to V2",
-          "status": "todo"
-        }
+        { "name": "13 lazy-loaded pages with code splitting", "status": "done" },
+        { "name": "Desktop sidebar + mobile bottom nav", "status": "done" },
+        { "name": "Cmd+K command palette", "status": "done" },
+        { "name": "GitHub Pages auto-deploy on push", "status": "done" },
+        { "name": "SPA routing with 404.html handler", "status": "done" },
+        { "name": "OG/Twitter meta tags", "status": "done" },
+        { "name": "iOS app WKWebView → cropsintel.net", "status": "done" },
+        { "name": "iOS TestFlight build uploading (build #39)", "status": "wip" },
+        { "name": "cropsintel.com DNS pointed to V2", "status": "todo" }
       ]
     },
     {
@@ -589,26 +225,11 @@
       "icon": "🏠",
       "description": "Cinematic landing page with animated tour",
       "features": [
-        {
-          "name": "Welcome page with 3 pillars + 6 capabilities",
-          "status": "done"
-        },
-        {
-          "name": "10-slide cinematic tour overlay",
-          "status": "done"
-        },
-        {
-          "name": "Animated counter stats",
-          "status": "done"
-        },
-        {
-          "name": "6 stakeholder role cards",
-          "status": "done"
-        },
-        {
-          "name": "Guest preview CTA flow",
-          "status": "done"
-        }
+        { "name": "Welcome page with 3 pillars + 6 capabilities", "status": "done" },
+        { "name": "10-slide cinematic tour overlay", "status": "done" },
+        { "name": "Animated counter stats", "status": "done" },
+        { "name": "6 stakeholder role cards", "status": "done" },
+        { "name": "Guest preview CTA flow", "status": "done" }
       ]
     },
     {
@@ -619,22 +240,10 @@
       "icon": "📊",
       "description": "Real-time overview, 10-widget cap, lazy tabs",
       "features": [
-        {
-          "name": "Lazy tab loading (30s→2-3s)",
-          "status": "done"
-        },
-        {
-          "name": "10-widget cap per tab",
-          "status": "done"
-        },
-        {
-          "name": "Real ABC data in all charts",
-          "status": "done"
-        },
-        {
-          "name": "Alert cards from intel pipeline",
-          "status": "done"
-        }
+        { "name": "Lazy tab loading (30s→2-3s)", "status": "done" },
+        { "name": "10-widget cap per tab", "status": "done" },
+        { "name": "Real ABC data in all charts", "status": "done" },
+        { "name": "Alert cards from intel pipeline", "status": "done" }
       ]
     },
     {
@@ -645,22 +254,10 @@
       "icon": "📋",
       "description": "Position reports, market analysis, CSV exports",
       "features": [
-        {
-          "name": "Reports page with tabular data",
-          "status": "done"
-        },
-        {
-          "name": "Analysis page with charts and trends",
-          "status": "done"
-        },
-        {
-          "name": "CSV export on all data pages",
-          "status": "done"
-        },
-        {
-          "name": "10-year YoY comparison charts",
-          "status": "wip"
-        }
+        { "name": "Reports page with tabular data", "status": "done" },
+        { "name": "Analysis page with charts and trends", "status": "done" },
+        { "name": "CSV export on all data pages", "status": "done" },
+        { "name": "10-year YoY comparison charts", "status": "wip" }
       ]
     },
     {
@@ -671,14 +268,8 @@
       "icon": "🏛️",
       "description": "Claude + GPT + Gemini debate (deferred post-launch)",
       "features": [
-        {
-          "name": "Claude API fully integrated as primary",
-          "status": "done"
-        },
-        {
-          "name": "GPT + Gemini council voting",
-          "status": "todo"
-        }
+        { "name": "Claude API fully integrated as primary", "status": "done" },
+        { "name": "GPT + Gemini council voting", "status": "todo" }
       ]
     },
     {
@@ -698,34 +289,13 @@
       "icon": "⚡",
       "description": "Offer builder wired to CRM + Supabase + WhatsApp delivery",
       "features": [
-        {
-          "name": "Offer builder with variety/grade/form/incoterm",
-          "status": "done"
-        },
-        {
-          "name": "CRM contact selector for buyer linking",
-          "status": "done"
-        },
-        {
-          "name": "Supabase persistence (crm_deals table)",
-          "status": "done"
-        },
-        {
-          "name": "Stage progression: draft→quoted→sent→accepted",
-          "status": "done"
-        },
-        {
-          "name": "WhatsApp offer delivery via Twilio",
-          "status": "done"
-        },
-        {
-          "name": "Contract management + e-sign",
-          "status": "todo"
-        },
-        {
-          "name": "Shipment tracking",
-          "status": "todo"
-        }
+        { "name": "Offer builder with variety/grade/form/incoterm", "status": "done" },
+        { "name": "CRM contact selector for buyer linking", "status": "done" },
+        { "name": "Supabase persistence (crm_deals table)", "status": "done" },
+        { "name": "Stage progression: draft→quoted→sent→accepted", "status": "done" },
+        { "name": "WhatsApp offer delivery via Twilio", "status": "done" },
+        { "name": "Contract management + e-sign", "status": "todo" },
+        { "name": "Shipment tracking", "status": "todo" }
       ]
     },
     {
@@ -739,157 +309,41 @@
     }
   ],
   "milestones": [
-    {
-      "date": "2026-04-22",
-      "text": "AUTH OVERNIGHT: Forgot Password flow + ResetPassword page + 3 branded email templates + redirect URLs + live verification"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "4-method login system: WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email Magic Link"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "65 V1 users migrated to V2 Supabase with full profiles"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "whatsapp-login edge function + profile completion banner"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "Settings page: user profile editing section added"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "CRM: contact detail panel, invitation system (WhatsApp+email), bulk invites, activity notes"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "CNAME file for cropsintel.com domain cutover added"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "Trading Portal: offer builder wired to Supabase + CRM contacts + WhatsApp delivery + stage progression"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "Role-based access control: ProtectedRoute, admin user mgmt, route gating"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "iOS build #39 green — uploaded to TestFlight (V2 URL)"
-    },
-    {
-      "date": "2026-04-22",
-      "text": "WhatsApp LIVE: 4 edge functions deployed, Twilio webhook configured"
-    },
-    {
-      "date": "2026-04-21",
-      "text": "Cmd+K command palette + OG meta tags + CSV exports"
-    },
-    {
-      "date": "2026-04-21",
-      "text": "Cinematic 10-slide tour on Welcome page"
-    },
-    {
-      "date": "2026-04-19",
-      "text": "SOFT LAUNCH GATE REACHED — Phases 1-4 complete"
-    },
-    {
-      "date": "2026-04-19",
-      "text": "CRM Phase 4: 15 issues + 12 AI enhancements shipped"
-    },
-    {
-      "date": "2026-04-18",
-      "text": "Dashboard perf: 30s → 2-3s load"
-    },
-    {
-      "date": "2026-04-11",
-      "text": "iOS app uploaded to TestFlight"
-    },
-    {
-      "date": "2026-04-10",
-      "text": "Data integrity audit: 114 PDFs, 116 rows clean"
-    },
-    {
-      "date": "2026-04-10",
-      "text": "Pre-launch signoff: R1-R3 gates passed"
-    },
-    {
-      "date": "2026-04-08",
-      "text": "Phase 3 AI Systems complete — all 4 edge functions live"
-    },
-    {
-      "date": "2026-03-28",
-      "text": "Phase 2 Stabilization — 30+ steps done"
-    },
-    {
-      "date": "2026-03-15",
-      "text": "72 real ABC PDFs scraped, DB rebuilt"
-    }
+    { "date": "2026-04-22", "text": "AUTH OVERNIGHT: Forgot Password flow + ResetPassword page + 3 branded email templates + redirect URLs + live verification" },
+    { "date": "2026-04-22", "text": "4-method login system: WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email Magic Link" },
+    { "date": "2026-04-22", "text": "65 V1 users migrated to V2 Supabase with full profiles" },
+    { "date": "2026-04-22", "text": "whatsapp-login edge function + profile completion banner" },
+    { "date": "2026-04-22", "text": "Settings page: user profile editing section added" },
+    { "date": "2026-04-22", "text": "CRM: contact detail panel, invitation system (WhatsApp+email), bulk invites, activity notes" },
+    { "date": "2026-04-22", "text": "CNAME file for cropsintel.com domain cutover added" },
+    { "date": "2026-04-22", "text": "Trading Portal: offer builder wired to Supabase + CRM contacts + WhatsApp delivery + stage progression" },
+    { "date": "2026-04-22", "text": "Role-based access control: ProtectedRoute, admin user mgmt, route gating" },
+    { "date": "2026-04-22", "text": "iOS build #39 green — uploaded to TestFlight (V2 URL)" },
+    { "date": "2026-04-22", "text": "WhatsApp LIVE: 4 edge functions deployed, Twilio webhook configured" },
+    { "date": "2026-04-21", "text": "Cmd+K command palette + OG meta tags + CSV exports" },
+    { "date": "2026-04-21", "text": "Cinematic 10-slide tour on Welcome page" },
+    { "date": "2026-04-19", "text": "SOFT LAUNCH GATE REACHED — Phases 1-4 complete" },
+    { "date": "2026-04-19", "text": "CRM Phase 4: 15 issues + 12 AI enhancements shipped" },
+    { "date": "2026-04-18", "text": "Dashboard perf: 30s → 2-3s load" },
+    { "date": "2026-04-11", "text": "iOS app uploaded to TestFlight" },
+    { "date": "2026-04-10", "text": "Data integrity audit: 114 PDFs, 116 rows clean" },
+    { "date": "2026-04-10", "text": "Pre-launch signoff: R1-R3 gates passed" },
+    { "date": "2026-04-08", "text": "Phase 3 AI Systems complete — all 4 edge functions live" },
+    { "date": "2026-03-28", "text": "Phase 2 Stabilization — 30+ steps done" },
+    { "date": "2026-03-15", "text": "72 real ABC PDFs scraped, DB rebuilt" }
   ],
   "accessTiers": [
-    {
-      "id": "guest",
-      "name": "Guest",
-      "status": "built",
-      "description": "5-min preview, blur after timer"
-    },
-    {
-      "id": "registered",
-      "name": "Registered",
-      "status": "built",
-      "description": "Free account, 4 login methods"
-    },
-    {
-      "id": "verified",
-      "name": "Verified",
-      "status": "partial",
-      "description": "Admin-approved, role logic exists"
-    },
-    {
-      "id": "maxons",
-      "name": "MAXONS Team",
-      "status": "built",
-      "description": "CRM + Trading gated to team roles; admin panel built"
-    }
+    { "id": "guest", "name": "Guest", "status": "built", "description": "5-min preview, blur after timer" },
+    { "id": "registered", "name": "Registered", "status": "built", "description": "Free account, 4 login methods" },
+    { "id": "verified", "name": "Verified", "status": "partial", "description": "Admin-approved, role logic exists" },
+    { "id": "maxons", "name": "MAXONS Team", "status": "built", "description": "CRM + Trading gated to team roles; admin panel built" }
   ],
   "nextPriorities": [
-    {
-      "id": 1,
-      "title": "Deploy whatsapp-login Edge Function",
-      "color": "#8b5cf6",
-      "description": "Deploy to Supabase so WhatsApp OTP login works end-to-end"
-    },
-    {
-      "id": 2,
-      "title": "Point cropsintel.com → V2",
-      "color": "#ef4444",
-      "description": "GoDaddy DNS A records to GitHub Pages IPs (185.199.108-111.153)"
-    },
-    {
-      "id": 3,
-      "title": "iOS TestFlight V2 Verification",
-      "color": "#f59e0b",
-      "description": "Build #39 uploading — verify in TestFlight app"
-    },
-    {
-      "id": 4,
-      "title": "Email Notification System",
-      "color": "#3b82f6",
-      "description": "Welcome email, trade alerts, offer notifications to customers"
-    },
-    {
-      "id": 5,
-      "title": "Deploy Live Scrapers",
-      "color": "#22c55e",
-      "description": "ABC auto-scraper, Strata pricing, news scrapers on cron"
-    },
-    {
-      "id": 6,
-      "title": "Contract Management",
-      "color": "#f59e0b",
-      "description": "Contract generation, e-sign, shipment tracking on Trading page"
-    }
+    { "id": 1, "title": "Deploy whatsapp-login Edge Function", "color": "#8b5cf6", "description": "Deploy to Supabase so WhatsApp OTP login works end-to-end" },
+    { "id": 2, "title": "Point cropsintel.com → V2", "color": "#ef4444", "description": "GoDaddy DNS A records to GitHub Pages IPs (185.199.108-111.153)" },
+    { "id": 3, "title": "iOS TestFlight V2 Verification", "color": "#f59e0b", "description": "Build #39 uploading — verify in TestFlight app" },
+    { "id": 4, "title": "Email Notification System", "color": "#3b82f6", "description": "Welcome email, trade alerts, offer notifications to customers" },
+    { "id": 5, "title": "Deploy Live Scrapers", "color": "#22c55e", "description": "ABC auto-scraper, Strata pricing, news scrapers on cron" },
+    { "id": 6, "title": "Contract Management", "color": "#f59e0b", "description": "Contract generation, e-sign, shipment tracking on Trading page" }
   ]
 }

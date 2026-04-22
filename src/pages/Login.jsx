@@ -127,8 +127,11 @@ export default function Login() {
 
     try {
       const result = await signInWithOTP(cleanPhone, code);
-      if (result.needs_password_login) {
-        // Switch to whatsapp+password with the email pre-filled
+      if (result.password_setup_required) {
+        // V1 user — account just created, redirect to set password
+        navigate('/set-password');
+      } else if (result.needs_password_login) {
+        // Has auth account but couldn't get session — fall back to password
         setEmail(result.email || '');
         setMethod('email_password');
         setError('OTP verified — please enter your password to complete sign in');

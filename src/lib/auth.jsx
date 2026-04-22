@@ -133,6 +133,11 @@ export function AuthProvider({ children }) {
       return { ...result, session: data.session };
     }
 
+    if (result.password_setup_required) {
+      // V1 user — account was just auto-created but no session
+      return result;
+    }
+
     if (result.needs_password_login) {
       // OTP verified but couldn't generate session — return for password fallback
       return result;
@@ -146,6 +151,13 @@ export function AuthProvider({ children }) {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     if (error) throw error;
+  }, []);
+
+  // Update password for logged-in user (used by V1 users after OTP + Settings)
+  const updatePassword = useCallback(async (newPassword) => {
+    const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    return data;
   }, []);
 
   const signOut = useCallback(async () => {
@@ -177,6 +189,7 @@ export function AuthProvider({ children }) {
       sendLoginOTP,
       signOut,
       resetPassword,
+      updatePassword,
       resetGuestTimer,
       isAuthenticated: !!user,
     }}>

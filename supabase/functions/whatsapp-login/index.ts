@@ -117,9 +117,10 @@ serve(async (req) => {
       .eq('id', profile.id);
 
     // ─── Step 4: Generate auth session via Admin API ────────────
-    // Use generateLink to create a magic link token, then exchange it
-    // Alternative: use admin.updateUser to set a temp password and signIn
-    // Cleanest: use the Supabase Admin API to generate a session directly
+    // Try to generate a magic link. If it fails, the user may be a V1
+    // migrated user with no Supabase Auth account — auto-create one.
+
+    let passwordSetupRequired = false;
 
     const adminRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
       method: 'POST',
@@ -134,37 +135,127 @@ serve(async (req) => {
       }),
     });
 
-    const linkData = await adminRes.json();
+    let linkData = await adminRes.json();
 
+    // ─── Step 4b: V1 User Auto-Migration ────────────────────────
+    // If generate_link failed, this is likely a V1 user with no auth account.
+    // Auto-create a Supabase Auth account so they can log in.
     if (!adminRes.ok) {
-      console.error('Generate link error:', linkData);
-      // Fallback: return success with profile info, let client handle token exchange
-      return new Response(
-        JSON.stringify({
-          success: true,
-          method: 'otp_verified',
-          user_id: profile.id,
+      console.log('Generate link failed — attempting V1 user auto-migration for:', profile.email);
+
+      // Create auth account with a random temp password, using the existing profile ID
+      const tempPassword = crypto.randomUUID();
+      const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': SUPABASE_SERVICE_KEY,
+        },
+        body: JSON.stringify({
           email: profile.email,
-          profile: {
-            full_name: profile.full_name,
-            access_tier: profile.access_tier,
-            whatsapp_verified: true,
+          password: tempPassword,
+          email_confirm: true, // Skip email verification — they verified via WhatsApp
+          user_metadata: {
+            full_name: profile.full_name || '',
+            company: (profile as any).company || '',
+            v1_migrated: true,
           },
-          needs_password_login: true,
-          message: 'OTP verified. Please complete login with your password.',
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      });
+
+      const createData = await createRes.json();
+
+      if (!createRes.ok) {
+        console.error('V1 auto-migration failed:', createData);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Account setup failed. Please contact support or try registering.',
+            v1_migration_failed: true,
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update user_profiles to link to new auth user ID
+      const newAuthId = createData.id;
+      const oldProfileId = profile.id;
+
+      if (newAuthId && newAuthId !== oldProfileId) {
+        // Update profile ID to match new auth user ID
+        // First insert a new row with the new ID, then delete the old one
+        const { data: fullProfile } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', oldProfileId)
+          .single();
+
+        if (fullProfile) {
+          const { id: _oldId, ...profileData } = fullProfile;
+          await supabase.from('user_profiles').upsert({
+            ...profileData,
+            id: newAuthId,
+            whatsapp_verified: true,
+            updated_at: new Date().toISOString(),
+          });
+          // Delete old profile row (only if IDs differ)
+          await supabase.from('user_profiles').delete().eq('id', oldProfileId);
+        }
+        // Update profile reference for the rest of this function
+        profile.id = newAuthId;
+      }
+
+      passwordSetupRequired = true;
+      console.log('V1 user migrated to auth successfully:', profile.email, '→', newAuthId);
+
+      // Retry generate_link now that the auth account exists
+      const retryRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': SUPABASE_SERVICE_KEY,
+        },
+        body: JSON.stringify({
+          type: 'magiclink',
+          email: profile.email,
+        }),
+      });
+
+      linkData = await retryRes.json();
+
+      if (!retryRes.ok) {
+        console.error('Generate link retry failed:', linkData);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            method: 'otp_verified',
+            user_id: profile.id,
+            email: profile.email,
+            profile: {
+              full_name: profile.full_name,
+              access_tier: profile.access_tier,
+              whatsapp_verified: true,
+            },
+            password_setup_required: true,
+            message: 'Account created. Please set your password.',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Extract the token from the magic link
-    // The action_link contains a token hash we can use
     const actionLink = linkData.action_link || '';
-    const tokenHash = new URL(actionLink).searchParams.get('token_hash') || linkData.hashed_token || '';
-    const emailToken = linkData.hashed_token || tokenHash;
+    let emailToken = '';
+    try {
+      emailToken = new URL(actionLink).searchParams.get('token_hash') || linkData.hashed_token || '';
+    } catch {
+      emailToken = linkData.hashed_token || '';
+    }
 
     if (!emailToken) {
-      // If we can't get the token, return profile info for client-side password login
       return new Response(
         JSON.stringify({
           success: true,
@@ -176,7 +267,8 @@ serve(async (req) => {
             access_tier: profile.access_tier,
             whatsapp_verified: true,
           },
-          needs_password_login: true,
+          password_setup_required: passwordSetupRequired,
+          needs_password_login: !passwordSetupRequired,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -198,7 +290,6 @@ serve(async (req) => {
     const sessionData = await verifyRes.json();
 
     if (!verifyRes.ok || !sessionData.access_token) {
-      // Fallback
       return new Response(
         JSON.stringify({
           success: true,
@@ -210,7 +301,8 @@ serve(async (req) => {
             access_tier: profile.access_tier,
             whatsapp_verified: true,
           },
-          needs_password_login: true,
+          password_setup_required: passwordSetupRequired,
+          needs_password_login: !passwordSetupRequired,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -240,6 +332,7 @@ serve(async (req) => {
           access_tier: profile.access_tier,
           whatsapp_verified: true,
         },
+        password_setup_required: passwordSetupRequired,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

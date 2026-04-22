@@ -21,6 +21,7 @@ const Welcome = lazy(() => import('./pages/Welcome'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const SetPassword = lazy(() => import('./pages/SetPassword'));
 const CRM = lazy(() => import('./pages/CRM'));
 const Intelligence = lazy(() => import('./pages/Intelligence'));
 const Trading = lazy(() => import('./pages/Trading'));
@@ -337,6 +338,7 @@ const PAGE_TITLES = {
   '/login': 'Sign In',
   '/register': 'Create Account',
   '/reset-password': 'Reset Password',
+  '/set-password': 'Set Password',
 };
 
 function usePageTitle() {
@@ -348,7 +350,7 @@ function usePageTitle() {
 }
 
 // Full-page routes (no sidebar/nav chrome)
-const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password'];
+const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password', '/set-password'];
 
 export default function App() {
   usePageTitle();
@@ -365,6 +367,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/set-password" element={<SetPassword />} />
         </Routes>
       </Suspense>
     );

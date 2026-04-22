@@ -28,7 +28,7 @@ const colorMap = {
 };
 
 export default function Settings() {
-  const { isAuthenticated, user, profile: authProfile } = useAuth();
+  const { isAuthenticated, user, profile: authProfile, updatePassword } = useAuth();
   const [keys, setKeys] = useState({ anthropic: '', openai: '', gemini: '', elevenlabs: '' });
   const [aiStatus, setAiStatus] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -44,12 +44,22 @@ export default function Settings() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
 
+  // Change password state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState('');
+
   // Admin user management state
   const [allUsers, setAllUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [adminMsg, setAdminMsg] = useState('');
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUser, setNewUser] = useState({ full_name: '', email: '', company: '', whatsapp_number: '', role: 'buyer', access_tier: 'registered' });
+  const [addingUser, setAddingUser] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // userId to confirm deletion
 
   const isAdmin = authProfile?.role === 'admin';
 
@@ -213,6 +223,88 @@ export default function Settings() {
     setTimeout(() => setAdminMsg(''), 3000);
   }
 
+  // Change password
+  async function handleChangePassword() {
+    setPasswordMsg('');
+    if (!newPassword) return setPasswordMsg('Error: Password is required');
+    if (newPassword.length < 6) return setPasswordMsg('Error: Password must be at least 6 characters');
+    if (newPassword !== confirmNewPassword) return setPasswordMsg('Error: Passwords do not match');
+
+    setPasswordSaving(true);
+    try {
+      await updatePassword(newPassword);
+      setPasswordMsg('Password updated successfully.');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err) {
+      setPasswordMsg('Error: ' + (err.message || 'Failed to update password'));
+    }
+    setPasswordSaving(false);
+    setTimeout(() => setPasswordMsg(''), 5000);
+  }
+
+  // Admin: Add new user
+  async function handleAddUser() {
+    if (!newUser.email?.trim()) return setAdminMsg('Error: Email is required');
+    if (!newUser.full_name?.trim()) return setAdminMsg('Error: Name is required');
+
+    setAddingUser(true);
+    setAdminMsg('');
+    try {
+      // Create Supabase auth account
+      const tempPassword = crypto.randomUUID?.() || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: newUser.email.trim(),
+        password: tempPassword,
+        options: { data: { full_name: newUser.full_name.trim() } },
+      });
+
+      // Note: signUp creates the auth account. The user will need to verify email or use WhatsApp OTP.
+      // We also create their profile row.
+      if (authErr) throw authErr;
+
+      if (authData.user) {
+        await supabase.from('user_profiles').upsert({
+          id: authData.user.id,
+          email: newUser.email.trim(),
+          full_name: newUser.full_name.trim(),
+          company: newUser.company.trim(),
+          whatsapp_number: newUser.whatsapp_number.trim(),
+          role: newUser.role,
+          access_tier: newUser.access_tier,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      setAdminMsg(`User ${newUser.full_name} added. They'll need to verify their email or use WhatsApp OTP to log in.`);
+      setShowAddUser(false);
+      setNewUser({ full_name: '', email: '', company: '', whatsapp_number: '', role: 'buyer', access_tier: 'registered' });
+      await loadAllUsers();
+    } catch (err) {
+      setAdminMsg('Error: ' + (err.message || 'Failed to add user'));
+    }
+    setAddingUser(false);
+    setTimeout(() => setAdminMsg(''), 6000);
+  }
+
+  // Admin: Delete user (profile row only — auth account requires admin API)
+  async function handleDeleteUser(userId) {
+    setAdminMsg('');
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId);
+      if (error) throw error;
+      setAllUsers(prev => prev.filter(u => u.id !== userId));
+      setAdminMsg('User removed from the platform.');
+      setDeleteConfirm(null);
+    } catch (err) {
+      setAdminMsg('Error: ' + (err.message || 'Failed to delete user'));
+    }
+    setTimeout(() => setAdminMsg(''), 4000);
+  }
+
   const filteredUsers = allUsers.filter(u => {
     if (!userSearch) return true;
     const q = userSearch.toLowerCase();
@@ -314,6 +406,49 @@ export default function Settings() {
         </div>
       )}
 
+      {/* Change Password */}
+      {isAuthenticated && (
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+          <h2 className="text-lg font-semibold text-white mb-4">Change Password</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => { setNewPassword(e.target.value); setPasswordMsg(''); }}
+                placeholder="At least 6 characters"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmNewPassword}
+                onChange={e => { setConfirmNewPassword(e.target.value); setPasswordMsg(''); }}
+                placeholder="Re-enter password"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <button
+              onClick={handleChangePassword}
+              disabled={passwordSaving || !newPassword}
+              className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              {passwordSaving ? 'Updating...' : 'Update Password'}
+            </button>
+            {passwordMsg && (
+              <span className={`text-xs ${passwordMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                {passwordMsg}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Admin: User Management */}
       {isAdmin && (
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
@@ -324,10 +459,16 @@ export default function Settings() {
             </div>
             <div className="flex items-center gap-2">
               {adminMsg && (
-                <span className={`text-xs ${adminMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                <span className={`text-xs max-w-xs truncate ${adminMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
                   {adminMsg}
                 </span>
               )}
+              <button
+                onClick={() => setShowAddUser(!showAddUser)}
+                className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs transition-colors font-medium"
+              >
+                + Add User
+              </button>
               <button
                 onClick={loadAllUsers}
                 disabled={usersLoading}
@@ -349,6 +490,42 @@ export default function Settings() {
             />
           </div>
 
+          {/* Add User Form */}
+          {showAddUser && (
+            <div className="bg-gray-800/70 border border-green-500/20 rounded-lg p-4 mb-4">
+              <h3 className="text-sm font-semibold text-green-400 mb-3">Add New Team Member</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input type="text" value={newUser.full_name} onChange={e => setNewUser(p => ({ ...p, full_name: e.target.value }))}
+                  placeholder="Full Name *" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
+                <input type="email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))}
+                  placeholder="Email *" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
+                <input type="text" value={newUser.company} onChange={e => setNewUser(p => ({ ...p, company: e.target.value }))}
+                  placeholder="Company" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
+                <input type="text" value={newUser.whatsapp_number} onChange={e => setNewUser(p => ({ ...p, whatsapp_number: e.target.value }))}
+                  placeholder="WhatsApp (+971...)" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
+                <select value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50">
+                  <option value="buyer">Buyer</option><option value="seller">Seller</option><option value="broker">Broker</option>
+                  <option value="analyst">Analyst</option><option value="admin">Admin</option>
+                </select>
+                <select value={newUser.access_tier} onChange={e => setNewUser(p => ({ ...p, access_tier: e.target.value }))}
+                  className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50">
+                  {ACCESS_TIERS.map(t => <option key={t} value={t}>{TIER_LABELS[t]}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 mt-3">
+                <button onClick={handleAddUser} disabled={addingUser}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
+                  {addingUser ? 'Creating...' : 'Create User'}
+                </button>
+                <button onClick={() => setShowAddUser(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* User list */}
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {filteredUsers.map(u => (
@@ -360,11 +537,15 @@ export default function Settings() {
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full border capitalize ${TIER_COLORS[u.access_tier] || TIER_COLORS[u.role] || TIER_COLORS.registered}`}>
                         {u.role || 'buyer'}
                       </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${TIER_COLORS[u.access_tier] || TIER_COLORS.registered}`}>
+                        {TIER_LABELS[u.access_tier] || 'Registered'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-[11px] text-gray-500 truncate">{u.email || 'No email'}</span>
                       {u.company && <span className="text-[11px] text-gray-600">{u.company}</span>}
                       {u.whatsapp_number && <span className="text-[11px] text-gray-600">{u.whatsapp_number}</span>}
+                      {u.country && <span className="text-[11px] text-gray-600">{u.country}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -388,6 +569,26 @@ export default function Settings() {
                         <option key={t} value={t}>{TIER_LABELS[t]}</option>
                       ))}
                     </select>
+                    {/* Delete button */}
+                    {deleteConfirm === u.id ? (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleDeleteUser(u.id)}
+                          className="px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-medium transition-colors">
+                          Confirm
+                        </button>
+                        <button onClick={() => setDeleteConfirm(null)}
+                          className="px-2 py-1 bg-gray-600 text-gray-300 rounded text-[10px] transition-colors">
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeleteConfirm(u.id)} title="Remove user"
+                        className="p-1 text-gray-600 hover:text-red-400 transition-colors">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -491,7 +692,7 @@ export default function Settings() {
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3">
             <p className="text-[10px] text-gray-500 uppercase">Domain</p>
-            <p className="text-sm text-white font-medium mt-1">cropsintel.net</p>
+            <p className="text-sm text-white font-medium mt-1">cropsintel.com</p>
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3">
             <p className="text-[10px] text-gray-500 uppercase">Data Scope</p>
