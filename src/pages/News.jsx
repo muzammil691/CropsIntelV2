@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import FilterBar from '../components/FilterBar';
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
 
 const CATEGORY_COLORS = {
   trade: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -76,6 +80,10 @@ export default function News() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [sentimentFilter, setSentimentFilter] = useState('all');
+  // Phase C4 compare-mode state
+  const [selectedSources, setSelectedSources] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [showCompare, setShowCompare] = useState(false);
 
   useEffect(() => {
     loadNews();
@@ -102,8 +110,57 @@ export default function News() {
     setLoading(false);
   }
 
-  // Get unique categories
+  // Get unique categories + sources
   const categories = [...new Set(news.map(n => n.category))].filter(Boolean).sort();
+  const sources = [...new Set(news.map(n => n.source))].filter(Boolean).sort();
+
+  // Phase C4: default-select all sources + categories on first load
+  useEffect(() => {
+    if (selectedSources.length === 0 && sources.length > 0) setSelectedSources(sources);
+    if (selectedCategories.length === 0 && categories.length > 0) setSelectedCategories(categories);
+  }, [sources.length, categories.length]);
+
+  const toggleSource = s => setSelectedSources(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
+  const toggleCategory = c => setSelectedCategories(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
+
+  // Phase C4: sentiment counts per source for the selected set
+  const sentimentBySource = useMemo(() => {
+    const scoped = news.filter(n =>
+      (selectedSources.length === 0 || selectedSources.includes(n.source)) &&
+      (selectedCategories.length === 0 || selectedCategories.includes(n.category))
+    );
+    const bySource = {};
+    for (const n of scoped) {
+      if (!n.source) continue;
+      if (!bySource[n.source]) bySource[n.source] = { source: n.source, bullish: 0, neutral: 0, bearish: 0, total: 0 };
+      const s = n.ai_sentiment || 'neutral';
+      if (bySource[n.source][s] != null) bySource[n.source][s] += 1;
+      bySource[n.source].total += 1;
+    }
+    return Object.values(bySource).sort((a, b) => b.total - a.total);
+  }, [news, selectedSources, selectedCategories]);
+
+  // Phase C4: weekly sentiment timeline for the selected set
+  const sentimentTimeline = useMemo(() => {
+    const scoped = news.filter(n =>
+      n.published_date &&
+      (selectedSources.length === 0 || selectedSources.includes(n.source)) &&
+      (selectedCategories.length === 0 || selectedCategories.includes(n.category))
+    );
+    const byWeek = {};
+    for (const n of scoped) {
+      const d = new Date(n.published_date);
+      if (isNaN(d)) continue;
+      // Week key = Monday of that week
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() - day + 1);
+      const key = d.toISOString().slice(0, 10);
+      if (!byWeek[key]) byWeek[key] = { week: key, bullish: 0, neutral: 0, bearish: 0 };
+      const s = n.ai_sentiment || 'neutral';
+      if (byWeek[key][s] != null) byWeek[key][s] += 1;
+    }
+    return Object.values(byWeek).sort((a, b) => a.week.localeCompare(b.week));
+  }, [news, selectedSources, selectedCategories]);
 
   // Apply filters
   const filtered = news.filter(n => {
@@ -153,12 +210,108 @@ export default function News() {
 
       {/* How to Read This Page */}
       <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-white">How to Read This Page</h3>
+          <button
+            onClick={() => setShowCompare(s => !s)}
+            className={`text-xs px-3 py-1 rounded-lg border transition-colors ${
+              showCompare ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'border-gray-700 text-gray-400 hover:text-white'
+            }`}
+          >
+            {showCompare ? '⚖️ Compare ON' : '⚖️ Compare'}
+          </button>
+        </div>
         <p className="text-xs text-gray-400 leading-relaxed">
           Articles are curated from industry sources and analyzed by AI for market relevance. The sentiment arrows show whether the news is likely bullish (price-supportive), bearish (price-negative), or neutral.
-          The "Market impact" line on each article explains WHY it matters for trading decisions. Filter by category to focus on trade policy, crop conditions, or regulatory changes that affect your positions. Automated daily scraping is scheduled for Phase B.
+          The "Market impact" line on each article explains WHY it matters for trading decisions. Filter by category to focus on trade policy, crop conditions, or regulatory changes that affect your positions.
         </p>
       </div>
+
+      {/* Phase C4: Source × Category × Sentiment Compare */}
+      {showCompare && (
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5 space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-white">Sentiment Compare — Source × Category</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Pick any set of sources + categories to see how bullish/bearish each source is and how sentiment evolved over time.
+            </p>
+          </div>
+
+          <FilterBar
+            label="Sources"
+            options={sources.map(s => ({ value: s, label: s }))}
+            selected={selectedSources}
+            onToggle={toggleSource}
+            quickActions={[
+              { label: 'All', action: () => setSelectedSources(sources) },
+              { label: 'Clear', action: () => setSelectedSources([]) },
+            ]}
+          />
+
+          <FilterBar
+            label="Categories"
+            options={categories.map(c => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))}
+            selected={selectedCategories}
+            onToggle={toggleCategory}
+            quickActions={[
+              { label: 'All', action: () => setSelectedCategories(categories) },
+              { label: 'Clear', action: () => setSelectedCategories([]) },
+            ]}
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Sentiment-by-source stacked bar */}
+            <div>
+              <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">
+                Sentiment per source
+              </h4>
+              {sentimentBySource.length > 0 ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={sentimentBySource} layout="vertical" margin={{ left: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis type="number" tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                    <YAxis type="category" dataKey="source" tick={{ fill: '#9ca3af', fontSize: 10 }} width={140} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    <Bar dataKey="bullish" name="Bullish" stackId="a" fill="#22c55e" />
+                    <Bar dataKey="neutral" name="Neutral" stackId="a" fill="#6b7280" />
+                    <Bar dataKey="bearish" name="Bearish" stackId="a" fill="#ef4444" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[260px] text-gray-600 text-xs border border-dashed border-gray-800 rounded">
+                  No articles for the selected filters
+                </div>
+              )}
+            </div>
+
+            {/* Weekly sentiment timeline */}
+            <div>
+              <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">
+                Weekly sentiment trend
+              </h4>
+              {sentimentTimeline.length > 0 ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={sentimentTimeline}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis dataKey="week" tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                    <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    <Line type="monotone" dataKey="bullish" name="Bullish" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="neutral" name="Neutral" stroke="#6b7280" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="bearish" name="Bearish" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[260px] text-gray-600 text-xs border border-dashed border-gray-800 rounded">
+                  Articles need published_date to render timeline
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">

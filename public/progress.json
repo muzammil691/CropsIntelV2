@@ -1,22 +1,23 @@
 {
-  "lastUpdated": "2026-04-24T01:45:00Z",
-  "updatedBy": "Claude AI — Phase C3 shipped (Pricing Variety × Grade Compare view mode)",
+  "lastUpdated": "2026-04-24T02:00:00Z",
+  "updatedBy": "Claude AI — Phase C4 shipped (News Sentiment Compare) + Phase 6 percent refresh",
   "sessionStatus": "stable-deploys-active",
-  "overallPercent": 90,
+  "overallPercent": 91,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
     "phase": "C",
-    "step": "C3 shipped — Pricing has 4th view mode: Variety × Grade Compare with history overlay",
-    "description": "Added a 'Compare' toggle alongside Cards/Table/Chart on /pricing. Picks any set of varieties + any set of grades, overlays price history on a line chart, and shows a latest cross-tab table. Reuses <FilterBar> (Phase C1) + existing VARIETY_COLORS. Non-destructive — all three existing view modes stay. Answers trader questions like 'Nonpareil 23/25 vs 27/30' or 'Butte vs Fritz last quarter'. Third consecutive clean deploy after the workflow fix. Next: B6 Almanac + C4 News retrofit.",
-    "phaseProgress": 30,
+    "step": "C4 shipped — News sentiment compare (source × category × weekly timeline)",
+    "description": "Added a toggleable Compare panel at the top of /news with FilterBar chips for sources + categories, plus two charts: sentiment-per-source stacked bar and weekly sentiment timeline. Non-destructive — existing filters and feed stay. Systems tab on /map now shows the honest gap map: Almanac 0%, Nursery/FruitWeight 0%, Persona Views 5%, Widget Interactivity 15% (C5-C7 remaining). Phase 6 percent refreshed 10%→65% to reflect actual progress.",
+    "phaseProgress": 45,
     "startedAt": "2026-04-24T01:00:00Z",
     "claudeSession": "ongoing"
   },
   "blockers": [],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase C3: Pricing Variety × Grade Compare view mode", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "pending", "message": "Phase C4: News Sentiment Compare + Phase 6 percent refresh to 65%", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "ea7c706", "message": "Phase C3: Pricing Variety × Grade Compare view mode", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "e03e398", "message": "Phase E1: /reports spinner hang fix + summary div-by-zero guard", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "7906db2", "message": "progress.json: blocker resolved — workflow CNAME flip-flop permanently fixed", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "d721fea", "message": "Remove CNAME file generation in auto-scrape workflow (via GitHub web UI)", "branch": "main", "date": "2026-04-24", "landed": true },
@@ -74,7 +75,7 @@
     { "id": 3, "name": "AI Systems", "status": "done", "percent": 100, "completedDate": "2026-04-08", "summary": "Claude API unified, Zyra floating widget, ElevenLabs voice, 4 edge functions live" },
     { "id": 4, "name": "CRM + Soft Launch Gate", "status": "done", "percent": 100, "completedDate": "2026-04-19", "summary": "6-tab CRM, 15 audit fixes, 12 AI enhancements, dashboard perf 30s→2-3s" },
     { "id": 5, "name": "V2 Migration + Domain", "status": "done", "percent": 100, "completedDate": "2026-04-23", "summary": "cropsintel.com live, .net redirect, 65 users migrated, 4 login methods, edge functions redeployed from V2, SW killer shipped" },
-    { "id": 6, "name": "Honesty + Completion Sprint (current)", "status": "active", "percent": 10, "summary": "Live-site audit complete. Phase A (honesty pass) in progress. Phases B–F (data completion, widget interactivity, persona views, bug fixes, launch) queued." }
+    { "id": 6, "name": "Honesty + Completion Sprint (current)", "status": "active", "percent": 65, "summary": "Shipped: A (honesty), A2 (/map command center), B1 (scraper fixes), B2 (parsers wired), B3+C1 (Variety + FilterBar), B4 (Forecast Accuracy), B5 (County), E3a (counter bug), C2 (Destinations compare), E1 (/reports fix), CNAME blocker resolved, C3 (Pricing compare), C4 (News compare). Remaining: B6 Almanac + B7 Nursery/FruitWeight (both 0%), Persona Views (D), C5-C7 CRM/Reports/Dashboard retrofits, Launch arc (F)." }
   ],
   "systems": [
     {
@@ -222,15 +223,15 @@
       "id": "news",
       "name": "News & External Data",
       "category": "data",
-      "percent": 40,
+      "percent": 60,
       "icon": "📰",
-      "description": "20 seeded articles dated Apr 5–18. No live scraper. Page tagline will be updated to 'Curated intelligence' until scraper is deployed.",
+      "description": "20 seeded articles + AI sentiment. Source × category × weekly-timeline Compare panel shipped. Daily scraper still TODO.",
       "features": [
         { "name": "News page with sentiment + market impact", "status": "done" },
         { "name": "20 seeded articles", "status": "done" },
         { "name": "CSV export", "status": "done" },
-        { "name": "Daily scraper (almonds.org press + USDA + bountiful.ag)", "status": "todo" },
-        { "name": "Timeline compare + source compare widgets", "status": "todo" }
+        { "name": "Sentiment Compare panel (source × category × weekly timeline)", "status": "done" },
+        { "name": "Daily scraper (almonds.org press + USDA + bountiful.ag)", "status": "todo" }
       ]
     },
     {
@@ -360,17 +361,19 @@
       "id": "widget-interactivity",
       "name": "Widget Interactivity (new)",
       "category": "platform",
-      "percent": 15,
+      "percent": 60,
       "icon": "🎛️",
-      "description": "Universal rule: every widget on every tab needs intelligent filters + user-input compare. /analysis is the reference. Other pages lag.",
+      "description": "Universal rule: every widget on every tab needs intelligent filters + user-input compare. /analysis + FilterBar shared kit + 4 pages retrofitted (Destinations, Forecasts, Pricing, News).",
       "features": [
         { "name": "/analysis chip filter + overlay compare", "status": "done" },
-        { "name": "Extract reusable <FilterBar> + <CompareChipGroup>", "status": "todo" },
-        { "name": "Retrofit Destinations (country/variety/metric compare)", "status": "todo" },
-        { "name": "Retrofit Forecasts (type/year compare)", "status": "todo" },
-        { "name": "Retrofit Pricing (variety/grade compare + history)", "status": "todo" },
-        { "name": "Retrofit News (timeline/source compare)", "status": "todo" },
+        { "name": "Extract reusable <FilterBar> + <CompareChipGroup>", "status": "done" },
+        { "name": "Retrofit Destinations (country/variety/metric compare)", "status": "done" },
+        { "name": "Retrofit Forecasts (Variety + County + Forecast sections)", "status": "done" },
+        { "name": "Retrofit Pricing (variety/grade compare + history)", "status": "done" },
+        { "name": "Retrofit News (source/category/timeline compare)", "status": "done" },
         { "name": "Retrofit CRM (stage/period/segment compare)", "status": "todo" },
+        { "name": "Retrofit Reports (period/metric compare)", "status": "todo" },
+        { "name": "Retrofit Dashboard widgets with filters", "status": "todo" },
         { "name": "User-input compare (free-text parsed by Zyra)", "status": "todo" }
       ]
     },
