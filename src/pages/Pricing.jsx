@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { seedStrataPrices } from '../lib/seed-strata';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import FilterBar from '../components/FilterBar';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -74,8 +75,11 @@ function PriceCard({ variety, price, maxonsPrice, grade, form, date, trend }) {
 export default function Pricing() {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'chart'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'chart' | 'compare'
   const [varietyFilter, setVarietyFilter] = useState('all');
+  // Phase C3 compare-mode state
+  const [comparedVarieties, setComparedVarieties] = useState([]);
+  const [comparedGrades, setComparedGrades] = useState([]);
 
   useEffect(() => {
     loadPrices();
@@ -114,8 +118,63 @@ export default function Pricing() {
     setLoading(false);
   }
 
-  // Get unique varieties
+  // Get unique varieties + grades
   const varieties = [...new Set(prices.map(p => p.variety))].filter(Boolean).sort();
+  const grades = [...new Set(prices.map(p => p.grade))].filter(Boolean).sort();
+
+  // Phase C3: default compare to top 3 varieties + all grades once data loads
+  useEffect(() => {
+    if (comparedVarieties.length === 0 && varieties.length > 0) {
+      setComparedVarieties(varieties.slice(0, 3));
+    }
+    if (comparedGrades.length === 0 && grades.length > 0) {
+      setComparedGrades(grades);
+    }
+  }, [varieties.length, grades.length]);
+
+  const toggleVariety = v => setComparedVarieties(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
+  const toggleGrade = g => setComparedGrades(p => p.includes(g) ? p.filter(x => x !== g) : [...p, g]);
+
+  // Phase C3: history trend for compared varieties, filtered to compared grades
+  const compareHistory = useMemo(() => {
+    if (comparedVarieties.length === 0) return [];
+    const filtered = prices.filter(p =>
+      p.variety && comparedVarieties.includes(p.variety) &&
+      (comparedGrades.length === 0 || (p.grade && comparedGrades.includes(p.grade))) &&
+      p.price_usd_per_lb
+    );
+    // Group by date, aggregate per variety (average across grades if multiple)
+    const byDate = {};
+    for (const p of filtered) {
+      if (!byDate[p.price_date]) byDate[p.price_date] = { date: p.price_date };
+      const k = p.variety;
+      if (!byDate[p.price_date][`${k}_sum`]) { byDate[p.price_date][`${k}_sum`] = 0; byDate[p.price_date][`${k}_n`] = 0; }
+      byDate[p.price_date][`${k}_sum`] += p.price_usd_per_lb;
+      byDate[p.price_date][`${k}_n`] += 1;
+    }
+    return Object.values(byDate).map(row => {
+      const out = { date: row.date };
+      for (const v of comparedVarieties) {
+        if (row[`${v}_n`] > 0) out[v] = row[`${v}_sum`] / row[`${v}_n`];
+      }
+      return out;
+    }).sort((a, b) => a.date.localeCompare(b.date));
+  }, [prices, comparedVarieties, comparedGrades]);
+
+  // Phase C3: current-level table — latest price per (variety, grade) cross-tab
+  const crossTable = useMemo(() => {
+    const bestByKey = {};
+    for (const p of prices) {
+      if (!p.variety || !comparedVarieties.includes(p.variety)) continue;
+      if (comparedGrades.length > 0 && p.grade && !comparedGrades.includes(p.grade)) continue;
+      const key = `${p.variety}|${p.grade || '-'}`;
+      const existing = bestByKey[key];
+      if (!existing || (p.price_date > existing.price_date)) {
+        bestByKey[key] = p;
+      }
+    }
+    return Object.values(bestByKey).sort((a, b) => a.variety.localeCompare(b.variety) || (a.grade || '').localeCompare(b.grade || ''));
+  }, [prices, comparedVarieties, comparedGrades]);
 
   // Filter prices
   const filteredPrices = varietyFilter === 'all' ? prices : prices.filter(p => p.variety === varietyFilter);
@@ -179,7 +238,7 @@ export default function Pricing() {
         <div className="flex items-center gap-2">
           {/* View toggle */}
           <div className="flex bg-gray-800 rounded-lg p-0.5">
-            {['cards', 'table', 'chart'].map(mode => (
+            {['cards', 'table', 'chart', 'compare'].map(mode => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
@@ -187,7 +246,7 @@ export default function Pricing() {
                   viewMode === mode ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-white'
                 }`}
               >
-                {mode === 'cards' ? '📋' : mode === 'table' ? '📊' : '📈'} {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                {mode === 'cards' ? '📋' : mode === 'table' ? '📊' : mode === 'chart' ? '📈' : '⚖️'} {mode.charAt(0).toUpperCase() + mode.slice(1)}
               </button>
             ))}
           </div>
@@ -354,6 +413,125 @@ export default function Pricing() {
             </div>
           )}
         </ChartCard>
+      )}
+
+      {/* Phase C3: Compare view mode — variety × grade overlay + cross-tab */}
+      {viewMode === 'compare' && (
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5 space-y-5">
+          <div>
+            <h3 className="text-base font-semibold text-white">Variety × Grade Compare</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Pick any set of varieties and grades to overlay their price history + see the latest cross-tab.
+              Answer trader questions like "Nonpareil 23/25 vs 27/30" or "How is Butte tracking against Fritz this quarter?"
+            </p>
+          </div>
+
+          <FilterBar
+            label="Varieties"
+            options={varieties.map(v => ({ value: v, label: v, color: VARIETY_COLORS[v] || COLORS.green }))}
+            selected={comparedVarieties}
+            onToggle={toggleVariety}
+            quickActions={[
+              { label: 'All', action: () => setComparedVarieties(varieties) },
+              { label: 'Top 3', action: () => setComparedVarieties(varieties.slice(0, 3)) },
+              { label: 'Clear', action: () => setComparedVarieties([]) },
+            ]}
+            emptyHint="Pick at least one variety"
+          />
+
+          {grades.length > 0 && (
+            <FilterBar
+              label="Grades"
+              options={grades.map(g => ({ value: g, label: g }))}
+              selected={comparedGrades}
+              onToggle={toggleGrade}
+              quickActions={[
+                { label: 'All', action: () => setComparedGrades(grades) },
+                { label: 'Clear', action: () => setComparedGrades([]) },
+              ]}
+              emptyHint="Empty = all grades included"
+            />
+          )}
+
+          {/* Price history overlay */}
+          <div>
+            <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">
+              Price history — {comparedVarieties.length} {comparedVarieties.length === 1 ? 'variety' : 'varieties'}
+              {comparedGrades.length > 0 && comparedGrades.length < grades.length && ` × ${comparedGrades.length} grade${comparedGrades.length > 1 ? 's' : ''}`}
+            </h4>
+            {compareHistory.length > 0 && comparedVarieties.length > 0 ? (
+              <ResponsiveContainer width="100%" height={360}>
+                <LineChart data={compareHistory}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                  <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={v => `$${v.toFixed(2)}`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                    labelStyle={{ color: '#9ca3af' }}
+                    formatter={v => [v != null ? `$${v.toFixed(4)}/lb` : 'N/A']}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  {comparedVarieties.map(v => (
+                    <Line
+                      key={v}
+                      type="monotone"
+                      dataKey={v}
+                      stroke={VARIETY_COLORS[v] || COLORS.green}
+                      name={v}
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[360px] text-gray-600 text-sm border border-dashed border-gray-800 rounded">
+                Pick at least one variety above to see the price history.
+              </div>
+            )}
+          </div>
+
+          {/* Latest cross-tab table */}
+          {crossTable.length > 0 && (
+            <div>
+              <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">
+                Latest prices — cross-tab
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-2 px-3 text-gray-400">Variety</th>
+                      <th className="text-left py-2 px-3 text-gray-400">Grade</th>
+                      <th className="text-left py-2 px-3 text-gray-400">Form</th>
+                      <th className="text-right py-2 px-3 text-gray-400">Market $/lb</th>
+                      <th className="text-right py-2 px-3 text-green-400">MAXONS $/lb</th>
+                      <th className="text-right py-2 px-3 text-gray-400">As of</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {crossTable.map((p, i) => (
+                      <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                        <td className="py-2 px-3 text-white font-medium">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: VARIETY_COLORS[p.variety] || COLORS.green }} />
+                            {p.variety}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-gray-300">{p.grade || '—'}</td>
+                        <td className="py-2 px-3 text-gray-300">{p.form || '—'}</td>
+                        <td className="py-2 px-3 text-right text-white font-mono">${p.price_usd_per_lb?.toFixed(4)}</td>
+                        <td className="py-2 px-3 text-right text-green-400 font-mono">${p.maxons_price_per_lb?.toFixed(4)}</td>
+                        <td className="py-2 px-3 text-right text-gray-500 font-mono">{p.price_date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* MAXONS Margin Info */}
