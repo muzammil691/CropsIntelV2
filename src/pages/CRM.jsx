@@ -93,8 +93,40 @@ export default function CRM() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [addingNote, setAddingNote] = useState(false);
   const [noteText, setNoteText] = useState('');
+  // Phase C5a: tier filter for Users tab + verify action state
+  const [userTierFilter, setUserTierFilter] = useState('all');
+  const [verifying, setVerifying] = useState({}); // { userId: 'pending'|'done'|'error' }
+
+  // Admin or team can verify users (raise their access_tier to 'verified')
+  const canVerify = profile && ['admin', 'maxons_team'].includes(profile.access_tier)
+                  || ['admin', 'analyst', 'broker', 'seller'].includes(profile?.role);
 
   useEffect(() => { loadCRM(); loadUsers(); }, []);
+
+  async function verifyUser(userId) {
+    setVerifying(v => ({ ...v, [userId]: 'pending' }));
+    const target = users.find(u => u.id === userId);
+    const existingMeta = target?.metadata || {};
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({
+        access_tier: 'verified',
+        metadata: {
+          ...existingMeta,
+          verified_at: new Date().toISOString(),
+          verified_by: profile?.id || user?.id || null,
+          verified_by_name: profile?.full_name || user?.email || null,
+        },
+      })
+      .eq('id', userId);
+    if (error) {
+      setVerifying(v => ({ ...v, [userId]: 'error' }));
+      console.error('Verify failed:', error);
+    } else {
+      setVerifying(v => ({ ...v, [userId]: 'done' }));
+      await loadUsers();
+    }
+  }
 
   async function loadCRM() {
     setLoading(true);
@@ -660,58 +692,106 @@ export default function CRM() {
 
           {/* Registered Users */}
           <div className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">Registered Users ({users.length})</h3>
+            <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between flex-wrap gap-2">
+              <h3 className="text-sm font-semibold text-white">
+                Registered Users ({users.filter(u => userTierFilter === 'all' || (u.access_tier || 'registered') === userTierFilter).length}{userTierFilter !== 'all' ? ` / ${users.length}` : ''})
+              </h3>
               <div className="flex items-center gap-2">
-                {['all', 'maxons_team', 'verified', 'registered'].map(t => (
-                  <button key={t} className="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400 hover:text-white transition-colors capitalize">
-                    {t === 'all' ? 'All' : t.replace('_', ' ')}
-                  </button>
-                ))}
+                {['all', 'admin', 'maxons_team', 'verified', 'registered'].map(t => {
+                  const count = t === 'all' ? users.length : users.filter(u => (u.access_tier || 'registered') === t).length;
+                  const active = userTierFilter === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setUserTierFilter(t)}
+                      className={`text-[10px] px-2 py-0.5 rounded transition-colors capitalize ${
+                        active ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-gray-800 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {t === 'all' ? 'All' : t.replace('_', ' ')} ({count})
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {users.length > 0 ? (
               <div className="divide-y divide-gray-800">
-                {users.map(u => (
-                  <div key={u.id} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-800/30 transition-colors">
-                    {/* Avatar */}
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-600/30 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-green-400">
-                        {(u.full_name || u.email || '?').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-white font-medium truncate">{u.full_name || 'No Name'}</p>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${TIER_COLORS[u.tier] || TIER_COLORS.registered}`}>
-                          {(u.tier || 'registered').replace('_', ' ')}
+                {users
+                  .filter(u => userTierFilter === 'all' || (u.access_tier || 'registered') === userTierFilter)
+                  .map(u => {
+                  const tier = u.access_tier || 'registered';
+                  const vState = verifying[u.id];
+                  const isVerified = tier === 'verified' || tier === 'maxons_team' || tier === 'admin';
+                  const isV1Migrated = u.metadata?.migrated_from_v1 === true || u.metadata?.v1_user_id;
+                  return (
+                    <div key={u.id} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-800/30 transition-colors">
+                      {/* Avatar */}
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-600/30 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-green-400">
+                          {(u.full_name || u.email || '?').charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
-                    </div>
 
-                    {/* Role & Company */}
-                    <div className="hidden md:block text-right">
-                      <p className="text-xs text-gray-400 capitalize">{u.role || '—'}</p>
-                      <p className="text-[10px] text-gray-600">{u.company || '—'}</p>
-                    </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm text-white font-medium truncate">{u.full_name || 'No Name'}</p>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${TIER_COLORS[tier] || TIER_COLORS.registered}`}>
+                            {tier.replace('_', ' ')}
+                          </span>
+                          {isV1Migrated && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              V1 migrated
+                            </span>
+                          )}
+                          {u.whatsapp_verified && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
+                              📱 WhatsApp✓
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
+                      </div>
 
-                    {/* Country */}
-                    <div className="hidden lg:block">
-                      <p className="text-xs text-gray-400">{u.country || '—'}</p>
-                    </div>
+                      {/* Role & Company */}
+                      <div className="hidden md:block text-right">
+                        <p className="text-xs text-gray-400 capitalize">{u.role || '—'}</p>
+                        <p className="text-[10px] text-gray-600">{u.company || '—'}</p>
+                      </div>
 
-                    {/* Joined */}
-                    <div className="hidden sm:block text-right">
-                      <p className="text-[10px] text-gray-600">
-                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
-                      </p>
+                      {/* Country */}
+                      <div className="hidden lg:block">
+                        <p className="text-xs text-gray-400">{u.country || '—'}</p>
+                      </div>
+
+                      {/* Joined */}
+                      <div className="hidden sm:block text-right">
+                        <p className="text-[10px] text-gray-600">
+                          {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                        </p>
+                      </div>
+
+                      {/* Verify action (admin/team only) */}
+                      {canVerify && (
+                        <div className="shrink-0">
+                          {isVerified ? (
+                            <span className="text-[10px] text-green-400 flex items-center gap-1">✓ Verified</span>
+                          ) : (
+                            <button
+                              onClick={() => verifyUser(u.id)}
+                              disabled={vState === 'pending'}
+                              className="text-[10px] px-2 py-1 rounded-lg bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-500/30 transition-colors disabled:opacity-50"
+                              title="Mark this user as verified — grants verified-tier access per original V2 promise"
+                            >
+                              {vState === 'pending' ? '…verifying' : vState === 'error' ? '✗ retry' : '✓ Verify'}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="px-5 py-12 text-center">

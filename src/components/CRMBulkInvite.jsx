@@ -43,73 +43,134 @@ function normalize(input) {
   return '+' + digits;
 }
 
-function parseNumbers(blob) {
+// Parse a pasted blob into rows of {phone?, email?, name?}.
+// Accepts per-line formats:
+//   +971501234567
+//   alice@example.com
+//   +971501234567, alice@example.com
+//   Alice, +971501234567, alice@example.com
+//   +971501234567  alice@example.com  Alice Almond
+function parseRows(blob) {
   if (!blob) return [];
-  return blob
-    .split(/[\n,;]/)
-    .map(s => s.trim())
-    .filter(Boolean)
-    .map(normalize)
-    .filter(n => n.length >= 8);
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return blob.split(/\n+/).map(line => {
+    const parts = line.split(/[,;\t]|  +/).map(s => s.trim()).filter(Boolean);
+    let phone = '', email = '', name = '';
+    for (const p of parts) {
+      if (!email && emailRe.test(p)) { email = p; continue; }
+      if (!phone && /\d/.test(p)) {
+        const n = normalize(p);
+        if (n.length >= 8) { phone = n; continue; }
+      }
+      if (!name) { name = p; }
+    }
+    if (!phone && !email) return null;
+    return { phone, email, name };
+  }).filter(Boolean);
 }
+
+const CHANNELS = [
+  { value: 'whatsapp', label: 'WhatsApp only' },
+  { value: 'email',    label: 'Email only' },
+  { value: 'both',     label: 'Both (WhatsApp + Email)' },
+];
 
 export default function CRMBulkInvite() {
   const [raw, setRaw] = useState('');
   const [contactType, setContactType] = useState('buyer');
+  const [channel, setChannel] = useState('whatsapp');
   const [message, setMessage] = useState(DEFAULT_TEMPLATE);
   const [sending, setSending] = useState(false);
-  const [results, setResults] = useState([]); // [{ number, status, note }]
+  const [results, setResults] = useState([]); // [{ row, status, notes[] }]
 
-  const numbers = parseNumbers(raw);
+  const rows = parseRows(raw);
 
   async function handleSend() {
-    if (numbers.length === 0) {
-      setResults([{ number: '—', status: 'error', note: 'Paste at least one valid WhatsApp number.' }]);
+    if (rows.length === 0) {
+      setResults([{ row: { phone: '—' }, status: 'error', notes: ['Paste at least one WhatsApp number or email per line.'] }]);
       return;
     }
     setSending(true);
-    setResults(numbers.map(n => ({ number: n, status: 'pending', note: '' })));
+    setResults(rows.map(r => ({ row: r, status: 'pending', notes: [] })));
 
     const out = [];
-    for (const n of numbers) {
+    for (const r of rows) {
+      const notes = [];
+      let ok = false, failed = false;
+
+      // Upsert CRM contact so the invite is trackable regardless of channel
       try {
-        // 1. Log/upsert the crm_contacts row so the invite is trackable.
         const { error: insertErr } = await supabase.from('crm_contacts').upsert({
           contact_type: contactType,
-          phone: n,
-          tags: ['invited', 'bulk'],
+          phone: r.phone || null,
+          email: r.email || null,
+          contact_name: r.name || null,
+          tags: ['invited', 'bulk', ...(r.phone ? ['has_whatsapp'] : []), ...(r.email ? ['has_email'] : [])],
           metadata: {
             invite_status: 'sent',
+            invite_channel: channel,
             invited_at: new Date().toISOString(),
-            invite_channel: 'whatsapp_bulk',
             invite_template: 'default_v1',
           },
-          relationship_score: 40,  // starting score for cold invite
-        }, {
-          onConflict: 'phone',
-          ignoreDuplicates: false,
-        });
+          relationship_score: 40,
+        }, { onConflict: r.phone ? 'phone' : 'email', ignoreDuplicates: false });
         if (insertErr && !insertErr.message.includes('duplicate')) {
-          // Non-fatal — still try to send
-          console.warn('CRM insert warning:', insertErr.message);
+          notes.push(`CRM warn: ${insertErr.message}`);
         }
-
-        // 2. Send the WhatsApp invite.
-        await sendWhatsAppMessage(n, message);
-
-        out.push({ number: n, status: 'sent', note: 'WhatsApp delivered' });
       } catch (err) {
-        out.push({ number: n, status: 'failed', note: err?.message || String(err) });
+        notes.push(`CRM insert error: ${err.message}`);
       }
-      // Update UI incrementally
-      setResults([...out, ...numbers.slice(out.length).map(nn => ({ number: nn, status: 'pending', note: '' }))]);
+
+      // WhatsApp leg
+      if ((channel === 'whatsapp' || channel === 'both') && r.phone) {
+        try {
+          await sendWhatsAppMessage(r.phone, message);
+          notes.push('WhatsApp delivered');
+          ok = true;
+        } catch (err) {
+          notes.push(`WhatsApp failed: ${err?.message || err}`);
+          failed = true;
+        }
+      } else if ((channel === 'whatsapp' || channel === 'both') && !r.phone) {
+        notes.push('WhatsApp skipped: no phone');
+      }
+
+      // Email leg — no SMTP edge function yet (Phase F1b). We queue the
+      // invite in crm_contacts.metadata.email_queued and let the reconcile
+      // job send when SMTP lands. Honest disclosure in notes.
+      if ((channel === 'email' || channel === 'both') && r.email) {
+        try {
+          await supabase.from('crm_contacts').update({
+            metadata: {
+              invite_status: 'sent',
+              invite_channel: channel,
+              invited_at: new Date().toISOString(),
+              invite_template: 'default_v1',
+              email_queued: true,
+              email_queued_at: new Date().toISOString(),
+            }
+          }).eq('email', r.email);
+          notes.push('Email queued (SMTP edge function = Phase F1b)');
+          ok = true;
+        } catch (err) {
+          notes.push(`Email queue failed: ${err?.message || err}`);
+          failed = true;
+        }
+      } else if ((channel === 'email' || channel === 'both') && !r.email) {
+        notes.push('Email skipped: no email');
+      }
+
+      const status = ok && !failed ? 'sent' : failed && !ok ? 'failed' : ok ? 'partial' : 'failed';
+      out.push({ row: r, status, notes });
+      setResults([...out, ...rows.slice(out.length).map(rr => ({ row: rr, status: 'pending', notes: [] }))]);
     }
     setResults(out);
     setSending(false);
   }
 
-  const sentCount   = results.filter(r => r.status === 'sent').length;
-  const failedCount = results.filter(r => r.status === 'failed').length;
+  const sentCount    = results.filter(r => r.status === 'sent').length;
+  const partialCount = results.filter(r => r.status === 'partial').length;
+  const failedCount  = results.filter(r => r.status === 'failed').length;
 
   return (
     <div className="space-y-4">
@@ -126,42 +187,57 @@ export default function CRMBulkInvite() {
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5 space-y-4">
           <div>
             <label className="text-xs uppercase tracking-wider text-gray-500 block mb-2">
-              WhatsApp numbers ({numbers.length} parsed)
+              Contacts ({rows.length} parsed)
             </label>
             <textarea
               value={raw}
               onChange={e => setRaw(e.target.value)}
-              placeholder={'+971501234567\n+919876543210\n+1-415-555-0100\n...'}
+              placeholder={'+971501234567, alice@example.com, Alice\n+919876543210\nbob@example.com\nCarol Trade, +1-415-555-0100, carol@trading.co\n...'}
               rows={9}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-xs text-gray-200 font-mono placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
             />
             <p className="text-[10px] text-gray-600 mt-1">
-              Accepts any format — digits, spaces, dashes, plus sign. Normalized to +E.164 automatically.
+              One contact per line. Any combination of phone, email, name (comma/tab/2+space separated).
+              Phone normalized to +E.164; email auto-detected.
             </p>
           </div>
 
-          <div>
-            <label className="text-xs uppercase tracking-wider text-gray-500 block mb-2">
-              Persona type
-            </label>
-            <select
-              value={contactType}
-              onChange={e => setContactType(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
-            >
-              {CONTACT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-            <p className="text-[10px] text-gray-600 mt-1">
-              Tags the invited contact so they flow to the right pipeline and Zyra gets relevant context.
-            </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs uppercase tracking-wider text-gray-500 block mb-2">
+                Persona type
+              </label>
+              <select
+                value={contactType}
+                onChange={e => setContactType(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+              >
+                {CONTACT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-wider text-gray-500 block mb-2">
+                Channel
+              </label>
+              <select
+                value={channel}
+                onChange={e => setChannel(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200"
+              >
+                {CHANNELS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
           </div>
+          <p className="text-[10px] text-gray-600 -mt-2">
+            Email sending is queued to <code>crm_contacts.metadata.email_queued</code> — the SMTP edge function (Phase F1b) will drain the queue. WhatsApp sends immediately via the whatsapp-send edge function.
+          </p>
 
           <button
             onClick={handleSend}
-            disabled={sending || numbers.length === 0}
+            disabled={sending || rows.length === 0}
             className="w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors bg-green-600 hover:bg-green-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {sending ? `Sending ${results.filter(r => r.status === 'pending').length} of ${numbers.length}...` : `Send ${numbers.length} WhatsApp invite${numbers.length === 1 ? '' : 's'}`}
+            {sending ? `Sending ${results.filter(r => r.status === 'pending').length} of ${rows.length}...` : `Send ${rows.length} invite${rows.length === 1 ? '' : 's'} via ${channel === 'both' ? 'WhatsApp + Email' : channel}`}
           </button>
         </div>
 
@@ -190,6 +266,7 @@ export default function CRMBulkInvite() {
             <h4 className="text-sm font-semibold text-white">Send results</h4>
             <div className="flex items-center gap-3 text-xs">
               {sentCount > 0 && <span className="text-green-400">✓ {sentCount} sent</span>}
+              {partialCount > 0 && <span className="text-amber-400">~ {partialCount} partial</span>}
               {failedCount > 0 && <span className="text-red-400">✗ {failedCount} failed</span>}
               {sending && <span className="text-amber-400">in progress…</span>}
             </div>
@@ -198,35 +275,42 @@ export default function CRMBulkInvite() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-800 text-gray-500">
-                  <th className="text-left py-2">Number</th>
+                  <th className="text-left py-2">Contact</th>
                   <th className="text-left py-2 w-24">Status</th>
-                  <th className="text-left py-2">Note</th>
+                  <th className="text-left py-2">Notes</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((r, i) => (
                   <tr key={i} className="border-b border-gray-800/50">
-                    <td className="py-2 font-mono text-gray-300">{r.number}</td>
+                    <td className="py-2 font-mono text-gray-300">
+                      <div>{r.row?.phone || '—'}</div>
+                      {r.row?.email && <div className="text-gray-500">{r.row.email}</div>}
+                      {r.row?.name && <div className="text-gray-600 text-[10px]">{r.row.name}</div>}
+                    </td>
                     <td className="py-2">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                        r.status === 'sent'   ? 'bg-green-500/20 text-green-400' :
-                        r.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                        r.status === 'error'  ? 'bg-red-500/20 text-red-400' :
-                                                'bg-amber-500/20 text-amber-400'
+                        r.status === 'sent'    ? 'bg-green-500/20 text-green-400' :
+                        r.status === 'partial' ? 'bg-amber-500/20 text-amber-400' :
+                        r.status === 'failed'  ? 'bg-red-500/20 text-red-400' :
+                        r.status === 'error'   ? 'bg-red-500/20 text-red-400' :
+                                                 'bg-amber-500/20 text-amber-400'
                       }`}>
                         {r.status}
                       </span>
                     </td>
-                    <td className="py-2 text-gray-500 truncate max-w-md">{r.note}</td>
+                    <td className="py-2 text-gray-500">
+                      {(r.notes || []).map((n, j) => <div key={j} className="text-[10px]">{n}</div>)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <p className="text-[10px] text-gray-600 mt-3">
-            Each successful invite creates a CRM contact tagged <code>invited</code>/<code>bulk</code> with
-            <code> metadata.invite_status='sent'</code>. When the recipient registers on cropsintel.com with the
-            same WhatsApp number, the reconcile job will flip them to <code>joined</code> (Phase C5c).
+            Each invite creates a CRM contact tagged <code>invited</code>/<code>bulk</code> (plus <code>has_whatsapp</code>/<code>has_email</code>) with
+            <code> metadata.invite_status='sent'</code>. When the recipient registers with the same WhatsApp or email,
+            reconcile flips them to <code>joined</code> (Phase C5b-followup). Email delivery is queued; SMTP edge function is Phase F1b.
           </p>
         </div>
       )}
