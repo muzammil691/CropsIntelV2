@@ -1,16 +1,16 @@
 {
-  "lastUpdated": "2026-04-23T23:30:00Z",
-  "updatedBy": "Claude AI — Phase B5 shipped (County Intelligence section with Land IQ empty state)",
+  "lastUpdated": "2026-04-24T00:00:00Z",
+  "updatedBy": "Claude AI — Phase E3a shipped (fix /map counter reset-to-0 animation bug)",
   "sessionStatus": "autonomous-sprint-phase-B-active",
-  "overallPercent": 81,
+  "overallPercent": 82,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "B",
-    "step": "B5 shipped — County Intelligence section on /forecasts (Land IQ-ready)",
-    "description": "New <CountySection> reads abc_acreage_reports WHERE source_type='land_iq' and renders a top-counties bar + multi-county YoY compare. Ships today with a friendly empty state (Land IQ scraper loop not yet wired — B5b). Ready to display real data the instant Land IQ PDFs are parsed into county_data JSONB. Next: B6 Almanac + auto-recovery watcher has already self-healed 5 CNAME flip-flops during this session — monitor continues.",
-    "phaseProgress": 85,
+    "phase": "B/E",
+    "step": "E3a shipped — fix /map counter reset-to-0 bug (no more 'blank map' on refresh)",
+    "description": "The AnimatedCounter on /map was re-running from 0 every 30s when progress.json auto-refreshed — so anyone landing mid-animation saw truncated numbers ('10 overall' instead of '81'). Rewrote the component to only animate when the target value ACTUALLY changes (React.useRef tracks prev), using requestAnimationFrame with ease-out cubic. Now the numbers sit stable between refreshes and animate cleanly on real changes. Next: B6 Almanac + C2 Destinations retrofit.",
+    "phaseProgress": 90,
     "startedAt": "2026-04-23T18:00:00Z",
     "claudeSession": "ongoing"
   },
@@ -25,7 +25,8 @@
     }
   ],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase B5: County Intelligence section with Land IQ empty state", "branch": "main", "date": "2026-04-23", "landed": false },
+    { "sha": "pending", "message": "Phase E3a: fix /map AnimatedCounter reset-to-0 on 30s refresh (cause of 'blank map')", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "a0c0e7a", "message": "Phase B5: County Intelligence section with Land IQ empty state", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "4ab5bbc", "message": "Phase B4: Forecast Accuracy section (Subjective vs Objective vs Actual)", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "7d6dfb3", "message": "Phase B3 + C1: Variety Intelligence section on /forecasts + reusable FilterBar", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "007e68e", "message": "Phase B2: piggy-back shipment + receipt parsers onto position-PDF fetch", "branch": "main", "date": "2026-04-23", "landed": true },
