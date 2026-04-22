@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
+import VarietySection from '../components/VarietySection';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -291,6 +292,9 @@ export default function Forecasts() {
           )}
         </ChartCard>
       </div>
+
+      {/* Variety Intelligence — reads abc_crop_receipts */}
+      <VarietySection />
 
       {/* Sentiment Timeline */}
       {sentiment.length > 0 && (
