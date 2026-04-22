@@ -130,7 +130,7 @@ serve(async (req) => {
         const { title, summary, urgency } = payload;
         const urgencyEmoji = urgency === 'high' ? '🔴' : urgency === 'medium' ? '🟡' : '🟢';
 
-        body = `${urgencyEmoji} *CropsIntel Trade Alert*\n\n*${title}*\n\n${summary}\n\n📊 View full analysis: https://cropsintel.net/intelligence\n\n— Zyra AI, CropsIntel`;
+        body = `${urgencyEmoji} *CropsIntel Trade Alert*\n\n*${title}*\n\n${summary}\n\n📊 View full analysis: https://cropsintel.com/intelligence\n\n— Zyra AI, CropsIntel`;
 
         result = await sendWhatsApp(cleanTo, body);
 
@@ -161,7 +161,7 @@ serve(async (req) => {
           `📦 Quantity: ${quantity}\n` +
           `⏳ Valid until: ${validity}\n\n` +
           `Reply *ACCEPT* to confirm interest\nReply *DETAILS* for full specs\nReply *PASS* to decline\n\n` +
-          `🔗 View in portal: https://cropsintel.net/trading\n\n— MAXONS International Trading`;
+          `🔗 View in portal: https://cropsintel.com/trading\n\n— MAXONS International Trading`;
 
         result = await sendWhatsApp(cleanTo, body);
 

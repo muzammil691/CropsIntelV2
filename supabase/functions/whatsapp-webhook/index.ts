@@ -280,8 +280,8 @@ Key rules:
 - MAXONS adds 3% margin to Strata market prices — never reveal margin to non-team contacts
 - Crop year runs Aug-Jul (current: 2025/26)
 - Be actionable: give specific buy/sell/hold guidance when asked
-- If asked about registration: direct to https://cropsintel.net/register
-- If asked about pricing: direct to https://cropsintel.net/pricing
+- If asked about registration: direct to https://cropsintel.com/register
+- If asked about pricing: direct to https://cropsintel.com/pricing
 - If user says ACCEPT/DETAILS/PASS regarding an offer, acknowledge and log it`;
 
   try {
@@ -309,14 +309,14 @@ Key rules:
       const errData = await res.json();
       console.error('Claude API error:', errData);
       // Log error for learning (uses global supabase from closure — will be called in context where supabase exists)
-      return "I'm having a brief technical issue. Please try again in a moment, or visit https://cropsintel.net for full access to market intelligence.";
+      return "I'm having a brief technical issue. Please try again in a moment, or visit https://cropsintel.com for full access to market intelligence.";
     }
 
     const data = await res.json();
     return data.content?.[0]?.text || "I couldn't process that. Try asking about almond prices, supply data, or trade opportunities.";
   } catch (err: any) {
     console.error('Zyra error:', err);
-    return "I'm temporarily offline. Visit https://cropsintel.net for real-time market data.";
+    return "I'm temporarily offline. Visit https://cropsintel.com for real-time market data.";
   }
 }
 
@@ -422,13 +422,13 @@ serve(async (req) => {
           await sendReply(from,
             "🤝 *Interest Registered!*\n\n" +
             "Our trading team will contact you shortly with contract details.\n" +
-            "You can also view the offer at: https://cropsintel.net/trading"
+            "You can also view the offer at: https://cropsintel.com/trading"
           );
         } else if (lowerMsg === 'details') {
           await sendReply(from,
             "📋 *Full Offer Details*\n\n" +
             "View the complete specifications, shipping terms, and payment options at:\n" +
-            "https://cropsintel.net/trading\n\n" +
+            "https://cropsintel.com/trading\n\n" +
             "Or reply with any questions — Zyra is here to help."
           );
         } else if (lowerMsg === 'pass') {
@@ -463,13 +463,13 @@ serve(async (req) => {
         await sendReply(from,
           `👋 Welcome back${existing.full_name ? ', ' + existing.full_name : ''}!\n\n` +
           "You're already registered. Chat with Zyra anytime — just send your question.\n\n" +
-          "🌐 Full platform: https://cropsintel.net"
+          "🌐 Full platform: https://cropsintel.com"
         );
       } else {
         await sendReply(from,
           "🌰 *Welcome to CropsIntel!*\n\n" +
           "To create your account, visit:\n" +
-          "https://cropsintel.net/register\n\n" +
+          "https://cropsintel.com/register\n\n" +
           "Your WhatsApp number will be automatically linked.\n\n" +
           "Meanwhile, you can chat with Zyra right here! Try asking:\n" +
           "• _What are current almond prices?_\n" +

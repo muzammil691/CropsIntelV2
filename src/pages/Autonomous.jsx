@@ -581,7 +581,7 @@ export default function Autonomous() {
             { label: 'PDF Parser', sub: 'Extract numbers', cls: 'bg-amber-500/10 border-amber-500/20' },
             { label: 'Supabase', sub: `${reportCount} reports`, cls: 'bg-green-500/10 border-green-500/20' },
             { label: 'Processor', sub: 'YoY + anomalies', cls: 'bg-cyan-500/10 border-cyan-500/20' },
-            { label: 'Dashboard', sub: 'cropsintel.net', cls: 'bg-green-500/10 border-green-500/20' },
+            { label: 'Dashboard', sub: 'cropsintel.com', cls: 'bg-green-500/10 border-green-500/20' },
           ].map((step, i) => (
             <React.Fragment key={i}>
               {i > 0 && <span className="text-gray-600 shrink-0">&rarr;</span>}
@@ -673,7 +673,7 @@ export default function Autonomous() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div>
             <p className="text-gray-500 mb-1">Hosting</p>
-            <p className="text-gray-300">GitHub Pages (cropsintel.net)</p>
+            <p className="text-gray-300">GitHub Pages (cropsintel.com)</p>
           </div>
           <div>
             <p className="text-gray-500 mb-1">Database</p>

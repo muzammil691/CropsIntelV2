@@ -21,7 +21,7 @@
     "overallPercent": 92,
     "actionRequired": "Deploy whatsapp-login edge function via Lovable, then extract V1 user data. Migration guide at V1-to-V2-User-Migration-Guide.md.",
     "items": [
-      { "id": "m1", "name": "V2 app live at cropsintel.net", "status": "done", "date": "2026-04-20" },
+      { "id": "m1", "name": "V2 app live at cropsintel.com", "status": "done", "date": "2026-04-20" },
       { "id": "m2", "name": "65 V1 users migrated to V2 Supabase", "status": "done", "date": "2026-04-22" },
       { "id": "m3", "name": "4-method login system (WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email OTP)", "status": "done", "date": "2026-04-22" },
       { "id": "m4", "name": "whatsapp-login edge function with V1 auto-migration logic", "status": "done", "date": "2026-04-22" },

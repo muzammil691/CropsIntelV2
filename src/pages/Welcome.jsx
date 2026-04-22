@@ -210,7 +210,7 @@ export default function Welcome() {
             <HeroReveal delay={100}>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[11px] text-green-400 font-medium">BETA — Now Live at cropsintel.net</span>
+                <span className="text-[11px] text-green-400 font-medium">BETA — Now Live at cropsintel.com</span>
               </div>
             </HeroReveal>
 
