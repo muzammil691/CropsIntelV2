@@ -16,6 +16,10 @@ import { config } from 'dotenv';
 config();
 
 import supabaseAdmin from '../lib/supabase-admin.js';
+import { parseShipmentReport, storeShipmentRecords } from './shipment-parser.js';
+import { parseReceiptReport, storeReceiptRecords } from './receipts-parser.js';
+// storeReceiptRecords is exported from receipts-parser.js (added alongside the
+// schema-mapper in this commit). Mirrors storeShipmentRecords.
 
 const ABC_BASE_URL = 'https://www.almonds.org';
 // ABC publishes reports under /tools-and-resources/crop-reports/
@@ -350,7 +354,13 @@ export async function scrapeABC() {
 
   console.log(`Already have ${existingKeys.size} position reports in DB`);
 
-  // 3. Download and parse new position reports
+  // 3. Download and parse new position reports.
+  //    Each position-report PDF also contains shipment-by-destination tables
+  //    and (for some months) variety-level receipt tables. We piggy-back the
+  //    shipment + receipt parsers on the same downloaded buffer so one HTTP
+  //    fetch yields all three record types.
+  let shipmentTotalInserted = 0;
+  let receiptTotalInserted = 0;
   for (const pdfUrl of positionPDFs.slice(0, 5)) { // Process up to 5 at a time
     const pdfBuffer = await downloadPDF(pdfUrl);
     if (!pdfBuffer) continue;
@@ -359,15 +369,36 @@ export async function scrapeABC() {
     if (!report) continue;
 
     const key = `${report.report_year}-${report.report_month}`;
-    if (existingKeys.has(key)) {
-      console.log(`Skipping existing report: ${key}`);
-      continue;
+    if (!existingKeys.has(key)) {
+      if (await storePositionReport(report)) totalInserted++;
+    } else {
+      console.log(`Position report ${key} already in DB — continuing to shipment/receipt extraction`);
     }
 
-    if (await storePositionReport(report)) {
-      totalInserted++;
+    // Extract shipment-by-destination records from the same PDF.
+    try {
+      const shipmentRecords = await parseShipmentReport(pdfBuffer, pdfUrl);
+      if (shipmentRecords?.length) {
+        const stored = await storeShipmentRecords(shipmentRecords);
+        shipmentTotalInserted += stored;
+      }
+    } catch (err) {
+      console.warn(`Shipment extraction failed for ${key}:`, err.message);
+    }
+
+    // Extract variety-level receipt records from the same PDF (when present).
+    try {
+      const receiptRecords = await parseReceiptReport(pdfBuffer, pdfUrl);
+      if (receiptRecords?.length) {
+        const stored = await storeReceiptRecords(receiptRecords);
+        receiptTotalInserted += stored;
+      }
+    } catch (err) {
+      console.warn(`Receipt extraction failed for ${key}:`, err.message);
     }
   }
+
+  console.log(`\nMulti-report extraction: ${shipmentTotalInserted} shipment rows, ${receiptTotalInserted} receipt rows stored`);
 
   // 4. Update last scrape timestamp
   try {
@@ -629,6 +660,9 @@ export async function scrapeAllReportTypes() {
   console.log(`Started: ${new Date().toISOString()}`);
   console.log('========================================\n');
 
+  // scrapeABC now extracts position + shipment + receipt from each position PDF
+  // (one download, three record types). Subjective/Objective/Acreage/Almanac
+  // each have their own dedicated PDF source.
   const results = {
     position: await scrapeABC(),
     subjective: await scrapeSubjectiveForecasts(),
@@ -637,8 +671,8 @@ export async function scrapeAllReportTypes() {
     almanac: await scrapeAlmanac(),
   };
 
-  const totalFound = Object.values(results).reduce((s, r) => s + r.found, 0);
-  const totalInserted = Object.values(results).reduce((s, r) => s + r.inserted, 0);
+  const totalFound = Object.values(results).reduce((s, r) => s + (r.found || 0), 0);
+  const totalInserted = Object.values(results).reduce((s, r) => s + (r.inserted || 0), 0);
 
   console.log('\n========================================');
   console.log(`FULL SCRAPE COMPLETE: ${totalInserted} new records from ${totalFound} PDFs found`);

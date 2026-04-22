@@ -91,6 +91,45 @@ export async function parseReceiptReport(pdfBuffer, sourceUrl) {
 }
 
 // ============================================================
+// Store parsed receipt records in abc_crop_receipts
+// Mirrors storeShipmentRecords: maps internal record shape -> schema columns
+// (monthly_lbs -> receipts_lbs, pct_of_total -> percent_of_total, and packs
+// season_to_date + prior_year values into raw_data JSONB).
+// ============================================================
+export async function storeReceiptRecords(records) {
+  if (!records.length) return 0;
+  const dbRecords = records.map(r => ({
+    report_date: r.report_date,
+    report_year: r.report_year,
+    report_month: r.report_month,
+    crop_year: r.crop_year,
+    variety: r.variety,
+    receipts_lbs: r.monthly_lbs,
+    percent_of_total: r.pct_of_total,
+    raw_data: {
+      ...(r.raw_data || {}),
+      season_to_date_lbs: r.season_to_date_lbs,
+      prior_year_monthly_lbs: r.prior_year_monthly_lbs,
+      prior_year_season_to_date_lbs: r.prior_year_season_to_date_lbs,
+    },
+    source_pdf: r.source_pdf,
+  }));
+  let inserted = 0;
+  for (const record of dbRecords) {
+    const { error } = await supabaseAdmin
+      .from('abc_crop_receipts')
+      .upsert(record, { onConflict: 'report_year,report_month,variety' });
+    if (error) {
+      console.error(`Receipt insert failed for ${record.variety} ${record.report_year}-${record.report_month}:`, error.message);
+    } else {
+      inserted++;
+    }
+  }
+  console.log(`Stored ${inserted}/${dbRecords.length} receipt records`);
+  return inserted;
+}
+
+// ============================================================
 // Generate synthetic receipt data from position reports
 // ============================================================
 export async function generateReceiptDataFromPositionReports() {
