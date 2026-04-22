@@ -39,7 +39,8 @@ export default function Settings() {
   const [profile, setProfile] = useState({
     full_name: '', email: '', company: '', country: '', city: '',
     phone: '', whatsapp_number: '', role: 'buyer', trade_type: '',
-    annual_volume: '', website: '',
+    annual_volume: '', website: '', products_of_interest: '',
+    preferred_ports: '', certifications: '', payment_terms: '',
   });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
@@ -81,6 +82,10 @@ export default function Settings() {
         trade_type: authProfile.trade_type || '',
         annual_volume: authProfile.annual_volume || '',
         website: authProfile.website || '',
+        products_of_interest: authProfile.products_of_interest || '',
+        preferred_ports: authProfile.preferred_ports || '',
+        certifications: authProfile.certifications || '',
+        payment_terms: authProfile.payment_terms || '',
       }));
     }
   }, [authProfile, user]);
@@ -164,6 +169,10 @@ export default function Settings() {
           trade_type: profile.trade_type.trim(),
           annual_volume: profile.annual_volume.trim(),
           website: profile.website.trim(),
+          products_of_interest: profile.products_of_interest.trim(),
+          preferred_ports: profile.preferred_ports.trim(),
+          certifications: profile.certifications.trim(),
+          payment_terms: profile.payment_terms.trim(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -353,6 +362,10 @@ export default function Settings() {
               { key: 'trade_type', label: 'Trade Type', placeholder: 'Importer, Exporter, Broker...' },
               { key: 'annual_volume', label: 'Annual Volume', placeholder: '1000 MT' },
               { key: 'website', label: 'Website', placeholder: 'https://...' },
+              { key: 'products_of_interest', label: 'Products of Interest', placeholder: 'NPS, NPIS, Almond Flour...' },
+              { key: 'preferred_ports', label: 'Preferred Ports', placeholder: 'Jebel Ali, Nhava Sheva...' },
+              { key: 'certifications', label: 'Certifications', placeholder: 'FSSC 22000, BRC, Organic...' },
+              { key: 'payment_terms', label: 'Payment Terms', placeholder: 'LC at sight, 30 days...' },
             ].map(f => (
               <div key={f.key}>
                 <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
