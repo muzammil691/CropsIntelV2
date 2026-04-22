@@ -11,16 +11,30 @@ const CATEGORY_COLORS = {
 const STATUS_ICONS = { done: '\u2705', wip: '\u26A0\uFE0F', todo: '\u23F3' };
 
 function AnimatedCounter({ target, duration = 1500 }) {
-  const [count, setCount] = useState(0);
+  // Default to the target value so first paint shows the real number.
+  const [count, setCount] = useState(target);
+  const prevTarget = React.useRef(target);
   useEffect(() => {
-    let start = 0;
-    const step = Math.max(1, Math.ceil(target / (duration / 16)));
-    const timer = setInterval(() => {
-      start = Math.min(start + step, target);
-      setCount(start);
-      if (start >= target) clearInterval(timer);
-    }, 16);
-    return () => clearInterval(timer);
+    // Only re-animate when the target ACTUALLY changes. Previously this
+    // reset to 0 on every re-render (incl. the 30s auto-refresh), so anyone
+    // landing on /map mid-animation saw truncated numbers ("10 overall"
+    // instead of "81"). Interpolate from the last displayed value with
+    // requestAnimationFrame + ease-out cubic.
+    if (prevTarget.current === target) return;
+    const from = prevTarget.current ?? 0;
+    const delta = target - from;
+    if (delta === 0) { prevTarget.current = target; return; }
+    const startedAt = performance.now();
+    let rafId;
+    const tick = (now) => {
+      const t = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setCount(Math.round(from + delta * eased));
+      if (t < 1) rafId = requestAnimationFrame(tick);
+      else prevTarget.current = target;
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [target, duration]);
   return <span>{count}</span>;
 }
