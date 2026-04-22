@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { seedCRM } from '../lib/seed-crm';
 import { sendWhatsAppMessage } from '../lib/whatsapp';
 import { getV2UpgradeWhatsAppMessage, getV2UpgradeEmailHTML } from '../lib/notifications';
+import CRMBulkInvite from '../components/CRMBulkInvite';
 
 const DEAL_STAGES = ['inquiry', 'quoted', 'negotiation', 'agreed', 'contracted', 'shipped', 'completed', 'lost'];
 const STAGE_COLORS = {
@@ -409,7 +410,7 @@ export default function CRM() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 bg-gray-900/50 border border-gray-800 rounded-lg p-1 w-fit">
-        {['pipeline', 'contacts', 'activity', 'users'].map(tab => (
+        {['pipeline', 'contacts', 'activity', 'users', 'invite'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -755,6 +756,9 @@ export default function CRM() {
           </div>
         </div>
       )}
+
+      {/* Bulk WhatsApp Invite (Phase C5b) */}
+      {activeTab === 'invite' && <CRMBulkInvite />}
 
       {/* How This CRM Works */}
       {!selectedContact && (
