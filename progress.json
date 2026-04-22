@@ -1,22 +1,23 @@
 {
-  "lastUpdated": "2026-04-24T03:30:00Z",
-  "updatedBy": "Claude AI — Phase C5b: CRM Bulk WhatsApp Invite + scope capture for V1 returning-user popup + C5a/c",
+  "lastUpdated": "2026-04-24T04:00:00Z",
+  "updatedBy": "Claude AI — Phase C5b (dual-channel) + C5a (tier filter + V1 badge) + C5d (admin verify user)",
   "sessionStatus": "stable-deploys-active",
-  "overallPercent": 94,
+  "overallPercent": 96,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "C5/scope",
-    "step": "C5b shipped — CRM Bulk WhatsApp Invite tab + scope captured for V1 popup + C5a/c",
-    "description": "User scope additions captured and recorded: (1) V1 returning-user popup flow (detect V1 login → OTP verify WhatsApp → set new password → full V2 account), tracked as auth feature F1a. (2) CRM now shows 65 migrated V1 users in Users tab (existing behaviour confirmed). (3) NEW: Bulk WhatsApp Invite tab on CRM — paste numbers + pick persona + send + track via crm_contacts.metadata. (4) C5c per-team-member profitability insights added to roadmap (deferred post-walkthrough). Honest overall adjusted 96→94 to reflect new scope items; CRM system 88→82 (more features now tracked, same portion done).",
-    "phaseProgress": 90,
+    "phase": "C5",
+    "step": "C5a/b/d shipped — dual-channel bulk invite + tier filter + V1 badge + admin Verify User",
+    "description": "Second round of user-added scope captured and shipped: (1) Bulk invite now supports WhatsApp + Email + Both (email queued in crm_contacts.metadata.email_queued awaiting F1b SMTP edge function). Accepts paste lines with any mix of phone/email/name. (2) CRM Users tab: tier filter chips now ACTUALLY filter with per-tier counts; new V1-migrated amber badge; WhatsApp-verified blue badge. (3) Team/admin can click ✓ Verify on any user to elevate them to access_tier='verified' — delivers the 'verified people' promise on Welcome. access-tier 'verified' now shows 'built' instead of 'partial'.",
+    "phaseProgress": 95,
     "startedAt": "2026-04-24T01:00:00Z",
     "claudeSession": "ongoing"
   },
   "blockers": [],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase C5b + scope capture: CRM Bulk WhatsApp Invite + V1 popup/C5a/C5c on roadmap", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "pending", "message": "C5 round 2: dual-channel invite + tier filter + V1 badge + admin Verify User", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "697ed05", "message": "Phase C5b + scope capture: CRM Bulk WhatsApp Invite + V1 popup/C5a/C5c on roadmap", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "fd05d49", "message": "Phase D MVP: PersonaBanner on /dashboard (9 personas × role-aware shortcuts)", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "9af32a4", "message": "Phase F3a: scraper default mode 'position' → 'all' (unlocks 4 dormant scrapers)", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "e256faf", "message": "Fix pass (honest Systems %s + 2 new systems) + B6 Almanac section", "branch": "main", "date": "2026-04-24", "landed": true },
@@ -303,7 +304,9 @@
         { "name": "Offer builder + WhatsApp delivery (crm_deals)", "status": "done" },
         { "name": "Bulk WhatsApp invite — paste numbers + persona type + track (C5b)", "status": "done" },
         { "name": "Registered Users tab shows 65 V1 migrated + new registrants", "status": "done" },
-        { "name": "Filter Registered Users by V1-migrated vs new (C5a)", "status": "todo" },
+        { "name": "Users tab: tier filter chips work + counts per tier + V1-migrated badge (C5a)", "status": "done" },
+        { "name": "Users tab: Verify action for admin/team — sets access_tier='verified' + metadata (C5d)", "status": "done" },
+        { "name": "Dual-channel bulk invite: WhatsApp + Email (email queued, SMTP F1b pending)", "status": "done" },
         { "name": "Reconcile invited → joined when recipient registers (C5b-followup)", "status": "todo" },
         { "name": "Per-team-member user-level insights for profitability targeting (C5c)", "status": "todo" },
         { "name": "Widget filters + compare (stage vs stage, period vs period)", "status": "todo" }
@@ -504,7 +507,7 @@
   "accessTiers": [
     { "id": "guest", "name": "Guest", "status": "built", "description": "5-min preview, blur after timer" },
     { "id": "registered", "name": "Registered", "status": "built", "description": "Free account, 4 login methods" },
-    { "id": "verified", "name": "Verified", "status": "partial", "description": "Role logic exists, verification workflow pending" },
+    { "id": "verified", "name": "Verified", "status": "built", "description": "Admin/team can click ✓ Verify on any user in CRM Users tab — sets access_tier='verified' + stamps verified_at/verified_by. Delivers the 'verified people' promise on Welcome." },
     { "id": "maxons", "name": "MAXONS Team", "status": "built", "description": "CRM + Trading gated, admin panel built" }
   ],
   "nextPriorities": [
