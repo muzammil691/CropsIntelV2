@@ -67,7 +67,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm run build
-          echo "cropsintel.net" > dist/CNAME
           touch dist/.nojekyll
           cp dist/index.html dist/404.html
           git config user.name "github-actions[bot]"
