@@ -683,7 +683,15 @@ export async function scrapeAllReportTypes() {
 
 // Run if called directly
 if (process.argv[1] && process.argv[1].includes('abc-scraper')) {
-  const mode = process.argv[2] || 'position';
+  // Default mode changed from 'position' to 'all' on 2026-04-24.
+  // Previously the workflow's `node src/scrapers/abc-scraper.js` (no arg)
+  // only ran scrapeABC — which meant Subjective/Objective forecasts,
+  // Acreage, and Almanac scrapers NEVER actually fired, even though they
+  // were built. With 'all' as default, every workflow run covers the full
+  // ABC report surface. scrapeABC itself already piggy-backs shipment +
+  // receipt extraction from position PDFs (Phase B2), so 'all' gives us
+  // the complete data pipeline in one run.
+  const mode = process.argv[2] || 'all';
   const fn = mode === 'all' ? scrapeAllReportTypes
     : mode === 'subjective' ? scrapeSubjectiveForecasts
     : mode === 'objective' ? scrapeObjectiveForecasts
