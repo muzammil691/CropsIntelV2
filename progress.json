@@ -1,22 +1,23 @@
 {
-  "lastUpdated": "2026-04-24T01:15:00Z",
-  "updatedBy": "Claude AI — Phase E1 shipped (/reports spinner fix + Summary avgSold div-by-zero)",
+  "lastUpdated": "2026-04-24T01:45:00Z",
+  "updatedBy": "Claude AI — Phase C3 shipped (Pricing Variety × Grade Compare view mode)",
   "sessionStatus": "stable-deploys-active",
-  "overallPercent": 88,
+  "overallPercent": 90,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "E",
-    "step": "E1 shipped — /reports spinner hang fixed + summary div-by-zero guard",
-    "description": "Root cause of the /reports indefinite spinner: the Supabase fetch was wrapped in an async function with no try/catch. If supabase.from().select() threw, setLoading(false) never ran and the spinner spun forever. Rewrote to use try/catch/finally + cancellation cleanup + error state. Also fixed latent div-by-zero in the Summary block that produced NaN for avgSold when filtered had no supply rows. First CLEAN deploy of the session (workflow no longer flips CNAME — verified by monitor bg83s6b02). Next: C3 Pricing retrofit + B6 Almanac.",
-    "phaseProgress": 10,
+    "phase": "C",
+    "step": "C3 shipped — Pricing has 4th view mode: Variety × Grade Compare with history overlay",
+    "description": "Added a 'Compare' toggle alongside Cards/Table/Chart on /pricing. Picks any set of varieties + any set of grades, overlays price history on a line chart, and shows a latest cross-tab table. Reuses <FilterBar> (Phase C1) + existing VARIETY_COLORS. Non-destructive — all three existing view modes stay. Answers trader questions like 'Nonpareil 23/25 vs 27/30' or 'Butte vs Fritz last quarter'. Third consecutive clean deploy after the workflow fix. Next: B6 Almanac + C4 News retrofit.",
+    "phaseProgress": 30,
     "startedAt": "2026-04-24T01:00:00Z",
     "claudeSession": "ongoing"
   },
   "blockers": [],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase E1: /reports spinner hang fix + summary div-by-zero guard", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "pending", "message": "Phase C3: Pricing Variety × Grade Compare view mode", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "e03e398", "message": "Phase E1: /reports spinner hang fix + summary div-by-zero guard", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "7906db2", "message": "progress.json: blocker resolved — workflow CNAME flip-flop permanently fixed", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "d721fea", "message": "Remove CNAME file generation in auto-scrape workflow (via GitHub web UI)", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "16f8ce7", "message": "Phase C2: Destinations Cross-Year × Country Compare", "branch": "main", "date": "2026-04-24", "landed": true },
@@ -202,18 +203,19 @@
       "id": "live-pricing",
       "name": "Live Pricing (Strata + MAXONS margin)",
       "category": "data",
-      "percent": 55,
+      "percent": 75,
       "icon": "💰",
-      "description": "7 varieties seeded with MAXONS 3% margin. All prices last updated 2026-04-21 — no live scraper.",
+      "description": "7 varieties with MAXONS 3% margin. Compare view with variety × grade overlay. Strata daily scraper on cron still pending.",
       "features": [
         { "name": "Pricing page with variety/grade/form", "status": "done" },
         { "name": "MAXONS 3% margin calculator", "status": "done" },
         { "name": "Seeded prices for 7 varieties", "status": "done" },
         { "name": "Bid/Ask spread display", "status": "done" },
         { "name": "CSV export", "status": "done" },
+        { "name": "Cards / Table / Chart / Compare view modes", "status": "done" },
+        { "name": "Variety × grade multi-select compare + history overlay", "status": "done" },
         { "name": "Strata daily scraper on cron", "status": "todo" },
-        { "name": "Historical price trend chart", "status": "todo" },
-        { "name": "Variety compare + grade compare", "status": "todo" }
+        { "name": "Bid/Ask spread compare across varieties", "status": "todo" }
       ]
     },
     {
