@@ -1,6 +1,6 @@
 // CropsIntelV2 — Crop Receipts Parser
 // Parses ABC Crop Receipt Reports into variety-level data
-// Populates abc_receipt_reports with variety breakdowns
+// Populates abc_crop_receipts (schema.sql:88) with variety breakdowns
 // Run: node src/scrapers/receipts-parser.js
 
 import { config } from 'dotenv';
@@ -96,14 +96,13 @@ export async function parseReceiptReport(pdfBuffer, sourceUrl) {
 export async function generateReceiptDataFromPositionReports() {
   console.log('Generating receipt data from position reports...');
 
-  const { count } = await supabaseAdmin
-    .from('abc_receipt_reports')
+  // Inform logging only — do NOT skip. Upsert is idempotent; re-running fills new position-report years.
+  // The previous early-exit on count > 0 permanently froze coverage at whatever partial set the
+  // first run produced. Removed as part of the 2026-04-23 honesty pass.
+  const { count: existingCount } = await supabaseAdmin
+    .from('abc_crop_receipts')
     .select('id', { count: 'exact', head: true });
-
-  if (count > 0) {
-    console.log(`Already have ${count} receipt records -- skipping generation`);
-    return 0;
-  }
+  console.log(`Receipts table currently has ${existingCount || 0} records — will upsert to cover all position-report years.`);
 
   const { data: reports } = await supabaseAdmin
     .from('abc_position_reports')
@@ -177,11 +176,31 @@ export async function generateReceiptDataFromPositionReports() {
 
   console.log(`Generated ${records.length} receipt records from ${reports.length} position reports`);
 
+  // Map internal record shape → abc_crop_receipts schema.
+  // Schema columns: receipts_lbs, percent_of_total. Season-to-date + prior-year
+  // values preserved inside raw_data JSONB so they're not lost.
+  const dbRecords = records.map(r => ({
+    report_date: r.report_date,
+    report_year: r.report_year,
+    report_month: r.report_month,
+    crop_year: r.crop_year,
+    variety: r.variety,
+    receipts_lbs: r.monthly_lbs,
+    percent_of_total: r.pct_of_total,
+    raw_data: {
+      ...(r.raw_data || {}),
+      season_to_date_lbs: r.season_to_date_lbs,
+      prior_year_monthly_lbs: r.prior_year_monthly_lbs,
+      prior_year_season_to_date_lbs: r.prior_year_season_to_date_lbs,
+    },
+    source_pdf: r.source_pdf,
+  }));
+
   let inserted = 0;
-  for (let i = 0; i < records.length; i += 50) {
-    const batch = records.slice(i, i + 50);
+  for (let i = 0; i < dbRecords.length; i += 50) {
+    const batch = dbRecords.slice(i, i + 50);
     const { error } = await supabaseAdmin
-      .from('abc_receipt_reports')
+      .from('abc_crop_receipts')
       .upsert(batch, { onConflict: 'report_year,report_month,variety' });
     if (error) {
       console.error(`Batch insert error at offset ${i}:`, error.message);

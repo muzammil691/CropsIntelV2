@@ -178,14 +178,15 @@ export async function storeShipmentRecords(records) {
 export async function generateShipmentDataFromPositionReports() {
   console.log('Generating shipment data from position reports...');
 
-  const { count } = await supabaseAdmin
+  // Check how many records already exist — inform logging only, do NOT skip.
+  // Upsert with onConflict(report_year, report_month, destination_region, destination_country)
+  // makes re-running this safe: existing rows are overwritten, new position-report years get filled.
+  // Previous behaviour skipped when count > 0, which permanently froze the table at whatever
+  // partial coverage existed on the first run. That is the "skipped" bug flagged in the 2026-04-23 audit.
+  const { count: existingCount } = await supabaseAdmin
     .from('abc_shipment_reports')
     .select('id', { count: 'exact', head: true });
-
-  if (count > 0) {
-    console.log(`Already have ${count} shipment records — skipping generation`);
-    return 0;
-  }
+  console.log(`Shipment table currently has ${existingCount || 0} records — will upsert to cover all position-report years.`);
 
   const { data: reports } = await supabaseAdmin
     .from('abc_position_reports')
