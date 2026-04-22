@@ -1,16 +1,16 @@
 {
-  "lastUpdated": "2026-04-23T22:15:00Z",
-  "updatedBy": "Claude AI — Phase B3 shipped (Variety Intelligence section on /forecasts)",
+  "lastUpdated": "2026-04-23T23:00:00Z",
+  "updatedBy": "Claude AI — Phase B4 shipped (Forecast Accuracy section: Subjective vs Objective vs Actual)",
   "sessionStatus": "autonomous-sprint-phase-B-active",
-  "overallPercent": 75,
+  "overallPercent": 78,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
     "phase": "B",
-    "step": "B3 shipped — Variety Intelligence section live on /forecasts",
-    "description": "New <VarietySection> reads abc_crop_receipts (populated by B2's piggy-back parser). Shows variety-share pie for the selected crop year + multi-variety year-over-year trend compare. Uses the new <FilterBar> + VARIETY_COLORS from src/components/FilterBar.jsx (the reusable kit Phase C1 extracted from /analysis). Compare mode: pick 1-18 varieties, overlay trends. Next: B4 Forecasts reads abc_forecasts (Subjective vs Objective vs Actual).",
-    "phaseProgress": 55,
+    "step": "B4 shipped — Forecast Accuracy section (Subjective vs Objective vs Actual) on /forecasts",
+    "description": "New <ForecastsComparisonSection> reads abc_forecasts (populated by scrapeSubjectiveForecasts + scrapeObjectiveForecasts on each workflow run). Shows MAE + within-5% hit-rate KPIs + overlay line chart + year-by-year table. Traders get a historical accuracy read on ABC's May and July forecasts. Next: B5 County tab (Land IQ county_data) + B6 Almanac key-stat extraction.",
+    "phaseProgress": 70,
     "startedAt": "2026-04-23T18:00:00Z",
     "claudeSession": "ongoing"
   },
@@ -25,7 +25,9 @@
     }
   ],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase B3 + C1: Variety Intelligence section on /forecasts + reusable FilterBar", "branch": "main", "date": "2026-04-23", "landed": false },
+    { "sha": "pending", "message": "Phase B4: Forecast Accuracy section (Subjective vs Objective vs Actual)", "branch": "main", "date": "2026-04-23", "landed": false },
+    { "sha": "dc6fc6f", "message": "fix: restore CNAME=cropsintel.com (4th flip-flop fix today, B3 deploy)", "branch": "gh-pages", "date": "2026-04-23", "landed": true },
+    { "sha": "7d6dfb3", "message": "Phase B3 + C1: Variety Intelligence section on /forecasts + reusable FilterBar", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "007e68e", "message": "Phase B2: piggy-back shipment + receipt parsers onto position-PDF fetch", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "07870a1", "message": "Phase A2: upgrade /map into a live command center", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "1f9a09f", "message": "fix: restore CNAME to cropsintel.com (workflow flip-flop bug)", "branch": "gh-pages", "date": "2026-04-23", "landed": true },
@@ -132,14 +134,15 @@
       "id": "abc-forecasts",
       "name": "ABC Forecasts (Subjective May + Objective July)",
       "category": "data",
-      "percent": 5,
+      "percent": 80,
       "icon": "🔮",
-      "description": "Annual crop estimates published by ABC — NOT YET WIRED. Forecasts page currently shows hardcoded USDA array + position-report receipts, not ABC forecast PDFs.",
+      "description": "Annual crop estimates published by ABC. Scraper + parser + UI all wired. Data lands whenever workflow runs pick up new almonds.org forecast PDFs.",
       "features": [
         { "name": "Schema + table created (abc_forecasts)", "status": "done" },
-        { "name": "Scraper for subjective + objective PDFs", "status": "todo" },
-        { "name": "Parser for forecast numbers", "status": "todo" },
-        { "name": "Surface Subjective vs Objective vs Actual comparison on Forecasts page", "status": "todo" }
+        { "name": "Scraper scrapeSubjectiveForecasts (May) in abc-scraper.js", "status": "done" },
+        { "name": "Scraper scrapeObjectiveForecasts (July) in abc-scraper.js", "status": "done" },
+        { "name": "Forecast Accuracy section on /forecasts (MAE, hit-rate, overlay, table)", "status": "done" },
+        { "name": "Call scrapeAllReportTypes instead of scrapeABC in workflow (needs workflow-scope)", "status": "blocked" }
       ]
     },
     {
