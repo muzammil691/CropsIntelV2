@@ -224,6 +224,109 @@ function NextPriorityCard({ item }) {
   );
 }
 
+function CurrentWorkBanner({ currentWork }) {
+  if (!currentWork) return null;
+  const phaseProgress = currentWork.phaseProgress ?? 0;
+  return (
+    <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/5 border border-green-500/30 rounded-xl p-5">
+      <div className="flex items-start gap-4">
+        <div className="shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/20 relative">
+          <span className="text-lg">{'\u26A1'}</span>
+          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Now Working On</span>
+            {currentWork.phase && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-mono">
+                Phase {currentWork.phase}
+              </span>
+            )}
+          </div>
+          <h3 className="text-base font-semibold text-white">{currentWork.step}</h3>
+          {currentWork.description && (
+            <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{currentWork.description}</p>
+          )}
+          {phaseProgress > 0 && (
+            <div className="mt-3 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-1000"
+                style={{ width: `${phaseProgress}%` }} />
+            </div>
+          )}
+          {currentWork.startedAt && (
+            <p className="text-[10px] text-gray-600 mt-2 font-mono">
+              Started {new Date(currentWork.startedAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BlockersAlert({ blockers }) {
+  if (!blockers?.length) return null;
+  const severityColors = {
+    high:   { bg: 'bg-red-500/10',    border: 'border-red-500/30',    text: 'text-red-400',    badge: 'bg-red-500/20 text-red-400' },
+    medium: { bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  text: 'text-amber-400',  badge: 'bg-amber-500/20 text-amber-400' },
+    low:    { bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   text: 'text-blue-400',   badge: 'bg-blue-500/20 text-blue-400' },
+  };
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+        {'\uD83D\uDEA7'} Blockers ({blockers.length})
+        <span className="text-[10px] text-gray-500 font-normal">needs user action</span>
+      </h3>
+      {blockers.map(b => {
+        const c = severityColors[b.severity] || severityColors.medium;
+        return (
+          <div key={b.id} className={`${c.bg} border ${c.border} rounded-xl p-4`}>
+            <div className="flex items-start gap-3">
+              <span className="text-lg leading-none mt-0.5">{'\u26A0\uFE0F'}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className={`text-sm font-semibold ${c.text}`}>{b.title}</h4>
+                  {b.severity && (
+                    <span className={`text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full ${c.badge}`}>
+                      {b.severity}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-300/90 leading-relaxed whitespace-pre-wrap">{b.description}</p>
+                {b.blocks && (
+                  <p className="text-[10px] text-gray-500 mt-1.5">
+                    <strong>Blocks:</strong> {b.blocks}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RecentCommitsRow({ commits }) {
+  if (!commits?.length) return null;
+  return (
+    <div className="bg-gray-900/30 border border-gray-800 rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        {'\uD83D\uDCDD'} Recent Commits
+      </h3>
+      <div className="space-y-1.5">
+        {commits.slice(0, 6).map(c => (
+          <div key={c.sha} className="flex items-start gap-3 text-xs py-1">
+            <span className="font-mono text-green-400/70 shrink-0 w-16">{c.sha.slice(0, 7)}</span>
+            <span className="text-gray-400 flex-1 leading-relaxed">{c.message}</span>
+            <span className="text-[10px] text-gray-600 font-mono shrink-0">{c.date}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectMap() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -312,6 +415,12 @@ export default function ProjectMap() {
         </div>
       </div>
 
+      {/* Now Working On — live session banner */}
+      <CurrentWorkBanner currentWork={data.currentWork} />
+
+      {/* Blockers — only renders when something needs user action */}
+      <BlockersAlert blockers={data.blockers} />
+
       {/* Hero stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="col-span-2 md:col-span-1 bg-gray-900/50 border border-gray-800 rounded-xl p-6 flex items-center justify-center">
@@ -321,12 +430,12 @@ export default function ProjectMap() {
           <CircularProgress percent={data.targetPercent} size={140} color="#f59e0b" label="target" />
         </div>
         <div className="col-span-2 grid grid-cols-3 gap-3">
-          <StatCard value={data.stats.pagesLive} label="Pages Live" icon={'\uD83D\uDCC4'} />
-          <StatCard value={data.stats.realReports} label="Reports" icon={'\uD83D\uDCCA'} />
-          <StatCard value={data.stats.countriesTracked} label="Countries" icon={'\uD83C\uDF0D'} />
-          <StatCard value={data.stats.usersImported} label="Users" icon={'\uD83D\uDC65'} />
-          <StatCard value={data.stats.loginMethods} label="Login Methods" icon={'\uD83D\uDD10'} />
-          <StatCard value={data.stats.cropYears} label="Crop Years" icon={'\uD83C\uDF3E'} />
+          <StatCard value={data.stats.pagesLive || 0} label="Pages Live" icon={'\uD83D\uDCC4'} />
+          <StatCard value={data.stats.realReports || data.stats.positionReports || 0} label="Position Reports" icon={'\uD83D\uDCCA'} />
+          <StatCard value={data.stats.countriesTracked || data.stats.countriesTargeted || 0} label="Countries Targeted" icon={'\uD83C\uDF0D'} />
+          <StatCard value={data.stats.usersImported || 0} label="Users" icon={'\uD83D\uDC65'} />
+          <StatCard value={data.stats.loginMethods || 0} label="Login Methods" icon={'\uD83D\uDD10'} />
+          <StatCard value={data.stats.cropYears || data.stats.cropYearsPositionReports || 0} label="Crop Years" icon={'\uD83C\uDF3E'} />
         </div>
       </div>
 
@@ -374,6 +483,8 @@ export default function ProjectMap() {
                 {data.accessTiers.map(t => <AccessTierCard key={t.id} tier={t} />)}
               </div>
             </div>
+            {/* Recent commits — small chip list, only renders when present */}
+            <RecentCommitsRow commits={data.recentCommits} />
           </div>
         </div>
       )}
