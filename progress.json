@@ -1,16 +1,16 @@
 {
-  "lastUpdated": "2026-04-23T21:30:00Z",
-  "updatedBy": "Claude AI — Phase B2 shipped (scraper wired for shipment+receipt piggy-back)",
+  "lastUpdated": "2026-04-23T22:15:00Z",
+  "updatedBy": "Claude AI — Phase B3 shipped (Variety Intelligence section on /forecasts)",
   "sessionStatus": "autonomous-sprint-phase-B-active",
-  "overallPercent": 72,
+  "overallPercent": 75,
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
     "phase": "B",
-    "step": "B2 shipped — scrapeABC() now extracts position + shipment + receipt from every PDF",
-    "description": "Wired parseShipmentReport + parseReceiptReport into scrapeABC main loop via piggy-back: one HTTP fetch per ABC position-report PDF yields position + destination-breakdown + variety records. Added storeReceiptRecords export in receipts-parser. As real ABC PDFs land, they'll upsert over the B1 backfill's modeled records (same onConflict key). Next: B3 Variety tab UI reads abc_crop_receipts.",
-    "phaseProgress": 40,
+    "step": "B3 shipped — Variety Intelligence section live on /forecasts",
+    "description": "New <VarietySection> reads abc_crop_receipts (populated by B2's piggy-back parser). Shows variety-share pie for the selected crop year + multi-variety year-over-year trend compare. Uses the new <FilterBar> + VARIETY_COLORS from src/components/FilterBar.jsx (the reusable kit Phase C1 extracted from /analysis). Compare mode: pick 1-18 varieties, overlay trends. Next: B4 Forecasts reads abc_forecasts (Subjective vs Objective vs Actual).",
+    "phaseProgress": 55,
     "startedAt": "2026-04-23T18:00:00Z",
     "claudeSession": "ongoing"
   },
@@ -25,7 +25,8 @@
     }
   ],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase B2: wire shipment + receipt parsers into scrapeABC main loop", "branch": "main", "date": "2026-04-23", "landed": false },
+    { "sha": "pending", "message": "Phase B3 + C1: Variety Intelligence section on /forecasts + reusable FilterBar", "branch": "main", "date": "2026-04-23", "landed": false },
+    { "sha": "007e68e", "message": "Phase B2: piggy-back shipment + receipt parsers onto position-PDF fetch", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "07870a1", "message": "Phase A2: upgrade /map into a live command center", "branch": "main", "date": "2026-04-23", "landed": true },
     { "sha": "1f9a09f", "message": "fix: restore CNAME to cropsintel.com (workflow flip-flop bug)", "branch": "gh-pages", "date": "2026-04-23", "landed": true },
     { "sha": "a4efa76", "message": "Phase B1: fix backfill skip-bugs + receipts schema mismatch", "branch": "main", "date": "2026-04-23", "landed": true },
@@ -114,15 +115,17 @@
       "id": "abc-crop-receipts",
       "name": "ABC Crop Receipts (by variety)",
       "category": "data",
-      "percent": 0,
+      "percent": 55,
       "icon": "🌱",
-      "description": "Variety-level receipts (Nonpareil, Carmel, Butte/Padres, Monterey, Independence, etc.) — NOT YET BUILT",
+      "description": "Variety-level receipts (Nonpareil, Carmel, Butte/Padres, Monterey, Independence, etc.). Variety Intelligence section now live on /forecasts with share pie + multi-variety trend compare.",
       "features": [
         { "name": "Schema + table created (abc_crop_receipts)", "status": "done" },
-        { "name": "Scraper for crop-receipts PDFs", "status": "todo" },
-        { "name": "Parser for variety table", "status": "todo" },
-        { "name": "Variety tab / widget on Forecasts or dedicated page", "status": "todo" },
-        { "name": "Variety compare mode (Nonpareil vs Carmel etc.)", "status": "todo" }
+        { "name": "Parser (parseReceiptReport) + store (storeReceiptRecords) with schema mapping", "status": "done" },
+        { "name": "Piggy-back scraper: extract variety from every position PDF", "status": "done" },
+        { "name": "Backfill generator: seed all 11 crop years from position totals (modeled)", "status": "done" },
+        { "name": "Variety Intelligence section on Forecasts page with share pie + trend compare", "status": "done" },
+        { "name": "Scraper for dedicated crop-receipts PDFs from almonds.org", "status": "todo" },
+        { "name": "Persona-specific variety view (Phase D)", "status": "todo" }
       ]
     },
     {
