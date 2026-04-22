@@ -49,17 +49,31 @@ export default function Reports() {
   const [showFull, setShowFull] = useState(false);
   const [viewMode, setViewMode] = useState('compact'); // compact | expanded
 
+  const [loadError, setLoadError] = useState(null);
   useEffect(() => {
-    async function loadReports() {
-      const { data } = await supabase
-        .from('abc_position_reports')
-        .select('*')
-        .order('report_year', { ascending: false })
-        .order('report_month', { ascending: false });
-      if (data) setReports(data);
-      setLoading(false);
-    }
-    loadReports();
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('abc_position_reports')
+          .select('*')
+          .order('report_year', { ascending: false })
+          .order('report_month', { ascending: false });
+        if (cancelled) return;
+        if (error) {
+          setLoadError(error.message || String(error));
+        } else if (data) {
+          setReports(data);
+        }
+      } catch (err) {
+        if (!cancelled) setLoadError(err?.message || String(err));
+      } finally {
+        // ALWAYS clear loading — a thrown supabase call was silently leaving
+        // the page stuck on the spinner forever (symptom reported 2026-04-23).
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const cropYears = useMemo(() =>
@@ -126,10 +140,11 @@ export default function Reports() {
     const totalSupply = filtered.reduce((s, r) => s + toNum(r.total_supply_lbs), 0);
     const totalShipped = filtered.reduce((s, r) => s + toNum(r.total_shipped_lbs), 0);
     const totalCommitted = filtered.reduce((s, r) => s + toNum(r.total_committed_lbs), 0);
-    const avgSold = filtered.reduce((s, r) => {
+    const supplyCount = filtered.filter(r => toNum(r.total_supply_lbs) > 0).length;
+    const avgSold = supplyCount === 0 ? 0 : filtered.reduce((s, r) => {
       if (!toNum(r.total_supply_lbs)) return s;
       return s + (toNum(r.total_supply_lbs) - toNum(r.uncommitted_lbs)) / toNum(r.total_supply_lbs);
-    }, 0) / filtered.filter(r => toNum(r.total_supply_lbs) > 0).length;
+    }, 0) / supplyCount;
     return { latest, totalSupply, totalShipped, totalCommitted, avgSold, count: filtered.length };
   }, [filtered]);
 
