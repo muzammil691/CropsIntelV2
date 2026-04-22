@@ -215,7 +215,7 @@ function Sidebar() {
           </div>
         </div>
         <div className="text-[10px] text-gray-600">
-          10-year data | 9 crop years | Self-maintaining
+          11 crop years | 116 position reports | V2 autonomous
         </div>
       </div>
     </aside>

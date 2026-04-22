@@ -135,7 +135,7 @@ export default function News() {
             Industry News & Intelligence
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Auto-scraped from almonds.org, press releases, and industry sources — AI-analyzed for market impact
+            Curated industry intelligence from almonds.org, USDA, and market sources — AI-analyzed for market impact. Live scrapers on cron: coming in Phase B.
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs">
@@ -155,8 +155,8 @@ export default function News() {
       <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
         <p className="text-xs text-gray-400 leading-relaxed">
-          Every article is auto-scraped from industry sources and analyzed by AI for market relevance. The sentiment arrows show whether the news is likely bullish (price-supportive), bearish (price-negative), or neutral.
-          The "Market impact" line on each article explains WHY it matters for trading decisions. Filter by category to focus on trade policy, crop conditions, or regulatory changes that affect your positions.
+          Articles are curated from industry sources and analyzed by AI for market relevance. The sentiment arrows show whether the news is likely bullish (price-supportive), bearish (price-negative), or neutral.
+          The "Market impact" line on each article explains WHY it matters for trading decisions. Filter by category to focus on trade policy, crop conditions, or regulatory changes that affect your positions. Automated daily scraping is scheduled for Phase B.
         </p>
       </div>
 

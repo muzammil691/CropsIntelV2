@@ -221,12 +221,26 @@ export default function Destinations() {
         </button>
       </div>
 
+      {/* Modeled data disclaimer */}
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-4">
+        <div className="flex items-start gap-3">
+          <div className="text-amber-400 text-lg leading-none mt-0.5">⚠️</div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-amber-400 mb-1">Modeled Destination Data</h3>
+            <p className="text-xs text-amber-200/80 leading-relaxed">
+              The country splits below are <strong>modeled</strong> from ABC position-report export totals using standard distribution shares (Spain ~12%, India ~11%, China/HK ~9%, Germany ~7%, UAE ~6%, etc.). They are <em>not</em> yet populated from real ABC Shipment Report PDFs.
+              Real PDF scraping across all 11 crop years × 45 destinations is Phase B2 of the current sprint — live tracking at cropsintel.com/map.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* How to Read This Page */}
       <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4 mb-6">
         <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
         <p className="text-xs text-gray-400 leading-relaxed">
           This page maps where California almonds go after leaving the handler. Understanding destination flows helps traders identify growing markets, spot demand shifts, and time offers to buyers in specific regions.
-          Select a crop year to see that year's trade flow breakdown. Data covers {allCropYears.length} crop years with {shipments.length} destination-level records from ABC Shipment Reports.
+          Select a crop year to see that year's trade flow breakdown. Data covers {allCropYears.length} crop years with {shipments.length} destination-level records (currently modeled; real ABC Shipment PDFs are Phase B2).
         </p>
       </div>
 
