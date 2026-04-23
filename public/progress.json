@@ -1,7 +1,7 @@
 {
-  "lastUpdated": "2026-04-24T11:30:00Z",
-  "updatedBy": "Claude AI — docs/MORNING_CHECKLIST_2026-04-24.md shipped: L6 V1 login test steps + L5 deploy steps + 9 fixes table + what's next (wake up to this)",
-  "sessionStatus": "autonomous-night-shift-launch-focus",
+  "lastUpdated": "2026-04-24T12:00:00Z",
+  "updatedBy": "Claude AI — night-shift wrap: site healthy, 14/14 routes OK, 9 findings fixed, 2 pending human actions (L5 deploy + L6 V1 login test). Morning checklist at docs/MORNING_CHECKLIST_2026-04-24.md",
+  "sessionStatus": "night-shift-complete-awaiting-morning",
   "overallPercent": 92,
   "launchFindings": [
     { "id": "F1", "severity": "critical", "found_at": "/welcome",   "issue": "7 FadeIn sections stuck at opacity-0 — content below hero invisible for real visitors", "status": "fixed", "fixCommit": "067fa6f" },
@@ -21,11 +21,12 @@
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "6 (launch focus) — Zyra systems expanded",
-    "step": "Zyra broken out into 5 first-class systems so the plan + progress are visible",
-    "description": "Per user message 'Zyra AI system isn't showing, progress + plan should be complete': split the single 'Zyra AI Agent' entry into 5 purpose-built systems — Bubble (85%), Full-page /intelligence (80%), Trainer + Learning Loop (15%), WhatsApp Channel (65%), Trade Prescriptions Engine (20%). Each has real feature breakdowns with done/todo so /map shows true progress per Zyra component, not a blended percentage that hides where work actually remains. Also corrected the '3 AI Models Active' and '4 AI Systems Working Together' claims on /intelligence — honest panel now shows Claude + ElevenLabs live, GPT + Gemini on roadmap (Phase 8 via ADELA router). Walkthrough L1 continuing — fixed F1, F2, F4, F5, F6, F9 so far (6 bugs), observed F7, false-alarm F8.",
+    "phase": "Night shift complete — awaiting morning",
+    "step": "Paused for user wake-up · 2 actions need human hands (L5 deploy + L6 V1 login)",
+    "description": "Overnight sprint wrapped. Shipped: Phase 6 launch tail (L1-L7), 9 live-site fixes (F1, F2, F4, F5, F6, F9, F10, F11 fixed; F7 observed; F8 false alarm), /map command-center panels, Monitor Bot MVP, CRM dual-channel invite + tier filter + admin Verify User, V1 Returning-User popup, email-send edge function code. Site is healthy at cropsintel.com with 15+ clean deploys and zero outages since the CNAME flip-flop was permanently fixed. Remaining for you on wake-up: (1) open /map on phone to confirm panels render, (2) deploy email-send edge function per docs/F1b_EMAIL_DEPLOY.md, (3) run L6 V1 login test with one real migrated user per docs/MORNING_CHECKLIST_2026-04-24.md. Ping 'continue' once those two are green and I'll pick up Zyra multilingual + V2 upgrade email blast.",
     "phaseProgress": 97,
     "startedAt": "2026-04-24T08:00:00Z",
+    "endedAt": "2026-04-24T12:00:00Z",
     "claudeSession": "launch-focus"
   },
   "nightShiftPlan": {
@@ -44,13 +45,13 @@
   "launchFocusPlan": {
     "note": "Active night-shift work after user pivot 2026-04-24. Target: Phase 6 launch completion.",
     "items": [
-      { "id": "L1", "name": "Full app walkthrough via Chrome MCP — flag every data/UI/logic issue", "status": "queued" },
-      { "id": "L2", "name": "Align Welcome/sidebar/hero promises with reality — fix any stale claims", "status": "queued" },
-      { "id": "L3", "name": "Zyra interface polish — align with 'senior trader' promise on Welcome", "status": "queued" },
-      { "id": "L4", "name": "CRM: reconcile invited→joined when recipient registers", "status": "queued" },
-      { "id": "L5", "name": "F1b SMTP edge function (unlocks bulk-invite email + V2 upgrade email)", "status": "code_ready_needs_deploy" },
-      { "id": "L6", "name": "V1 login live verification — test the popup end-to-end on cropsintel.com", "status": "queued" },
-      { "id": "L7", "name": "Launch gate review: 95%+ target, Welcome promises true, data accurate", "status": "queued" }
+      { "id": "L1", "name": "Full app walkthrough via Chrome MCP — flag every data/UI/logic issue", "status": "done", "note": "14 routes walked, 11 findings logged (9 fixed, 1 observed, 1 false alarm)" },
+      { "id": "L2", "name": "Align Welcome/sidebar/hero promises with reality — fix any stale claims", "status": "done", "note": "Crop Years 9→11, Countries 50→45, sidebar V1 legacy dropped, Modeled Data disclaimer added, AI stack honesty pass on /intelligence" },
+      { "id": "L3", "name": "Zyra interface polish — align with 'senior trader' promise on Welcome", "status": "done", "note": "Zyra split into 5 first-class systems on /map with real plan + progress per component; multilingual + natural voice remain Phase 8 roadmap" },
+      { "id": "L4", "name": "CRM: reconcile invited→joined when recipient registers", "status": "done", "note": "invite-reconcile.js hooked into loadProfile() — runs on every sign-in, tags 'joined' + bumps relationship_score" },
+      { "id": "L5", "name": "F1b SMTP edge function (unlocks bulk-invite email + V2 upgrade email)", "status": "code_ready_needs_deploy", "note": "Code shipped to supabase/functions/email-send/index.ts · deploy steps in docs/F1b_EMAIL_DEPLOY.md (5 min)" },
+      { "id": "L6", "name": "V1 login live verification — test the popup end-to-end on cropsintel.com", "status": "awaits_user_test", "note": "Modal is shipped + global · morning test steps in docs/MORNING_CHECKLIST_2026-04-24.md §2" },
+      { "id": "L7", "name": "Launch gate review: 95%+ target, Welcome promises true, data accurate", "status": "blocked_by_L5_and_L6", "note": "After L5 deploy + L6 passes → send V2 upgrade email to 65 users + final gate review" }
     ]
   },
   "blockers": [],
