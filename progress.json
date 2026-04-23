@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T08:45:00Z",
-  "updatedBy": "Claude AI — LAUNCH L1 F4 fix: PersonaBanner now handles admin/maxons_team/sales/seller (was defaulting to generic Welcome persona)",
+  "lastUpdated": "2026-04-24T09:00:00Z",
+  "updatedBy": "Claude AI — LAUNCH L1 F6 fix: normalizeCropYear() collapses /destinations duplicate chip bug (2016/17 vs 2016/2017)",
   "sessionStatus": "autonomous-night-shift-launch-focus",
   "overallPercent": 92,
   "launchFindings": [
@@ -8,7 +8,9 @@
     { "id": "F2", "severity": "medium",   "found_at": "/welcome",   "issue": "Crop Years stat hardcoded to 9; actual data covers 11 crop years (2015/16-2025/26)", "status": "fixed", "fixCommit": "067fa6f" },
     { "id": "F3", "severity": "low",      "found_at": "/welcome",   "issue": "'45+ Countries Tracked' is scraper target; only ~20 countries modeled in Destinations. Label may mislead.", "status": "open", "note": "keeping 45 for now as market-scope claim; add a disclaimer instead" },
     { "id": "F4", "severity": "medium",   "found_at": "/dashboard", "issue": "Admin (MAXONS team tier) saw the generic 'Welcome' persona banner — PersonaBanner map missing admin/maxons_team/sales/seller entries", "status": "fixed", "fixCommit": "f46d2e2" },
-    { "id": "F5", "severity": "high",     "found_at": "/brokers",   "issue": "Market-signal YoY compared latest year vs SUM of all-prior years (not just the prior year). Made every market show -87% YoY / Avoid. Logic bug.", "status": "fixed", "fixCommit": "pending" }
+    { "id": "F5", "severity": "high",     "found_at": "/brokers",      "issue": "Market-signal YoY compared latest year vs SUM of all-prior years (not just the prior year). Made every market show -87% YoY / Avoid. Logic bug.", "status": "fixed", "fixCommit": "a777a01" },
+    { "id": "F6", "severity": "medium",   "found_at": "/destinations", "issue": "Duplicate crop-year chips: '2016/17' + '2016/2017' both present because seed/backfill/parser wrote the field in different formats. Confusing UI; same underlying year counted twice in filters.", "status": "fixed", "fixCommit": "pending", "note": "Added normalizeCropYear() in src/lib/utils.js and applied on Destinations + Variety + Analysis fetch paths" },
+    { "id": "F7", "severity": "low",      "found_at": "/destinations", "issue": "Monthly Export-vs-Domestic bars only render for Aug + Oct; other months empty. Symptom of sparse modeled data for certain crop years. Non-critical — honest view of what's in DB.", "status": "observed" }
   ],
   "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
   "targetPercent": 95,
