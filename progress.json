@@ -302,6 +302,12 @@
   ],
   "recentCommits": [
     {
+      "sha": "357511e",
+      "date": "2026-04-24",
+      "subject": "F6: Team user management \u2014 admin CRUD + team verify panel + RLS",
+      "author": "Claude AI"
+    },
+    {
       "sha": "7541fc3",
       "message": "F1 login blocker fixes: V1 profile orphan guard + fallback UX + env guards",
       "date": "2026-04-24"
