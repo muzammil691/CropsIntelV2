@@ -4,6 +4,12 @@ dist/
 .env.local
 .DS_Store
 *.log
+
+# Supabase CLI local cache (version pin, cli binaries, local stack state)
+supabase/.temp/
+supabase/.branches/
+.supabase/
+
 # Note: .github/ used to be gitignored; removed 2026-04-23 because workflow
 # files MUST be tracked or GitHub Actions can't run them. auto-scrape.yml
 # was previously force-added, leaving deploy-edge-functions.yml silently
