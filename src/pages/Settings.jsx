@@ -231,6 +231,25 @@ export default function Settings() {
     if (isTeamOnly) loadPendingUsers();
   }, [isTeamOnly]);
 
+  // Hash-scroll: when the sidebar's "Team & Users" link fires (/settings#team-panel),
+  // scroll the matching section into view. Runs on mount AND on hashchange so a
+  // click while already on /settings still re-scrolls.
+  useEffect(() => {
+    function scrollToHash() {
+      const hash = window.location.hash.replace('#', '');
+      if (!hash) return;
+      // Give React a tick to render the panel (isAdmin/isTeamOnly gates
+      // may not be resolved until after the profile loads).
+      requestAnimationFrame(() => {
+        const el = document.getElementById(hash);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+    scrollToHash();
+    window.addEventListener('hashchange', scrollToHash);
+    return () => window.removeEventListener('hashchange', scrollToHash);
+  }, [isAdmin, isTeamOnly, allUsers.length, pendingUsers.length]);
+
   async function loadPendingUsers() {
     setPendingLoading(true);
     try {
@@ -571,7 +590,7 @@ export default function Settings() {
 
       {/* Team-only: Verify Users panel (no add, no delete, no tier edit beyond registered->verified) */}
       {isTeamOnly && (
-        <div className="bg-gray-900/50 border border-purple-500/30 rounded-xl p-5">
+        <div id="team-panel" className="bg-gray-900/50 border border-purple-500/30 rounded-xl p-5 scroll-mt-20">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -648,7 +667,7 @@ export default function Settings() {
 
       {/* Admin: User Management */}
       {isAdmin && (
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+        <div id="team-panel" className="bg-gray-900/50 border border-gray-800 rounded-xl p-5 scroll-mt-20">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-white">User Management</h2>

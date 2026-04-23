@@ -140,6 +140,39 @@ export default function Login() {
         setMethod('email_password');
         setError(result.message || 'OTP verified — please enter your password to complete sign in. If you don\'t remember it, use Reset Password below.');
       } else {
+        // Session established. Before dashboard, check if this user
+        // still owes us a V2 Welcome — e.g. a V1 migrated user who
+        // logged in previously but never saw /set-password (pre-fix
+        // deploy). If so, route them through the rich welcome once.
+        //
+        // Heuristic (backend-independent, works without new migration):
+        //   - user_profiles.v2_welcome_completed_at IS NULL
+        //   AND
+        //   - user_profiles has any V1-migration marker (source, migrated_from_v1, etc.)
+        //     OR the auth user has never set their own password (user_metadata.password_set)
+        //
+        // If the column doesn't exist yet, the select returns `undefined`
+        // and we fall through to /dashboard. Safe to deploy before the
+        // migration lands.
+        try {
+          const uid = result.user_id || result.user?.id;
+          if (uid) {
+            const { data: prof } = await supabase
+              .from('user_profiles')
+              .select('v2_welcome_completed_at, migrated_from_v1, source')
+              .eq('id', uid)
+              .maybeSingle();
+
+            const welcomeNotDone = prof && prof.v2_welcome_completed_at === null;
+            const isV1Marker = prof && (prof.migrated_from_v1 === true || prof.source === 'v1_migration');
+            if (welcomeNotDone && isV1Marker) {
+              navigate('/set-password');
+              return;
+            }
+          }
+        } catch (_probeErr) {
+          // Column or RLS issue — don't block login.
+        }
         navigate('/dashboard');
       }
     } catch (err) {

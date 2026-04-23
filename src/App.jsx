@@ -54,6 +54,10 @@ const NAV_ITEMS = [
   { path: '/trading', label: 'Trading Portal', icon: '💼', requireTeam: true },
   { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/autonomous', label: 'Autonomous', icon: '🤖', requireAdmin: true },
+  // Team & Users — direct link to the user-mgmt panel embedded in Settings.
+  // Was previously buried inside /settings; user flagged they couldn't find it.
+  // The #team-panel hash causes Settings.jsx to scroll the panel into view.
+  { path: '/settings#team-panel', label: 'Team & Users', icon: '👥', requireTeam: true },
   { path: '/settings', label: 'Settings', icon: '⚙️', requireAuth: true }
 ];
 
