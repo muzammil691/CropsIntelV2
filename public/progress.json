@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-23T13:10:35Z",
-  "updatedBy": "Claude AI \u2014 Trading: multi-product line items + live Strata + freight/insurance",
+  "lastUpdated": "2026-04-23T13:19:20Z",
+  "updatedBy": "Claude AI \u2014 F2 Destinations filter + F3 Supply retrofit + F4 ABC audit",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 95,
+  "overallPercent": 96,
   "launchFindings": [
     {
       "id": "F1",
@@ -300,9 +300,44 @@
       "status": "queued",
       "description": "V1 user migration defaulted everyone to role='buyer'. Any V1 admins/team members remain at buyer-tier until promoted. Needs the V1 team-user list (from ../Cropsintel/ handoff docs or user) + a one-shot UPDATE user_profiles SET role=, access_tier= WHERE email IN (...) run through the Supabase SQL editor or service-role script.",
       "approach": "After F6 UI ships, admin can flip promoted users one-by-one via Settings \u2192 User Management using the new 'Make team' preset button. For bulk, craft a migration script once the V1 list is available."
+    },
+    {
+      "id": "destinations-country-filter",
+      "title": "Destinations country search + lift slice caps",
+      "status": "done",
+      "resolvedDate": "2026-04-24",
+      "sha": "c7f42ba",
+      "notes": "Unsliced destination list + country search + compare picker shows every country; ranking chart has Top 10/15/25/All toggles; YoY no longer hard-capped at 10."
+    },
+    {
+      "id": "supply-variety-county-multiyear",
+      "title": "Supply page retrofit: FilterBar + VarietySection + CountySection + last-5 default",
+      "status": "done",
+      "resolvedDate": "2026-04-24",
+      "sha": "3fc05ba",
+      "notes": "Default comparison window 3y \u2192 5y; shared FilterBar with Last 3/5/All quick actions; variety + county breakdowns dropped in below supply metrics."
+    },
+    {
+      "id": "abc-position-month-gaps",
+      "title": "ABC position reports \u2014 fill missing months for past crop years",
+      "status": "queued",
+      "notes": "Audit 2026-04-24: 106 rows across 11 crop years. Gaps: 2015/16 missing months 8-12; 2016/17 missing months 4 and 12; 2019/20 missing months 7, 8, 10; 2020/21 missing 9 months (only 3 rows present \u2014 biggest hole); 2021/22 missing month 2; 2022/23 missing month 8; 2023/24 missing month 10. 2025/26 is in-progress and expected to grow naturally. Trigger via workflow-dispatch of auto-scrape.yml with ABC_SCRAPE_LIMIT=200 (or run locally once service-role key is available).",
+      "acceptance": "Target 128 rows when all past-year gaps are filled; sidebar claim updates automatically."
     }
   ],
   "recentCommits": [
+    {
+      "sha": "3fc05ba",
+      "date": "2026-04-24",
+      "subject": "F3 Supply: FilterBar + VarietySection + CountySection + last-5 default",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "c7f42ba",
+      "date": "2026-04-24",
+      "subject": "F2 Destinations: country search + unsliced compare list",
+      "author": "Claude AI"
+    },
     {
       "sha": "357511e",
       "date": "2026-04-24",
@@ -2181,7 +2216,27 @@
   ],
   "subsystems": {
     "team-user-mgmt": 100,
-    "widget-interactivity": 88,
-    "offers-multi-product": 90
+    "widget-interactivity": 92,
+    "offers-multi-product": 90,
+    "destinations-filters": 100,
+    "supply-filters": 100
+  },
+  "dataHealth": {
+    "abc_position_reports": {
+      "rows": 106,
+      "cropYears": 11,
+      "auditDate": "2026-04-24",
+      "status": "partial",
+      "gapCropYears": [
+        "2015/16",
+        "2016/17",
+        "2019/20",
+        "2020/21",
+        "2021/22",
+        "2022/23",
+        "2023/24"
+      ],
+      "note": "Sidebar claim corrected from 116 \u2192 106 position reports. Gaps queued as abc-position-month-gaps."
+    }
   }
 }
