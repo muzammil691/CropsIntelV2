@@ -13,6 +13,27 @@ const TIER_COLORS = {
   admin: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
+// All role options — mirrors the role set in App.jsx TEAM_ROLES + ROLE_PRIORITY.
+// Grouped: buy/sell side, value chain, and internal team roles.
+const ALL_ROLES = [
+  { value: 'buyer',       label: 'Buyer',              group: 'trading' },
+  { value: 'seller',      label: 'Seller',             group: 'trading' },
+  { value: 'trader',      label: 'Trader',             group: 'trading' },
+  { value: 'broker',      label: 'Broker',             group: 'trading' },
+  { value: 'grower',      label: 'Grower',             group: 'chain'   },
+  { value: 'supplier',    label: 'Handler / Packer',   group: 'chain'   },
+  { value: 'processor',   label: 'Processor',          group: 'chain'   },
+  { value: 'analyst',     label: 'Analyst',            group: 'team'    },
+  { value: 'sales',       label: 'Sales',              group: 'team'    },
+  { value: 'maxons_team', label: 'MAXONS Team',        group: 'team'    },
+  { value: 'admin',       label: 'Admin',              group: 'team'    },
+];
+
+// Canonical internal-team role set. Mirrors TEAM_ROLES in App.jsx line 138.
+// Any role in this list (or access_tier === 'maxons_team' / 'admin') counts
+// as "internal team" for purposes of verify-users capability.
+const TEAM_ROLE_VALUES = ['admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team'];
+
 const AI_SYSTEMS = [
   { key: 'anthropic', name: 'Claude (Anthropic)', role: 'Primary Brain', desc: 'Deep reasoning, document analysis, trade synthesis', color: 'orange' },
   { key: 'openai', name: 'GPT (OpenAI)', role: 'Fast Factual', desc: 'Quick checks, alternative market perspectives', color: 'green' },
@@ -63,6 +84,21 @@ export default function Settings() {
   const [deleteConfirm, setDeleteConfirm] = useState(null); // userId to confirm deletion
 
   const isAdmin = authProfile?.role === 'admin';
+  // Team capability: role is in TEAM_ROLE_VALUES or tier is elevated.
+  const isTeam = Boolean(
+    authProfile && (
+      TEAM_ROLE_VALUES.includes(authProfile.role) ||
+      authProfile.access_tier === 'maxons_team' ||
+      authProfile.access_tier === 'admin'
+    )
+  );
+  // Team members who are NOT admin get the slimmed-down verify-only panel
+  const isTeamOnly = isTeam && !isAdmin;
+
+  // Team-only: queue of users pending verification (access_tier === 'registered')
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState('');
 
   useEffect(() => { loadSettings(); }, []);
 
@@ -189,6 +225,67 @@ export default function Settings() {
   useEffect(() => {
     if (isAdmin) loadAllUsers();
   }, [isAdmin]);
+
+  // Team-only: load pending verification queue
+  useEffect(() => {
+    if (isTeamOnly) loadPendingUsers();
+  }, [isTeamOnly]);
+
+  async function loadPendingUsers() {
+    setPendingLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('id, email, full_name, company, whatsapp_number, country, created_at, role, access_tier')
+        .eq('access_tier', 'registered')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (!error && data) setPendingUsers(data);
+    } catch { /* table may not exist */ }
+    setPendingLoading(false);
+  }
+
+  async function verifyPendingUser(userId, userEmail, userName) {
+    setVerifyMsg('');
+    try {
+      // Flip access_tier registered → verified
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          access_tier: 'verified',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+        .eq('access_tier', 'registered'); // guard: don't demote a verified/team user
+      if (error) throw error;
+
+      // Log the verification as a CRM activity so there's an audit trail
+      try {
+        await supabase.from('crm_activities').insert({
+          activity_type: 'user_verified',
+          subject: `User verified by ${authProfile?.full_name || authProfile?.email || 'team member'}`,
+          description: `Verified ${userName || userEmail} (${userEmail}) — registered → verified`,
+          outcome: 'positive',
+          completed_at: new Date().toISOString(),
+          created_by: authProfile?.id || 'system',
+          metadata: {
+            verified_user_id: userId,
+            verified_by: authProfile?.id,
+            verified_by_role: authProfile?.role,
+            previous_tier: 'registered',
+            new_tier: 'verified',
+          },
+        });
+      } catch { /* activity log is best-effort */ }
+
+      // Remove from pending queue
+      setPendingUsers(prev => prev.filter(u => u.id !== userId));
+      setVerifyMsg(`Verified ${userName || userEmail}`);
+    } catch (err) {
+      setVerifyMsg('Error: ' + (err.message || 'Failed to verify user'));
+    }
+    setTimeout(() => setVerifyMsg(''), 4000);
+  }
 
   async function loadAllUsers() {
     setUsersLoading(true);
@@ -388,11 +485,21 @@ export default function Settings() {
                   onChange={e => setProfile(prev => ({ ...prev, role: e.target.value }))}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50"
                 >
-                  <option value="buyer">Buyer</option>
-                  <option value="seller">Seller</option>
-                  <option value="broker">Broker</option>
-                  <option value="analyst">Analyst</option>
-                  <option value="admin">Admin</option>
+                  <optgroup label="Trading">
+                    {ALL_ROLES.filter(r => r.group === 'trading').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Value Chain">
+                    {ALL_ROLES.filter(r => r.group === 'chain').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Internal Team">
+                    {ALL_ROLES.filter(r => r.group === 'team').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </optgroup>
                 </select>
               ) : (
                 <div className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white opacity-50 cursor-not-allowed capitalize">
@@ -462,6 +569,83 @@ export default function Settings() {
         </div>
       )}
 
+      {/* Team-only: Verify Users panel (no add, no delete, no tier edit beyond registered->verified) */}
+      {isTeamOnly && (
+        <div className="bg-gray-900/50 border border-purple-500/30 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                Verify Users
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 font-normal">
+                  Team
+                </span>
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {pendingUsers.length === 0 ? 'No users awaiting verification' : `${pendingUsers.length} pending`}
+                 — you can verify new registrants but cannot add or delete users.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {verifyMsg && (
+                <span className={`text-xs max-w-xs truncate ${verifyMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                  {verifyMsg}
+                </span>
+              )}
+              <button
+                onClick={loadPendingUsers}
+                disabled={pendingLoading}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg text-xs transition-colors border border-gray-700"
+              >
+                {pendingLoading ? 'Loading...' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+
+          {pendingUsers.length === 0 && !pendingLoading ? (
+            <div className="bg-gray-800/30 border border-dashed border-gray-700 rounded-lg p-6 text-center">
+              <p className="text-sm text-gray-500">All caught up. New registrants will appear here for verification.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {pendingUsers.map(u => (
+                <div key={u.id} className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white truncate">{u.full_name || 'No name'}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                          Registered
+                        </span>
+                        {u.role && u.role !== 'buyer' && (
+                          <span className="text-[10px] text-gray-500 capitalize">{u.role}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <span className="text-[11px] text-gray-500 truncate">{u.email || 'No email'}</span>
+                        {u.company && <span className="text-[11px] text-gray-600">{u.company}</span>}
+                        {u.whatsapp_number && <span className="text-[11px] text-gray-600">{u.whatsapp_number}</span>}
+                        {u.country && <span className="text-[11px] text-gray-600">{u.country}</span>}
+                        {u.created_at && (
+                          <span className="text-[11px] text-gray-700">
+                            Registered {new Date(u.created_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => verifyPendingUser(u.id, u.email, u.full_name)}
+                      className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium transition-colors shrink-0"
+                    >
+                      Verify
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Admin: User Management */}
       {isAdmin && (
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
@@ -518,13 +702,54 @@ export default function Settings() {
                   placeholder="WhatsApp (+971...)" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
                 <select value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}
                   className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50">
-                  <option value="buyer">Buyer</option><option value="seller">Seller</option><option value="broker">Broker</option>
-                  <option value="analyst">Analyst</option><option value="admin">Admin</option>
+                  <optgroup label="Trading">
+                    {ALL_ROLES.filter(r => r.group === 'trading').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Value Chain">
+                    {ALL_ROLES.filter(r => r.group === 'chain').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Internal Team">
+                    {ALL_ROLES.filter(r => r.group === 'team').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </optgroup>
                 </select>
                 <select value={newUser.access_tier} onChange={e => setNewUser(p => ({ ...p, access_tier: e.target.value }))}
                   className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50">
                   {ACCESS_TIERS.map(t => <option key={t} value={t}>{TIER_LABELS[t]}</option>)}
                 </select>
+              </div>
+              {/* Preset buttons — set role + tier in one click */}
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                <span className="text-[11px] text-gray-500">Quick presets:</span>
+                <button
+                  type="button"
+                  onClick={() => setNewUser(p => ({ ...p, role: 'maxons_team', access_tier: 'maxons_team' }))}
+                  className="px-2.5 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 border border-purple-500/40 rounded text-[11px] font-medium transition-colors"
+                  title="Role: MAXONS Team  |  Tier: MAXONS Team"
+                >
+                  Make team member
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewUser(p => ({ ...p, role: 'buyer', access_tier: 'verified' }))}
+                  className="px-2.5 py-1 bg-green-600/30 hover:bg-green-600/50 text-green-300 border border-green-500/40 rounded text-[11px] font-medium transition-colors"
+                  title="Role: Buyer  |  Tier: Verified"
+                >
+                  Verified buyer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewUser(p => ({ ...p, role: 'admin', access_tier: 'admin' }))}
+                  className="px-2.5 py-1 bg-red-600/30 hover:bg-red-600/50 text-red-300 border border-red-500/40 rounded text-[11px] font-medium transition-colors"
+                  title="Role: Admin  |  Tier: Admin"
+                >
+                  Make admin
+                </button>
               </div>
               <div className="flex items-center gap-2 mt-3">
                 <button onClick={handleAddUser} disabled={addingUser}
@@ -567,11 +792,21 @@ export default function Settings() {
                       onChange={e => updateUserRole(u.id, e.target.value)}
                       className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:border-green-500/50"
                     >
-                      <option value="buyer">Buyer</option>
-                      <option value="seller">Seller</option>
-                      <option value="broker">Broker</option>
-                      <option value="analyst">Analyst</option>
-                      <option value="admin">Admin</option>
+                      <optgroup label="Trading">
+                        {ALL_ROLES.filter(r => r.group === 'trading').map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Value Chain">
+                        {ALL_ROLES.filter(r => r.group === 'chain').map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Internal Team">
+                        {ALL_ROLES.filter(r => r.group === 'team').map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </optgroup>
                     </select>
                     <select
                       value={u.access_tier || 'registered'}
@@ -582,6 +817,24 @@ export default function Settings() {
                         <option key={t} value={t}>{TIER_LABELS[t]}</option>
                       ))}
                     </select>
+                    {/* Per-row "Make team" preset */}
+                    {TEAM_ROLE_VALUES.includes(u.role) || u.access_tier === 'maxons_team' || u.access_tier === 'admin' ? (
+                      <button
+                        onClick={async () => { await updateUserRole(u.id, 'buyer'); await updateUserTier(u.id, 'verified'); }}
+                        className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600 rounded text-[10px] font-medium transition-colors"
+                        title="Revoke team access (role → buyer, tier → verified)"
+                      >
+                        Revoke team
+                      </button>
+                    ) : (
+                      <button
+                        onClick={async () => { await updateUserRole(u.id, 'maxons_team'); await updateUserTier(u.id, 'maxons_team'); }}
+                        className="px-2 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 border border-purple-500/40 rounded text-[10px] font-medium transition-colors"
+                        title="Promote to MAXONS Team (role + tier)"
+                      >
+                        Make team
+                      </button>
+                    )}
                     {/* Delete button */}
                     {deleteConfirm === u.id ? (
                       <div className="flex items-center gap-1">
@@ -709,10 +962,10 @@ export default function Settings() {
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3">
             <p className="text-[10px] text-gray-500 uppercase">Data Scope</p>
-            <p className="text-sm text-white font-medium mt-1">10 Years</p>
+            <p className="text-sm text-white font-medium mt-1">11 Crop Years</p>
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3">
-            <p className="text-[10px] text-gray-500 uppercase">Reports</p>
+            <p className="text-[10px] text-gray-500 uppercase">ABC Reports</p>
             <p className="text-sm text-white font-medium mt-1">116 Monthly</p>
           </div>
         </div>

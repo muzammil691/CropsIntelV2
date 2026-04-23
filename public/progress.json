@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T17:00:00Z",
-  "updatedBy": "Claude AI \u2014 F1 launch-blocker: login flow hardened. Edge fn deploy queued as user-hand step. Frontend guards live via GH Actions.",
+  "lastUpdated": "2026-04-23T13:02:28Z",
+  "updatedBy": "Claude AI \u2014 F6 team-user management: admin CRUD presets + team verify panel + RLS migration",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 94,
   "launchFindings": [
@@ -271,6 +271,33 @@
       "currentWorkaround": "Frontend fix landed via GH Actions. Edge function changes need `supabase functions deploy whatsapp-login` run by user with service-role credentials. Until that runs, login flow uses old edge function \u2014 still works but lacks the orphan guard and friendlier fallback message.",
       "markedDate": "2026-04-24",
       "category": "infra"
+    },
+    {
+      "key": "offers-multi-product",
+      "title": "Offers: multi-product mode + Strata ref + freight/insurance",
+      "status": "queued",
+      "scopeCaptured": "2026-04-24T17:30Z",
+      "description": "Redesign Offers tab to (1) build multi-product offers from product file, (2) evaluate against Strata market reference price, (3) attach freight + insurance line items, (4) streamlined UI for applying offers end-to-end.",
+      "approach": "New OfferBuilder component + offer_items child table + freight_terms + margin-vs-Strata comparator. Reuses existing product catalog + strata_prices table.",
+      "blockers": []
+    },
+    {
+      "key": "team-user-mgmt",
+      "title": "F6: Team user management \u2014 admin CRUD + team verify panel + RLS",
+      "status": "done",
+      "resolvedDate": "2026-04-24",
+      "description": "Admins get all 11 role dropdowns + Make-team/Verified-buyer/Make-admin presets in add-user and per-row editors. Team members (non-admin) get a dedicated Verify Users panel that can only promote registered\u2192verified, with RLS + trigger enforcing the column-level guard at the DB layer.",
+      "files": [
+        "src/pages/Settings.jsx",
+        "supabase/migrations/20260424_team_can_verify_users.sql"
+      ]
+    },
+    {
+      "key": "v1-team-role-migration",
+      "title": "V1 team users \u2192 V2 role upgrade (one-time SQL)",
+      "status": "queued",
+      "description": "V1 user migration defaulted everyone to role='buyer'. Any V1 admins/team members remain at buyer-tier until promoted. Needs the V1 team-user list (from ../Cropsintel/ handoff docs or user) + a one-shot UPDATE user_profiles SET role=, access_tier= WHERE email IN (...) run through the Supabase SQL editor or service-role script.",
+      "approach": "After F6 UI ships, admin can flip promoted users one-by-one via Settings \u2192 User Management using the new 'Make team' preset button. For bulk, craft a migration script once the V1 list is available."
     }
   ],
   "recentCommits": [
@@ -2143,5 +2170,9 @@
       "color": "#6b7280",
       "description": "Scaffolds shipped 2026-04-24 night (routes + libs + docs on /map) but NOT launch-critical. Post-launch work."
     }
-  ]
+  ],
+  "subsystems": {
+    "team-user-mgmt": 100,
+    "widget-interactivity": 85
+  }
 }
