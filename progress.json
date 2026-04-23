@@ -236,6 +236,13 @@
         "blockers": ["depends on 1-4"]
       },
       {
+        "rank": 3.5,
+        "task": "Offer Builder rebuild \u2014 V2 is impractical, port V1 ergonomics cleanly (user 2026-04-24 13:10Z)",
+        "scope": "V2 offer builder at /trading tab=builder (src/pages/Trading.jsx lines 43-625) has multi-product + freight/insurance but is fragmented \u2014 no per-line margin delta, no strata coverage status, no preview modal, 550+ lines tangled in page, line items stored in metadata JSONB instead of normalized offer_items child table. Concrete rebuild list: (a) extract to src/components/OfferBuilder.jsx, (b) extract per-line to OfferLineItem.jsx, (c) live per-unit margin delta display, (d) incoterm-aware landed costs (goods/freight/insurance breakdown), (e) offer_items schema migration to stop JSONB abuse, (f) Strata coverage freshness indicator, (g) preview/confirmation modal before save, (h) extract calculateLineMargin() utility to src/lib/offerCalcs.js with unit tests.",
+        "status": "queued",
+        "blockers": ["depends on scrapers being healthy so Strata coverage readout is accurate"]
+      },
+      {
         "rank": 6,
         "task": "Widget Library + Workshop (user re-flagged 2026-04-24 12:45Z)",
         "scope": "V1 had /admin/widget-workshop: split-view with widget picker (left), Before\u2194After live preview (center), Zyra chat+voice panel (right), Save Draft/Publish/Revert + Version History. Backed by widget_configs table, useWidgetConfig hook, Zyra propose_widget_edit tool, auto data-gap detection. V2 has ZERO of this shipped \u2014 only the Card primitive (landed this pass) as the visual foundation. Steps to port: (a) Card primitive \u2705 DONE; (b) widget_configs migration + RLS (admin rw, authenticated read published); (c) useWidgetConfig hook merging published DB config over hardcoded defaults; (d) retrofit 6 priority widgets (Dashboard share pie, sentiment, export bar, price trend, forecast, supply trend) to consume config; (e) /admin/widget-workshop route with 3-column split view + AdminRoute guard; (f) extend Zyra with propose_widget_edit tool; (g) Revert + Version History drawer.",
@@ -2452,7 +2459,67 @@
     "reports-data-completeness": 40,
     "map-honesty": 100,
     "widget-library": 15,
-    "widget-workshop": 5
+    "widget-workshop": 5,
+    "offer-builder-rebuild": 20,
+    "scraper-verification": 40,
+    "news-scraper-urls": 100
+  },
+  "offerBuilderRebuild": {
+    "note": "User 2026-04-24 13:10Z: 'offer builder in v2 is not practical, check how we made it in V1, and have to make it cleanly better.'",
+    "v2AuditFindings": {
+      "file": "src/pages/Trading.jsx lines 43-625",
+      "good": [
+        "Multi-product line items (V1 was single-product only)",
+        "Freight + insurance tracking (V1 had neither)",
+        "Live Strata price loading (V1 used hardcoded BASE_PRICES)",
+        "Weighted-average margin across items",
+        "+N more chip + freight/ins chip on recent offers list"
+      ],
+      "gaps": [
+        "550+ lines inlined in Trading.jsx \u2014 hard to test, reuse, or edit-in-place",
+        "Line items stored in metadata JSONB instead of normalized offer_items child table",
+        "No per-line margin delta feedback \u2014 trader can't see 'this margin bump = +$5K' live",
+        "Freight/insurance not tied to incoterm logic \u2014 CIF/CFR user-error-prone",
+        "Strata fallback to $3.50 silent \u2014 no coverage status or freshness indicator",
+        "No preview modal \u2014 accidental mis-clicks go straight to DB",
+        "Math repeated in component, no src/lib/offerCalcs.js utility"
+      ]
+    },
+    "v1Reference": {
+      "file": "commit 98f145e baseline (Trading.jsx lines 45-64 on main)",
+      "structure": "Single-product form, sequential grid layout, inline pricing preview. Simpler but not scalable."
+    },
+    "rebuildChecklist": [
+      {"step": "Extract OfferBuilder to src/components/OfferBuilder.jsx", "status": "queued"},
+      {"step": "Extract per-line to src/components/OfferLineItem.jsx", "status": "queued"},
+      {"step": "Live per-unit margin delta display next to margin %", "status": "queued"},
+      {"step": "Incoterm-aware Landed Costs (goods/freight/insurance split)", "status": "queued"},
+      {"step": "Schema migration: offer_items child table", "status": "queued"},
+      {"step": "Strata coverage + freshness indicator at top of form", "status": "queued"},
+      {"step": "Preview/confirmation modal before save", "status": "queued"},
+      {"step": "Extract calculateLineMargin / calculateOfferTotals to src/lib/offerCalcs.js + tests", "status": "queued"}
+    ],
+    "sequencing": "Rank 3.5 in priorityQueue \u2014 between Destinations display fix and Reports completeness. Depends on scraper verification so Strata coverage readout is accurate."
+  },
+  "scraperAudit_2026_04_24": {
+    "auditedAt": "2026-04-24T13:00:00Z",
+    "findings": {
+      "critical": [
+        {"id": "news-domain", "file": "src/scrapers/news-scraper.js:20", "issue": "Used almondboard.com (dead). ABC migrated to almonds.org. 3 source URLs all 404.", "status": "fixed", "fixCommit": "pending"}
+      ],
+      "high": [
+        {"id": "orphan-scrapers", "files": ["bountiful-scraper.js", "strata-scraper.js", "news-scraper.js"], "issue": "Not wired into .github/workflows/auto-scrape.yml. Only invoked from runner.js which isn't on CI cron.", "status": "pending-workflow-edit", "blocker": "PAT lacks workflow scope"},
+        {"id": "continue-on-error-mask", "file": ".github/workflows/auto-scrape.yml", "issue": "All scraper steps use continue-on-error: true \u2014 crashes silently swallowed, gh-pages deploys with stale data.", "status": "pending-workflow-edit", "blocker": "PAT lacks workflow scope"}
+      ],
+      "medium": [
+        {"id": "position-8-page-scope", "file": "src/scrapers/abc-scraper.js:176", "issue": "parsePositionReport uses full pdfParse text blob but only extracts page-1 summary KPIs. Pages 2-8 (countries, variety, county\u00d7variety matrix, region) parsed separately by shipment-parser + receipts-parser, BUT full 8-page position parsing per memory note 'ABC position report scope' is not explicit.", "status": "documented-only", "note": "Flagged as post-launch in memory. Shipment + Receipts parsers handle the page-level data via piggy-back on same PDF download."}
+      ],
+      "low": []
+    },
+    "verification": {
+      "news-urls-live": "curl checked 2026-04-24: press-room 200, industry-news 200 on almonds.org",
+      "position-report-rows": "106 across 11 crop years \u2014 gaps in 2015/16, 2016/17, 2019/20, 2020/21, 2021/22, 2022/23, 2023/24 (see dataHealth)"
+    }
   },
   "widgetWorkshop": {
     "note": "User re-flagged 2026-04-24 12:45Z: 'we were designing the app to have the clean widget library and workshop.. do we still have that in plan??' Honest answer: YES in plan, NO shipped yet. V1 had full spec + working impl (docs in ../Cropsintel/feature5_widget_workshop_prompt.md + widget_workshop_fix_prompt.md). V2 has only the Card primitive (shipped this pass) as the visual foundation.",
