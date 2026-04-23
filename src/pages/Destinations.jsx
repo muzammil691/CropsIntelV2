@@ -57,6 +57,9 @@ export default function Destinations() {
   // Phase C2 compare-mode state: multi-year + multi-country overlay
   const [comparedYears, setComparedYears] = useState([]);
   const [comparedCountries, setComparedCountries] = useState([]);
+  // F2: unfiltered search + display-limit on the ranking chart
+  const [countrySearch, setCountrySearch] = useState('');
+  const [displayLimitRank, setDisplayLimitRank] = useState(15);
 
   useEffect(() => {
     async function load() {
@@ -100,8 +103,9 @@ export default function Destinations() {
     ];
   }, [shipments, selectedCropYear]);
 
-  // Top export destinations for selected crop year
-  const topDestinations = useMemo(() => {
+  // F2: All export destinations for selected crop year — UNSLICED.
+  // Downstream code picks its own display limit. This is the source of truth.
+  const allDestinationsSorted = useMemo(() => {
     const filtered = shipments.filter(
       r => r.crop_year === selectedCropYear &&
            r.destination_region === 'export' &&
@@ -114,10 +118,22 @@ export default function Destinations() {
       byCountry[c].total += r.monthly_lbs || 0;
       byCountry[c].months++;
     }
-    return Object.values(byCountry)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 15);
+    return Object.values(byCountry).sort((a, b) => b.total - a.total);
   }, [shipments, selectedCropYear]);
+
+  // Top destinations for the headline ranking chart — capped by displayLimitRank.
+  const topDestinations = useMemo(
+    () => allDestinationsSorted.slice(0, displayLimitRank),
+    [allDestinationsSorted, displayLimitRank]
+  );
+
+  // Countries filtered by the search box — fuzzy/contains match against
+  // the unsliced list. Used by the compare-mode FilterBar below.
+  const searchedDestinations = useMemo(() => {
+    const q = countrySearch.trim().toLowerCase();
+    if (!q) return allDestinationsSorted;
+    return allDestinationsSorted.filter(d => d.country.toLowerCase().includes(q));
+  }, [allDestinationsSorted, countrySearch]);
 
   // Monthly export trend by top 5 destinations
   const monthlyByDest = useMemo(() => {
@@ -171,7 +187,9 @@ export default function Destinations() {
         .reduce((s, r) => s + toNum(r.monthly_lbs), 0);
     };
 
-    return topDestinations.slice(0, 10).map(d => {
+    // F2: Show YoY for every country the user has on screen (respects the
+    // current ranking display limit). Previously hard-capped at 10.
+    return topDestinations.map(d => {
       const current = getTotal(currentCY, d.country);
       const prior = getTotal(prevCY, d.country);
       const change = prior > 0 ? ((current - prior) / prior * 100) : 0;
@@ -181,10 +199,10 @@ export default function Destinations() {
 
   // Phase C2: initialize comparedCountries to top 5 once data is loaded
   useEffect(() => {
-    if (comparedCountries.length === 0 && topDestinations.length > 0) {
-      setComparedCountries(topDestinations.slice(0, 5).map(d => d.country));
+    if (comparedCountries.length === 0 && allDestinationsSorted.length > 0) {
+      setComparedCountries(allDestinationsSorted.slice(0, 5).map(d => d.country));
     }
-  }, [topDestinations, comparedCountries.length]);
+  }, [allDestinationsSorted, comparedCountries.length]);
 
   // Phase C2: cross-year × country compare — one row per crop year with a
   // column per selected country (total export lbs for that year/country).
@@ -389,8 +407,39 @@ export default function Destinations() {
 
       {/* Row 2: Top Destinations Bar + Monthly by Destination */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Top Export Destinations" subtitle={`${selectedCropYear} — by total volume`} insight="These are your competitors' customers. The ranking shows which countries are the biggest buyers. India, Spain, and Germany consistently lead, but shifts in the rankings signal new opportunities. A country climbing the list may be worth pursuing before prices firm up in that market.">
-          <ResponsiveContainer width="100%" height={320}>
+        <ChartCard
+          title={`Top Export Destinations ${displayLimitRank < allDestinationsSorted.length ? `(top ${displayLimitRank} of ${allDestinationsSorted.length})` : `(all ${allDestinationsSorted.length})`}`}
+          subtitle={`${selectedCropYear} — by total volume`}
+          insight="These are your competitors' customers. The ranking shows which countries are the biggest buyers. India, Spain, and Germany consistently lead, but shifts in the rankings signal new opportunities. A country climbing the list may be worth pursuing before prices firm up in that market."
+        >
+          {/* F2: Display-limit quick toggles */}
+          <div className="flex items-center gap-1.5 mb-2 text-[11px] flex-wrap">
+            <span className="text-gray-500">Show:</span>
+            {[10, 15, 25].map(n => (
+              <button
+                key={n}
+                onClick={() => setDisplayLimitRank(n)}
+                className={`px-2 py-0.5 rounded border transition-colors ${
+                  displayLimitRank === n
+                    ? 'bg-green-500/20 text-green-300 border-green-500/40'
+                    : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200'
+                }`}
+              >
+                Top {n}
+              </button>
+            ))}
+            <button
+              onClick={() => setDisplayLimitRank(allDestinationsSorted.length)}
+              className={`px-2 py-0.5 rounded border transition-colors ${
+                displayLimitRank >= allDestinationsSorted.length
+                  ? 'bg-green-500/20 text-green-300 border-green-500/40'
+                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200'
+              }`}
+            >
+              All ({allDestinationsSorted.length})
+            </button>
+          </div>
+          <ResponsiveContainer width="100%" height={Math.max(320, displayLimitRank * 22)}>
             <BarChart data={topDestinations} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
               <XAxis type="number" tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={v => (v / 1e6).toFixed(0) + 'M'} />
@@ -491,9 +540,13 @@ export default function Destinations() {
                 </tr>
               </thead>
               <tbody>
-                {topDestinations.map((d, i) => {
-                  const totalExport = topDestinations.reduce((s, x) => s + x.total, 0);
-                  return (
+                {(() => {
+                  // F2: "All Export Destinations" table now shows every country
+                  // (filtered by the search box if active), not the slice-capped
+                  // top list. Share % is calculated against the full-year total.
+                  const tableRows = countrySearch ? searchedDestinations : allDestinationsSorted;
+                  const totalExport = allDestinationsSorted.reduce((s, x) => s + x.total, 0);
+                  return tableRows.map((d, i) => (
                     <tr key={d.country} className="border-b border-gray-800/50 hover:bg-gray-900/50">
                       <td className="py-2 px-3 text-gray-600 text-xs">{i + 1}</td>
                       <td className="py-2 px-3">
@@ -501,11 +554,11 @@ export default function Destinations() {
                       </td>
                       <td className="py-2 px-3 text-right text-blue-400 text-xs">{(d.total / 1e6).toFixed(1)}M</td>
                       <td className="py-2 px-3 text-right text-gray-500 text-xs">{d.months}</td>
-                      <td className="py-2 px-3 text-right text-gray-300 text-xs">{(d.total / d.months / 1e6).toFixed(1)}M</td>
-                      <td className="py-2 px-3 text-right text-amber-400 text-xs">{(d.total / totalExport * 100).toFixed(1)}%</td>
+                      <td className="py-2 px-3 text-right text-gray-300 text-xs">{(d.total / Math.max(d.months, 1) / 1e6).toFixed(1)}M</td>
+                      <td className="py-2 px-3 text-right text-amber-400 text-xs">{(d.total / Math.max(totalExport, 1) * 100).toFixed(1)}%</td>
                     </tr>
-                  );
-                })}
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
@@ -536,9 +589,27 @@ export default function Destinations() {
             emptyHint="Pick at least one year"
           />
 
+          {/* F2: Country search — filters the compare picker against every
+              country in the ABC shipment report, not just the top 15. */}
+          <div className="mb-3">
+            <label className="block text-[11px] text-gray-500 mb-1">Search country</label>
+            <input
+              type="text"
+              value={countrySearch}
+              onChange={e => setCountrySearch(e.target.value)}
+              placeholder={`Type to filter (${allDestinationsSorted.length} available)…`}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50"
+            />
+            {countrySearch && searchedDestinations.length === 0 && (
+              <p className="text-[11px] text-amber-400 mt-1">
+                No country matches "{countrySearch}" — try a different term.
+              </p>
+            )}
+          </div>
+
           <FilterBar
-            label="Countries to compare"
-            options={topDestinations.slice(0, 15).map((d, i) => ({
+            label={`Countries to compare (${allDestinationsSorted.length} total)`}
+            options={searchedDestinations.map((d, i) => ({
               value: d.country,
               label: d.country,
               color: DEST_COLORS[i % DEST_COLORS.length],
@@ -546,9 +617,12 @@ export default function Destinations() {
             selected={comparedCountries}
             onToggle={toggleCountry}
             quickActions={[
-              { label: 'Top 5', action: () => setComparedCountries(topDestinations.slice(0, 5).map(d => d.country)) },
-              { label: 'Top 10', action: () => setComparedCountries(topDestinations.slice(0, 10).map(d => d.country)) },
-              { label: 'Clear', action: () => setComparedCountries([]) },
+              { label: 'Top 5',  action: () => setComparedCountries(allDestinationsSorted.slice(0, 5).map(d => d.country)) },
+              { label: 'Top 10', action: () => setComparedCountries(allDestinationsSorted.slice(0, 10).map(d => d.country)) },
+              { label: 'Top 20', action: () => setComparedCountries(allDestinationsSorted.slice(0, 20).map(d => d.country)) },
+              { label: 'All',    action: () => setComparedCountries(allDestinationsSorted.map(d => d.country)) },
+              { label: 'Search hits', action: () => setComparedCountries(searchedDestinations.map(d => d.country)) },
+              { label: 'Clear',  action: () => setComparedCountries([]) },
             ]}
             emptyHint="Pick at least one country"
           />
