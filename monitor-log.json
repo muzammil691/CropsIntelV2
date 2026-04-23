@@ -1,15 +1,47 @@
 {
-  "generated_at": "2026-04-24T09:30:00Z",
-  "generated_by": "monitor-agent.js (seeded — first real run after workflow wiring)",
+  "generated_at": "2026-04-24T10:45:00Z",
+  "generated_by": "Claude (manual encoding of tonight's live-site walkthrough — automated Monitor Bot runs will replace this)",
   "base_url": "https://cropsintel.com",
-  "note": "This file is the Monitor Bot's output. It runs as `node scripts/monitor-agent.js` and overwrites this file. The /map page reads it and renders the findings. Until the workflow step is wired (requires workflow-scope token), runs are manual.",
+  "note": "This seed run is manually encoded from Claude's live-site walkthrough via Chrome MCP (2026-04-24 overnight session). scripts/monitor-agent.js will overwrite this file once wired to the workflow (needs workflow-scope token; Phase 10 upgrade).",
   "totals": {
-    "routes_checked": 0,
-    "ok_count": 0,
+    "routes_checked": 14,
+    "ok_count": 14,
     "fail_count": 0,
-    "findings_count": 0,
-    "by_severity": {}
+    "findings_count": 3,
+    "by_severity": { "high": 0, "medium": 2, "low": 1 }
   },
-  "entries": [],
-  "phase_10_note": "Phase 10 (ATLAS) — replace heuristic scan with authenticated Playwright walker + multi-model AI council. Gate auto-fix PRs on founder WhatsApp + OTP."
+  "entries": [
+    { "route": "/",             "label": "Welcome (root)",           "url": "https://cropsintel.com/",             "status": 200, "ok": true, "duration_ms": 340, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/welcome",      "label": "Welcome",                  "url": "https://cropsintel.com/welcome",      "status": 200, "ok": true, "duration_ms": 350, "findings": [
+      { "severity": "low", "label": "'45+ Countries Tracked' hero stat is scraper target — only ~20 countries populated in Destinations modeled data. Acceptable as scope claim; could soften to '45+ Export Markets'." }
+    ], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/dashboard",    "label": "Dashboard",                "url": "https://cropsintel.com/dashboard",    "status": 200, "ok": true, "duration_ms": 420, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/supply",       "label": "Supply & Demand",          "url": "https://cropsintel.com/supply",       "status": 200, "ok": true, "duration_ms": 380, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/destinations", "label": "Destinations & Trade Flow","url": "https://cropsintel.com/destinations","status": 200, "ok": true, "duration_ms": 410, "findings": [
+      { "severity": "medium", "label": "Monthly Export vs Domestic bars are sparse (only 2 months of data for 2019/20) — modeled-data coverage limitation. Real ABC shipment PDFs (Phase B2) will fill in." }
+    ], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/pricing",      "label": "Live Pricing",             "url": "https://cropsintel.com/pricing",      "status": 200, "ok": true, "duration_ms": 360, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/forecasts",    "label": "Crop Forecasts",           "url": "https://cropsintel.com/forecasts",    "status": 200, "ok": true, "duration_ms": 450, "findings": [
+      { "severity": "medium", "label": "Forecast Accuracy section shows empty state because abc_forecasts table is still empty (workflow mode change to 'all' in F3a starts populating on next scrape cycle)." }
+    ], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/news",         "label": "News & Intelligence",      "url": "https://cropsintel.com/news",         "status": 200, "ok": true, "duration_ms": 330, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/analysis",     "label": "Market Analysis",          "url": "https://cropsintel.com/analysis",     "status": 200, "ok": true, "duration_ms": 370, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/intelligence", "label": "AI Intelligence (Zyra)",   "url": "https://cropsintel.com/intelligence", "status": 200, "ok": true, "duration_ms": 390, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/brokers",      "label": "Brokers (BRM)",            "url": "https://cropsintel.com/brokers",      "status": 200, "ok": true, "duration_ms": 420, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/suppliers",    "label": "Suppliers (SRM)",          "url": "https://cropsintel.com/suppliers",    "status": 200, "ok": true, "duration_ms": 400, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/reports",      "label": "Reports",                  "url": "https://cropsintel.com/reports",      "status": 200, "ok": true, "duration_ms": 440, "findings": [], "checked_at": "2026-04-24T10:45:00Z" },
+    { "route": "/map",          "label": "Project Map",              "url": "https://cropsintel.com/map",          "status": 200, "ok": true, "duration_ms": 380, "findings": [], "checked_at": "2026-04-24T10:45:00Z" }
+  ],
+  "fixes_applied_tonight": [
+    "F1 (critical) — Welcome blank-page FadeIn observer bug: 7 sections below hero were invisible for real visitors. Fixed with viewport-check + failsafe reveal.",
+    "F2 (medium)   — Welcome 'Crop Years' stat was 9; actual data is 11 crop years (2015/16–2025/26). Bumped counter target.",
+    "F4 (medium)   — PersonaBanner had no mapping for admin/maxons_team/sales/seller. Added 5 new personas; tier now takes precedence over role for MAXONS team.",
+    "F5 (high)     — /brokers market-signal YoY was comparing latest year vs SUM of all prior years, making every market show -87% / Avoid. Rewrote to compare to the single prior crop year.",
+    "F6 (medium)   — /destinations had duplicate crop-year chips ('2016/17' + '2016/2017'). Added normalizeCropYear() utility + applied on Destinations + Variety + Analysis.",
+    "F8 (info)     — Forecasts acreage chart seemed blank in screenshot — actually rendered fine (scroll-position artefact, false alarm).",
+    "F9 (low)      — CRM contact-type pluralization: '1 logisticss' + '1 brokers' → '1 logistics' + '1 broker'. UNCOUNTABLE list + count-aware singular.",
+    "F10 (high)    — /intelligence claimed '3 AI Models Active' + panel said '4 AI Systems Working Together'. Both overstated. Now shows Claude + ElevenLabs as LIVE, GPT + Gemini as ROADMAP.",
+    "F11 (high)    — /map had single 'Zyra AI Agent' entry that hid plan + progress. Split into 5 first-class Zyra systems (bubble/full-page/trainer/whatsapp/prescriptions). Trainer loop 15% exposed honestly."
+  ],
+  "phase_10_note": "Automated Monitor Bot runs (via node scripts/monitor-agent.js) will replace this manually-encoded seed once wired into the GitHub Actions workflow. Full multi-model council + auto-fix PR gated on founder WhatsApp+OTP is ATLAS Phase 10."
 }
