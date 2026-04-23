@@ -17,23 +17,58 @@ function assertConfigured() {
   }
 }
 
+// Decode Supabase edge function failure modes into readable errors.
+// Before: every failure surfaced as "Failed to fetch" (browser-generic) or
+// a bare JSON parse error. This helper separates the cases:
+//   - HTTP 503 BOOT_ERROR → "Server is starting up — please try again in 30s"
+//   - HTTP 404 NOT_FOUND  → "Service temporarily unavailable (not deployed)"
+//   - HTTP 4xx            → the function's own error message
+//   - res.ok but !success → the function's own error message
+async function readEdgeResponse(res, operation) {
+  // Try JSON first; edge functions always return JSON even on errors.
+  let data = null;
+  const text = await res.text();
+  try { data = JSON.parse(text); } catch {}
+
+  if (res.status === 503 && data?.code === 'BOOT_ERROR') {
+    throw new Error(
+      `${operation}: Server failed to start. This usually means the edge function ` +
+      `needs to be redeployed or a required secret is missing. Contact the administrator.`
+    );
+  }
+  if (res.status === 404) {
+    throw new Error(
+      `${operation}: Service not available — edge function not deployed.`
+    );
+  }
+  if (!res.ok) {
+    throw new Error(data?.message || data?.error || `${operation} failed (HTTP ${res.status})`);
+  }
+  return data;
+}
+
 // ─── Send OTP via WhatsApp ────────────────────────────────────
 export async function sendWhatsAppOTP(phoneNumber) {
   assertConfigured();
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-    },
-    body: JSON.stringify({
-      type: 'otp',
-      to: phoneNumber,
-    }),
-  });
+  let res;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      },
+      body: JSON.stringify({ type: 'otp', to: phoneNumber }),
+    });
+  } catch (networkErr) {
+    throw new Error(
+      'Could not reach the OTP service. Check your internet connection, or the ' +
+      'edge function may be unreachable. (Original: ' + networkErr.message + ')'
+    );
+  }
 
-  const data = await res.json();
-  if (!data.success) throw new Error(data.error || 'Failed to send OTP');
+  const data = await readEdgeResponse(res, 'Send OTP');
+  if (!data?.success) throw new Error(data?.error || 'Failed to send OTP');
   return data;
 }
 

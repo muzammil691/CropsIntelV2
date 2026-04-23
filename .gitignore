@@ -4,4 +4,8 @@ dist/
 .env.local
 .DS_Store
 *.log
-.github/
+# Note: .github/ used to be gitignored; removed 2026-04-23 because workflow
+# files MUST be tracked or GitHub Actions can't run them. auto-scrape.yml
+# was previously force-added, leaving deploy-edge-functions.yml silently
+# untracked — which is why all 4 WhatsApp edge functions were never auto-
+# deploying and drifted to 503 BOOT_ERROR.

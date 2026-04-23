@@ -5,14 +5,29 @@
 // POST /whatsapp-send
 // Body: { type: 'otp' | 'alert' | 'offer' | 'zyra_reply' | 'custom', to: '+1234567890', ... }
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+// 2026-04-23: Bumped std 0.168.0 → 0.224.0 and supabase-js 2.39.3 → 2.45.4.
+// All 4 WhatsApp edge functions were 503 BOOT_ERRORing on the prod project.
+// Older pinned esm.sh versions can stop resolving; matching the pins that
+// email-send uses (known-deployable) plus a bump to a current stable.
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
-const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')!;
-const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
+const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID') || '';
+const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN') || '';
 const TWILIO_WHATSAPP_FROM = Deno.env.get('TWILIO_WHATSAPP_FROM') || '+12345622692';
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+// Boot-time diagnostic — logs to Supabase function logs on cold start so we
+// can see at-a-glance which secret is missing when debugging. Does not block
+// boot (missing secret returns a 500 with a clear message per-request).
+console.log('[whatsapp-send] boot', {
+  hasTwilioSid: !!TWILIO_ACCOUNT_SID,
+  hasTwilioToken: !!TWILIO_AUTH_TOKEN,
+  twilioFrom: TWILIO_WHATSAPP_FROM,
+  hasSupabaseUrl: !!SUPABASE_URL,
+  hasServiceKey: !!SUPABASE_SERVICE_KEY,
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
