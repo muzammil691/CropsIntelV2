@@ -17,12 +17,18 @@ config();
 
 import supabaseAdmin from '../lib/supabase-admin.js';
 
-const ABC_BASE = 'https://www.almondboard.com';
+// 2026-04-24: Fixed from almondboard.com (404s across the whole site — ABC
+// migrated to almonds.org years ago). abc-scraper.js has used the correct
+// domain the whole time; this scraper was an outlier writing to a dead host.
+const ABC_BASE = 'https://www.almonds.org';
 
+// 2026-04-24: Paths re-verified live. Old paths (/about-us/press-releases,
+// /almond-bytes, /news) all returned 404 on almonds.org. Homepage links lead
+// to /about-us/press-room and /almond-industry/industry-news (both HTTP 200).
+// Dropped abc_blog source \u2014 no public "Almond Bytes" path on the new site.
 const NEWS_SOURCES = [
-  { name: 'abc_press', url: `${ABC_BASE}/about-us/press-releases`, category: 'regulatory' },
-  { name: 'abc_blog', url: `${ABC_BASE}/almond-bytes`, category: 'market' },
-  { name: 'abc_industry', url: `${ABC_BASE}/news`, category: 'trade' },
+  { name: 'abc_press',    url: `${ABC_BASE}/about-us/press-room`,             category: 'regulatory' },
+  { name: 'abc_industry', url: `${ABC_BASE}/almond-industry/industry-news`,   category: 'trade' },
 ];
 
 // ============================================================
