@@ -1,5 +1,6 @@
 // CropsIntelV2 — WhatsApp Login Edge Function
 // Verifies OTP → Finds user by WhatsApp number → Returns Supabase auth session
+// Last auto-deploy trigger: 2026-04-24 (SUPABASE_ACCESS_TOKEN pipeline first run)
 //
 // POST /whatsapp-login
 // Body: { phone_number: '+1234567890', otp_code: '123456' }
