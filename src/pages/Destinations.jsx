@@ -7,6 +7,7 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import FilterBar, { CROP_YEAR_COLORS } from '../components/FilterBar';
+import Card from '../components/Card';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -19,20 +20,18 @@ const DEST_COLORS = [
   '#14b8a6', '#eab308', '#f97316', '#ec4899', '#84cc16'
 ];
 
+// Wave 6 (2026-04-24): ChartCard delegates to the shared Card primitive.
+// Same surface across Supply / Forecasts / Dashboard / Destinations.
 function ChartCard({ title, subtitle, insight, children }) {
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
-      <div className="mb-4">
-        <h3 className="text-base font-semibold text-white">{title}</h3>
-        {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
-      </div>
+    <Card title={title} subtitle={subtitle}>
       {children}
       {insight && (
         <div className="mt-3 pt-3 border-t border-gray-800">
           <p className="text-xs text-gray-400 leading-relaxed">{insight}</p>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -281,10 +280,10 @@ export default function Destinations() {
     return (
       <div className="p-6 lg:p-8 max-w-7xl">
         <h2 className="text-2xl font-bold text-white mb-4">Destinations & Trade Flow</h2>
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-12 text-center">
+        <Card padding="xl" className="text-center">
           <p className="text-gray-400 text-lg mb-2">No shipment data yet</p>
           <p className="text-gray-600 text-sm">Shipment data will be populated when ABC shipment reports are processed via the autonomous pipeline.</p>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -606,14 +605,10 @@ export default function Destinations() {
 
       {/* ─── Phase C2: Cross-Year × Country Compare ─── */}
       <div className="mt-6">
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
-          <div className="mb-4">
-            <h3 className="text-base font-semibold text-white">Cross-Year × Country Compare</h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Pick any set of crop years and any set of countries to overlay — answer trader questions like "India in 2023/24 vs 2024/25" or "Spain vs UAE across the last 5 years" directly.
-            </p>
-          </div>
-
+        <Card
+          title="Cross-Year × Country Compare"
+          subtitle='Pick any set of crop years and any set of countries to overlay — answer trader questions like "India in 2023/24 vs 2024/25" or "Spain vs UAE across the last 5 years" directly.'
+        >
           <FilterBar
             label="Crop years to compare"
             options={allCropYears.map(y => ({ value: y, label: y, color: CROP_YEAR_COLORS[y] }))}
@@ -736,7 +731,7 @@ export default function Destinations() {
               Pick at least one crop year AND one country above.
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

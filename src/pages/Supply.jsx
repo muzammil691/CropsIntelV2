@@ -9,6 +9,7 @@ import {
 import FilterBar from '../components/FilterBar';
 import VarietySection from '../components/VarietySection';
 import CountySection from '../components/CountySection';
+import Card from '../components/Card';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -22,20 +23,20 @@ const CROP_COLORS = {
   '2025/26': '#3b82f6',
 };
 
+// Wave 6 (2026-04-24): ChartCard now delegates to the shared premium Card
+// primitive — same visual surface across Supply / Forecasts / Dashboard.
+// title + subtitle go through Card's built-in header; insight is a footer
+// strip rendered inside children (Card has no footer prop by design).
 function ChartCard({ title, subtitle, insight, children }) {
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
-      <div className="mb-4">
-        <h3 className="text-base font-semibold text-white">{title}</h3>
-        {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
-      </div>
+    <Card title={title} subtitle={subtitle}>
       {children}
       {insight && (
         <div className="mt-3 pt-3 border-t border-gray-800">
           <p className="text-xs text-gray-400 leading-relaxed">{insight}</p>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -298,8 +299,7 @@ export default function Supply() {
 
       {/* Market Context — explains what the numbers mean */}
       {latestMetrics && (
-        <div className="mb-6 bg-gray-900/50 border border-gray-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-2">What This Means for Traders</h3>
+        <Card className="mb-6" title="What This Means for Traders">
           <p className="text-xs text-gray-400 leading-relaxed">
             {parseFloat(latestMetrics.uncommittedPct) > 20
               ? `With ${latestMetrics.uncommittedPct}% of supply still uncommitted (${(latestMetrics.uncommitted / 1e6).toFixed(0)}M lbs), the market has adequate availability. Buyers have negotiating leverage, and there is no urgency to lock in positions. However, watch for seasonal acceleration in Q2/Q3 when commitment velocity typically increases.`
@@ -315,7 +315,7 @@ export default function Supply() {
               : ' shipments tracking close to commitments — indicating prompt demand rather than forward buying.'
             }
           </p>
-        </div>
+        </Card>
       )}
 
       {/* F3: Crop-year compare — replaces bespoke chip buttons with the
