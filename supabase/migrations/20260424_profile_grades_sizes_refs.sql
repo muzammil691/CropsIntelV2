@@ -31,7 +31,7 @@ COMMENT ON COLUMN public.user_profiles.preferred_sizes IS
   'Size selections from Register.jsx SIZES constant (18/20, 20/22, shelled 25/27, etc.). Inshell or shelled count-per-oz convention.';
 
 COMMENT ON COLUMN public.user_profiles."references" IS
-  'Free-form list of companies/people the user trades with. Seeds Zyra\'s AI-driven network invitations when peers join the platform. Private — never shown to other users without permission.';
+  'Free-form list of companies/people the user trades with. Seeds Zyra''s AI-driven network invitations when peers join the platform. Private — never shown to other users without permission.';
 
 -- GIN indexes for grade/size filtering in offer-matching queries
 CREATE INDEX IF NOT EXISTS idx_user_profiles_preferred_grades
