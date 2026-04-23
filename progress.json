@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T02:30:00Z",
-  "updatedBy": "Claude AI \u2014 Broadcast panel + email_subscribers cohort",
+  "lastUpdated": "2026-04-24T03:00:00Z",
+  "updatedBy": "Claude AI \u2014 Rich signup: grades/sizes/references fields",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 98,
   "launchFindings": [
@@ -233,10 +233,17 @@
     {
       "id": "rich-signup-wizard",
       "item": "Multi-step onboarding wizard: volumes, varieties, ports, grades, sizes, products, references (AI invites people)",
-      "currentWorkaround": "SetPassword.jsx V2 Welcome now nudges user to Settings for rich profile; profile form has volumes/ports/products/grades fields but not structured chip-selectors. Step 3 of welcome is a visual placeholder linking to Settings.",
+      "currentWorkaround": "Register.jsx already a 4-step wizard. Shipped 2026-04-24: new GRADES + SIZES constants + chip selectors in Step 3 (Trade Profile), references textarea in Step 4 review. Migration 20260424_profile_grades_sizes_refs.sql adds preferred_grades TEXT[] + preferred_sizes TEXT[] + references TEXT to user_profiles. WhatsApp OTP-first signup path still uses email-first flow \u2014 WhatsApp-first as an alternate entry is a post-launch enhancement.",
       "markedDate": "2026-04-24",
+      "resolvedDate": "2026-04-24",
       "category": "feature",
-      "priority": "post-launch-medium"
+      "status": "rich-fields-shipped-whatsapp-first-later",
+      "priority": "post-launch-medium",
+      "shipped": {
+        "wizard": "src/pages/Register.jsx steps 1-4",
+        "grades_sizes_refs": "src/pages/Register.jsx GRADES + SIZES + references textarea",
+        "migration": "supabase/migrations/20260424_profile_grades_sizes_refs.sql"
+      }
     },
     {
       "id": "v1-subscribers-broadcast",
