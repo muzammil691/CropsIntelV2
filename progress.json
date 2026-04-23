@@ -1,22 +1,38 @@
 {
-  "lastUpdated": "2026-04-24T04:30:00Z",
-  "updatedBy": "Claude AI — Phase F1a shipped: V1 Returning-User Popup (OTP verify + set new password)",
-  "sessionStatus": "stable-deploys-active",
-  "overallPercent": 97,
+  "lastUpdated": "2026-04-24T05:00:00Z",
+  "updatedBy": "Claude AI — Night shift begun: vision handoff aligned + Phase 7 roadmap + commodity-agnostic foundations queued",
+  "sessionStatus": "autonomous-night-shift-active",
+  "overallPercent": 87,
+  "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "F1a",
-    "step": "F1a shipped — V1 Returning-User Popup (3-step OTP verify + password set, global modal)",
-    "description": "New <V1ReturningUserModal> renders globally (App.jsx) for any authenticated user whose profile.metadata flags them migrated_from_v1 AND has not completed v1_onboarded_at. Three steps: (1) confirm WhatsApp number prefilled from profile, send OTP via whatsapp-send edge function. (2) enter 6-digit code, verify via whatsapp-verify, stamp whatsapp_verified=true. (3) set new password via supabase.auth.updateUser, stamp metadata.v1_onboarded_at. Closes with success state. Users can dismiss to 'remind me later'. Converts V1 migrated users to full V2 users — the completion of the V1→V2 migration arc. auth system 88%→94%.",
-    "phaseProgress": 98,
-    "startedAt": "2026-04-24T01:00:00Z",
-    "claudeSession": "ongoing"
+    "phase": "7 (night shift)",
+    "step": "Vision alignment + Phase 7 kickoff — user is asleep, watching /map for autonomous progress",
+    "description": "User shared the April-16 Vision Handoff (MAXONS trading platform end-state) and asked for intelligent alignment + non-stop work overnight. New first-class systems added to /map: BRM (Broker Relationship Management), SRM (Supplier Relationship Management), Information Walls, Commodity-Agnostic Schema, Multi-Portal Frontend, Trade Lifecycle, ADELA Orchestrator, ATLAS Self-Developing Brain, Verified Social Network. Plan: align, scaffold commodity-agnostic foundation, scaffold BRM/SRM portals, wire info-wall helpers + audit logging, then full app walkthrough via Chrome MCP, fix issues found, iterate on UI polish + logic checks until morning. Pushes land every ~30–60 min so /map stays fresh.",
+    "phaseProgress": 5,
+    "startedAt": "2026-04-24T05:00:00Z",
+    "claudeSession": "overnight-autonomous"
+  },
+  "nightShiftPlan": {
+    "blocks": [
+      { "id": 1, "name": "Vision alignment + /map refresh", "status": "in_progress", "eta_min": 30 },
+      { "id": 2, "name": "Commodity-agnostic foundation (product_catalog, remove hardcoded almond)", "status": "queued", "eta_min": 90 },
+      { "id": 3, "name": "Info walls scaffolding (audit_log table + helper + RLS policy doc)", "status": "queued", "eta_min": 90 },
+      { "id": 4, "name": "BRM portal skeleton /brokers", "status": "queued", "eta_min": 60 },
+      { "id": 5, "name": "SRM portal skeleton /suppliers (county analysis stub)", "status": "queued", "eta_min": 60 },
+      { "id": 6, "name": "ADELA AI-model router abstraction", "status": "queued", "eta_min": 45 },
+      { "id": 7, "name": "Full app walkthrough via Chrome MCP", "status": "queued", "eta_min": 60 },
+      { "id": 8, "name": "Fix issues found", "status": "queued", "eta_min": 90 },
+      { "id": 9, "name": "Trade lifecycle skeleton (offer states + margin engine stub)", "status": "queued", "eta_min": 60 },
+      { "id": 10, "name": "Verified social network MVP (feed + post, gated on access_tier='verified')", "status": "queued", "eta_min": 90 }
+    ]
   },
   "blockers": [],
   "recentCommits": [
-    { "sha": "pending", "message": "Phase F1a: V1 Returning-User Popup (OTP verify + password set, global modal)", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "pending", "message": "Night shift: vision handoff aligned — Phase 7 + 9 new first-class systems on /map", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "c7d17ad", "message": "Phase F1a: V1 Returning-User Popup (OTP verify + password set, global modal)", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "9042da8", "message": "C5 round 2: dual-channel invite + tier filter + V1 badge + admin Verify User", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "697ed05", "message": "Phase C5b + scope capture: CRM Bulk WhatsApp Invite + V1 popup/C5a/C5c on roadmap", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "fd05d49", "message": "Phase D MVP: PersonaBanner on /dashboard (9 personas × role-aware shortcuts)", "branch": "main", "date": "2026-04-24", "landed": true },
@@ -84,7 +100,11 @@
     { "id": 3, "name": "AI Systems", "status": "done", "percent": 100, "completedDate": "2026-04-08", "summary": "Claude API unified, Zyra floating widget, ElevenLabs voice, 4 edge functions live" },
     { "id": 4, "name": "CRM + Soft Launch Gate", "status": "done", "percent": 100, "completedDate": "2026-04-19", "summary": "6-tab CRM, 15 audit fixes, 12 AI enhancements, dashboard perf 30s→2-3s" },
     { "id": 5, "name": "V2 Migration + Domain", "status": "done", "percent": 100, "completedDate": "2026-04-23", "summary": "cropsintel.com live, .net redirect, 65 users migrated, 4 login methods, edge functions redeployed from V2, SW killer shipped" },
-    { "id": 6, "name": "Honesty + Completion Sprint (current)", "status": "active", "percent": 65, "summary": "Shipped: A (honesty), A2 (/map command center), B1 (scraper fixes), B2 (parsers wired), B3+C1 (Variety + FilterBar), B4 (Forecast Accuracy), B5 (County), E3a (counter bug), C2 (Destinations compare), E1 (/reports fix), CNAME blocker resolved, C3 (Pricing compare), C4 (News compare). Remaining: B6 Almanac + B7 Nursery/FruitWeight (both 0%), Persona Views (D), C5-C7 CRM/Reports/Dashboard retrofits, Launch arc (F)." }
+    { "id": 6, "name": "Honesty + Completion Sprint", "status": "done", "percent": 95, "completedDate": "2026-04-24", "summary": "20+ phases shipped today (68%→97% against original master plan). Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, workflow CNAME blocker resolved via GitHub UI, scraper default mode → 'all' unlocking 4 dormant scrapers." },
+    { "id": 7, "name": "Vision Alignment (from April 16 Handoff)", "status": "active", "percent": 5, "summary": "User shared full vision doc 2026-04-24 night. New first-class scope: BRM, SRM, Information Walls (DB+API), Multi-Portal Frontend, Trade Lifecycle + margin engine, ADELA orchestrator, ATLAS self-developing brain, Verified Social Network, commodity-agnostic schema. Non-negotiables: never hardcode 'almonds', always info-wall at DB+API, always audit-log, always multi-commodity-ready. Night-shift plan 10 blocks queued; nightShiftPlan object above." },
+    { "id": 8, "name": "Relationship Spine (CRM+BRM+SRM with info walls)", "status": "queued", "percent": 0, "summary": "Three distinct relationship graphs with strict information walls at DB (Postgres RLS) + API middleware + portal scoping. Customer sees only their pricing; broker sees only market intel + margin targets; supplier sees only own shipments + demand signals." },
+    { "id": 9, "name": "Trade Lifecycle Execution", "status": "queued", "percent": 0, "summary": "Offer → margin engine → customer view → request to buy (self-serve or assisted) → sales verification → WhatsApp contract link → interactive e-sign → fulfillment tracking. Zyra orchestrates lifecycle end-to-end." },
+    { "id": 10, "name": "Atlas Autonomous Self-Development", "status": "queued", "percent": 0, "summary": "Atlas reads own plan, AI council debates, admin approves (WhatsApp video + OTP), ships change. Self-monitoring + self-healing loop. Founder-only admin gate." }
   ],
   "systems": [
     {
@@ -395,6 +415,146 @@
       ]
     },
     {
+      "id": "brm",
+      "name": "BRM (Broker Relationship Management)",
+      "category": "users",
+      "percent": 0,
+      "icon": "🤝",
+      "description": "Broker-scoped portal + graph. Brokers see MAXONS' needs + margin targets + market intelligence. Never see customer identities or supplier pricing. Phase 8 scope per vision handoff.",
+      "features": [
+        { "name": "Broker portal route /brokers (team-gated scaffold)", "status": "todo" },
+        { "name": "crm_contacts.contact_type='broker' scoped queries", "status": "todo" },
+        { "name": "Broker-specific market intelligence view (which markets to focus/avoid)", "status": "todo" },
+        { "name": "Broker offer-management surface (post inventory into Cropsintel)", "status": "todo" },
+        { "name": "Info walls: broker queries never return customer identities or customer pricing", "status": "todo" }
+      ]
+    },
+    {
+      "id": "srm",
+      "name": "SRM (Supplier Relationship Management)",
+      "category": "users",
+      "percent": 0,
+      "icon": "🏭",
+      "description": "Supplier/packer-scoped portal. Suppliers see own shipments, county-level analysis tools, anonymized demand signals. Never see customer identities or MAXONS' margin. Phase 8 scope per vision handoff.",
+      "features": [
+        { "name": "Supplier portal route /suppliers (team-gated scaffold)", "status": "todo" },
+        { "name": "County-level analysis tool (supplier selects own sourcing counties)", "status": "todo" },
+        { "name": "Own-records input + variety mix / value share analysis", "status": "todo" },
+        { "name": "Anonymized demand signals (what the market wants, without revealing who)", "status": "todo" },
+        { "name": "Info walls: supplier queries never return customer identities or MAXONS margin", "status": "todo" }
+      ]
+    },
+    {
+      "id": "info-walls",
+      "name": "Information Walls (DB + API + Portal)",
+      "category": "platform",
+      "percent": 5,
+      "icon": "🛡️",
+      "description": "THE business model. Supplier/broker/customer each see only their permissioned slice. Enforced at 3 layers: Postgres RLS, API middleware, portal-scoped routing. Frontend-only is NOT security per vision.",
+      "features": [
+        { "name": "Per-table RLS policies for crm_contacts, crm_deals, user_profiles", "status": "todo" },
+        { "name": "Role-aware query helper in src/lib/permissions.js", "status": "todo" },
+        { "name": "API response filter middleware (strip supplier source + margin before customer response)", "status": "todo" },
+        { "name": "audit_log table + write helper on every counterparty-data access", "status": "todo" },
+        { "name": "Portal-scoped routing: role determines which portal shell renders", "status": "todo" },
+        { "name": "Existing 5-min guest timer + blur overlay", "status": "done" }
+      ]
+    },
+    {
+      "id": "commodity-agnostic",
+      "name": "Commodity-Agnostic Schema",
+      "category": "platform",
+      "percent": 0,
+      "icon": "🌾",
+      "description": "Platform MUST support N commodities from day one (almonds now, pistachios + pineapples next). Schema, API, UI all reference a commodity/product hierarchy — never hardcoded 'almonds'.",
+      "features": [
+        { "name": "products table (commodity, variety, size, form, origin)", "status": "todo" },
+        { "name": "Migrate abc_*_reports tables to reference commodity_id", "status": "todo" },
+        { "name": "Replace hardcoded 'almond' literals in UI copy + routing", "status": "todo" },
+        { "name": "Commodity selector in sidebar (defaults to almonds)", "status": "todo" },
+        { "name": "Scraper module per commodity (abc for almonds; usda-pistachio when added)", "status": "todo" }
+      ]
+    },
+    {
+      "id": "multi-portal",
+      "name": "Multi-Portal Frontend",
+      "category": "platform",
+      "percent": 10,
+      "icon": "🚪",
+      "description": "Role-scoped portal shells: customer / supplier / broker / logistics / internal team. Login determines which portal renders. Same platform spine, different views.",
+      "features": [
+        { "name": "MAXONS team internal shell (current /dashboard etc.)", "status": "done" },
+        { "name": "Role-aware PersonaBanner on Dashboard (MVP)", "status": "done" },
+        { "name": "Customer portal shell + role-scoped nav", "status": "todo" },
+        { "name": "Supplier portal shell + role-scoped nav", "status": "todo" },
+        { "name": "Broker portal shell + role-scoped nav", "status": "todo" },
+        { "name": "Logistics portal shell", "status": "todo" }
+      ]
+    },
+    {
+      "id": "trade-lifecycle",
+      "name": "Trade Lifecycle (Offer → Contract → Fulfillment)",
+      "category": "future",
+      "percent": 15,
+      "icon": "📜",
+      "description": "End-to-end execution layer. Offer → margin engine → customer view → request to buy → sales verification → WhatsApp contract + e-sign → fulfillment tracking. Zyra orchestrates.",
+      "features": [
+        { "name": "Offer builder with variety/grade/form/incoterm (existing in Trading Portal)", "status": "done" },
+        { "name": "CRM deal pipeline with stage progression", "status": "done" },
+        { "name": "WhatsApp offer delivery via Twilio", "status": "done" },
+        { "name": "Margin engine (applies MAXONS rules before customer display)", "status": "todo" },
+        { "name": "Source-hiding layer (customer never sees supplier identity)", "status": "todo" },
+        { "name": "Request-to-buy flow (self-serve or assisted)", "status": "todo" },
+        { "name": "Contract generation via WhatsApp link + interactive e-sign", "status": "todo" },
+        { "name": "Fulfillment tracking (payment → shipment → delivery → receipt)", "status": "todo" }
+      ]
+    },
+    {
+      "id": "adela",
+      "name": "ADELA — Nervous System / AI Orchestrator",
+      "category": "ai",
+      "percent": 20,
+      "icon": "🧠",
+      "description": "Runtime orchestrator: routes jobs to the right AI provider (Claude, GPT, Gemini), enforces info walls in real time, coordinates intelligence pipeline. Currently 4 edge functions exist; ADELA is the router abstraction that sits above them.",
+      "features": [
+        { "name": "4 edge functions live (whatsapp-login/send/verify/webhook)", "status": "done" },
+        { "name": "Zyra chat uses Claude for all conversations", "status": "done" },
+        { "name": "ADELA router abstraction (src/lib/ai-router.js) — swap provider per task", "status": "todo" },
+        { "name": "Multi-model debate pattern (brain-ai style: Claude + GPT + Gemini)", "status": "todo" },
+        { "name": "Info-wall enforcement hook in every AI response filter", "status": "todo" }
+      ]
+    },
+    {
+      "id": "atlas",
+      "name": "ATLAS — Self-Developing Brain",
+      "category": "ai",
+      "percent": 0,
+      "icon": "🪐",
+      "description": "Reads own plan, AI council debates, proposes changes, verifies, admin approves (WhatsApp video + OTP), ships. Self-monitoring + self-healing. Founder-only admin gate.",
+      "features": [
+        { "name": "Nightly monitor-report agent (proposed phase-later idea)", "status": "todo" },
+        { "name": "AI council debate: Claude + GPT + Gemini on each change", "status": "todo" },
+        { "name": "Admin gate: WhatsApp video + OTP authentication", "status": "todo" },
+        { "name": "Auto-execution with human approval checkpoint", "status": "todo" },
+        { "name": "Self-monitoring: catches errors, proposes fixes, feeds back", "status": "todo" }
+      ]
+    },
+    {
+      "id": "verified-social",
+      "name": "Verified Social Network",
+      "category": "future",
+      "percent": 0,
+      "icon": "💬",
+      "description": "'Twitter for verified' — gated behind access_tier='verified'. Post, react, comment, thread. Zyra participates as contributor. Two streams: public broadcast + private personalized.",
+      "features": [
+        { "name": "social_posts table + RLS", "status": "todo" },
+        { "name": "Feed UI gated on access_tier='verified'", "status": "todo" },
+        { "name": "Post + react + comment", "status": "todo" },
+        { "name": "Zyra comments with analytics", "status": "todo" },
+        { "name": "Sentiment + chatter extraction into proprietary data", "status": "todo" }
+      ]
+    },
+    {
       "id": "persona-views",
       "name": "Persona Views (new)",
       "category": "users",
@@ -512,12 +672,13 @@
     { "id": "maxons", "name": "MAXONS Team", "status": "built", "description": "CRM + Trading gated, admin panel built" }
   ],
   "nextPriorities": [
-    { "id": 1, "title": "F1a: V1 returning-user popup", "color": "#ef4444", "description": "Detect V1 login → modal: verify WhatsApp (OTP) → set new password → full V2 account. Converts 65 V1 users to full V2." },
-    { "id": 2, "title": "C5c: Per-team-member profitability insights", "color": "#f59e0b", "description": "Each team member sees insights on their assigned users — volume potential, deal velocity, next-best-action for maximum profit." },
-    { "id": 3, "title": "C6/C7: Reports + Dashboard widget retrofits", "color": "#3b82f6", "description": "Period/metric compare on /reports; filter+compare on Dashboard widgets." },
-    { "id": 4, "title": "Full persona pages (Grower / Packer / etc.)", "color": "#8b5cf6", "description": "PersonaBanner MVP is live. Next: full role-specific page layouts beyond the shortcuts." },
-    { "id": 5, "title": "Human-like Zyra AI (multilingual, natural voice)", "color": "#a855f7", "description": "Remove keyword routing; Arabic/Hindi/Turkish/Spanish; natural voice replies." },
-    { "id": 6, "title": "V2 upgrade email to 65 users + launch", "color": "#10b981", "description": "After V1 popup ships, notify all migrated users + full site walkthrough." },
-    { "id": 7, "title": "Nursery + FruitWeight scrapers (B7)", "color": "#06b6d4", "description": "Low priority leading-indicator reports. Can ride on scrapeAllReportTypes once wired." }
+    { "id": 1, "title": "Commodity-agnostic foundation", "color": "#22c55e", "description": "products table + migration plan. Vision non-negotiable: never hardcode 'almonds'. Pistachio/pineapple come next." },
+    { "id": 2, "title": "Information walls (DB RLS + API filter + audit log)", "color": "#ef4444", "description": "THE business model per vision. Customer never sees supplier source; broker never sees customer pricing; supplier never sees MAXONS margin." },
+    { "id": 3, "title": "BRM + SRM portal skeletons", "color": "#f59e0b", "description": "Third and fourth relationship graphs: brokers (market intel) and suppliers (county analysis). Portal-scoped views." },
+    { "id": 4, "title": "Trade lifecycle margin engine + source-hiding", "color": "#3b82f6", "description": "Margin rules apply before customer-facing display. Source data stripped per info walls." },
+    { "id": 5, "title": "ADELA AI-router abstraction", "color": "#8b5cf6", "description": "Swap provider per task (Claude/GPT/Gemini) — multi-model resilience + right-tool-for-right-job." },
+    { "id": 6, "title": "Full persona pages (beyond banner MVP)", "color": "#a855f7", "description": "Grower/Packer/Trader/Buyer each gets a dedicated page, not just a banner on Dashboard." },
+    { "id": 7, "title": "Verified social network MVP", "color": "#06b6d4", "description": "'Twitter for verified' — feed + post + react. Gated on access_tier='verified'." },
+    { "id": 8, "title": "Human-like Zyra (multilingual + natural voice) + V2 email launch", "color": "#10b981", "description": "F2-F4 from prior plan. Queues behind vision foundations." }
   ]
 }
