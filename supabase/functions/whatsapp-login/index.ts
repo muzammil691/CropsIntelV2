@@ -184,7 +184,10 @@ serve(async (req) => {
 
       if (newAuthId && newAuthId !== oldProfileId) {
         // Update profile ID to match new auth user ID
-        // First insert a new row with the new ID, then delete the old one
+        // First insert a new row with the new ID, then delete the old one.
+        // Both steps are wrapped so a delete-failure can't create a split-brain
+        // (two profile rows for the same user). If delete fails, we mark the
+        // old row with a cleanup flag so a reconcile job can handle it later.
         const { data: fullProfile } = await supabase
           .from('user_profiles')
           .select('*')
@@ -193,17 +196,55 @@ serve(async (req) => {
 
         if (fullProfile) {
           const { id: _oldId, ...profileData } = fullProfile;
-          await supabase.from('user_profiles').upsert({
+
+          const { error: upsertErr } = await supabase.from('user_profiles').upsert({
             ...profileData,
             id: newAuthId,
             whatsapp_verified: true,
             updated_at: new Date().toISOString(),
           });
-          // Delete old profile row (only if IDs differ)
-          await supabase.from('user_profiles').delete().eq('id', oldProfileId);
+
+          if (upsertErr) {
+            console.error('V1 migration: new profile upsert failed, aborting move', upsertErr);
+            // Keep old profile intact; user can still log in via magiclink retry.
+            profile.id = oldProfileId;
+          } else {
+            // Delete old profile row. If this fails, DO NOT lose the upserted
+            // new row — instead tag the old row as orphaned so a cleanup job
+            // can purge it. This prevents the FK-constraint or network-failure
+            // case from leaving duplicate rows silently.
+            const { error: deleteErr } = await supabase
+              .from('user_profiles')
+              .delete()
+              .eq('id', oldProfileId);
+
+            if (deleteErr) {
+              console.error('V1 migration: old profile delete failed, tagging as orphan', deleteErr);
+              // Stash cleanup flag in metadata JSONB (no schema migration needed).
+              // A reconcile job can `where metadata->>'cleanup_pending' = 'true'` later.
+              const existingMeta = (fullProfile as any).metadata || {};
+              await supabase
+                .from('user_profiles')
+                .update({
+                  metadata: {
+                    ...existingMeta,
+                    cleanup_pending: true,
+                    cleanup_reason: deleteErr.message,
+                    cleanup_replacement_id: newAuthId,
+                    cleanup_flagged_at: new Date().toISOString(),
+                  },
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', oldProfileId);
+            }
+
+            profile.id = newAuthId;
+          }
         }
-        // Update profile reference for the rest of this function
-        profile.id = newAuthId;
+      } else if (newAuthId === oldProfileId) {
+        // IDs match — no profile move needed. Rare but possible if auth and
+        // profiles tables were seeded with matching UUIDs during V1 import.
+        console.log('V1 migration: auth ID matches profile ID, no move needed');
       }
 
       passwordSetupRequired = true;
@@ -256,6 +297,11 @@ serve(async (req) => {
     }
 
     if (!emailToken) {
+      // Magic link returned but no token — cannot fetch a session.
+      // Flags are mutually exclusive; see the session-failure fallback below.
+      const messageForUser = passwordSetupRequired
+        ? 'Account ready. Please set a password to complete sign in.'
+        : 'OTP verified. Please enter your password to finish signing in, or use Reset Password if you don\'t remember it.';
       return new Response(
         JSON.stringify({
           success: true,
@@ -269,6 +315,7 @@ serve(async (req) => {
           },
           password_setup_required: passwordSetupRequired,
           needs_password_login: !passwordSetupRequired,
+          message: messageForUser,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -290,6 +337,14 @@ serve(async (req) => {
     const sessionData = await verifyRes.json();
 
     if (!verifyRes.ok || !sessionData.access_token) {
+      // Session token retrieval failed. The flags below are MUTUALLY EXCLUSIVE
+      // — exactly one is true. Frontend (Login.jsx) must check
+      // `password_setup_required` FIRST, then `needs_password_login`.
+      //   • V1 freshly-migrated user → password_setup_required=true → /set-password
+      //   • Existing auth user whose session fetch glitched → needs_password_login=true → /login password form
+      const messageForUser = passwordSetupRequired
+        ? 'Account ready. Please set a password to complete sign in.'
+        : 'OTP verified. Please enter your password to finish signing in, or use Reset Password if you don\'t remember it.';
       return new Response(
         JSON.stringify({
           success: true,
@@ -303,6 +358,7 @@ serve(async (req) => {
           },
           password_setup_required: passwordSetupRequired,
           needs_password_login: !passwordSetupRequired,
+          message: messageForUser,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

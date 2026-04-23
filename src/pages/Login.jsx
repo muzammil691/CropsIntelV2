@@ -127,6 +127,10 @@ export default function Login() {
 
     try {
       const result = await signInWithOTP(cleanPhone, code);
+      // Backend guarantees mutual exclusivity: exactly one of the two flags
+      // is true when method === 'otp_verified'. Check password_setup_required
+      // FIRST — a freshly migrated V1 user has no password yet, so routing
+      // them to the password form would be a dead end.
       if (result.password_setup_required) {
         // V1 user — account just created, redirect to set password
         navigate('/set-password');
@@ -134,7 +138,7 @@ export default function Login() {
         // Has auth account but couldn't get session — fall back to password
         setEmail(result.email || '');
         setMethod('email_password');
-        setError('OTP verified — please enter your password to complete sign in');
+        setError(result.message || 'OTP verified — please enter your password to complete sign in. If you don\'t remember it, use Reset Password below.');
       } else {
         navigate('/dashboard');
       }

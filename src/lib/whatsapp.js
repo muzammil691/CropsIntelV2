@@ -4,8 +4,22 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Env-var guard — surface misconfig loudly instead of silently 400-ing on
+// every WhatsApp call. Previously an empty VITE_SUPABASE_URL would produce
+// a fetch to "/functions/v1/whatsapp-send" which hits the app's own origin
+// and 404s with no useful error. Now we fail fast with a readable message.
+function assertConfigured() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    throw new Error(
+      'WhatsApp client not configured — VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing from the build. ' +
+      'Contact the administrator or check your .env.'
+    );
+  }
+}
+
 // ─── Send OTP via WhatsApp ────────────────────────────────────
 export async function sendWhatsAppOTP(phoneNumber) {
+  assertConfigured();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
     method: 'POST',
     headers: {
@@ -25,6 +39,7 @@ export async function sendWhatsAppOTP(phoneNumber) {
 
 // ─── Verify OTP ───────────────────────────────────────────────
 export async function verifyWhatsAppOTP(phoneNumber, otpCode, userId = null) {
+  assertConfigured();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-verify`, {
     method: 'POST',
     headers: {
@@ -102,6 +117,7 @@ export async function sendWhatsAppMessage(phoneNumber, message) {
 // ─── WhatsApp OTP Login ──────────────────────────────────────
 // Sends OTP, verifies, and returns a Supabase session
 export async function whatsAppLogin(phoneNumber, otpCode) {
+  assertConfigured();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-login`, {
     method: 'POST',
     headers: {
