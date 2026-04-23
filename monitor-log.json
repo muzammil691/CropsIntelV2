@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-24T10:45:00Z",
+  "generated_at": "2026-04-24T12:00:00Z",
   "generated_by": "Claude (manual encoding of tonight's live-site walkthrough — automated Monitor Bot runs will replace this)",
   "base_url": "https://cropsintel.com",
   "note": "This seed run is manually encoded from Claude's live-site walkthrough via Chrome MCP (2026-04-24 overnight session). scripts/monitor-agent.js will overwrite this file once wired to the workflow (needs workflow-scope token; Phase 10 upgrade).",
