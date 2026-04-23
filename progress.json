@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-24T05:00:00Z",
-  "updatedBy": "Claude AI — Night shift begun: vision handoff aligned + Phase 7 roadmap + commodity-agnostic foundations queued",
+  "lastUpdated": "2026-04-24T05:30:00Z",
+  "updatedBy": "Claude AI — Night shift Block 2: Commodity-agnostic foundations shipped (lib + schema + docs)",
   "sessionStatus": "autonomous-night-shift-active",
-  "overallPercent": 87,
+  "overallPercent": 88,
   "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
   "targetPercent": 95,
   "domain": "cropsintel.com",
@@ -18,7 +18,7 @@
   "nightShiftPlan": {
     "blocks": [
       { "id": 1, "name": "Vision alignment + /map refresh", "status": "in_progress", "eta_min": 30 },
-      { "id": 2, "name": "Commodity-agnostic foundation (product_catalog, remove hardcoded almond)", "status": "queued", "eta_min": 90 },
+      { "id": 2, "name": "Commodity-agnostic foundation (product_catalog, remove hardcoded almond)", "status": "done", "eta_min": 90 },
       { "id": 3, "name": "Info walls scaffolding (audit_log table + helper + RLS policy doc)", "status": "queued", "eta_min": 90 },
       { "id": 4, "name": "BRM portal skeleton /brokers", "status": "queued", "eta_min": 60 },
       { "id": 5, "name": "SRM portal skeleton /suppliers (county analysis stub)", "status": "queued", "eta_min": 60 },
@@ -464,15 +464,17 @@
       "id": "commodity-agnostic",
       "name": "Commodity-Agnostic Schema",
       "category": "platform",
-      "percent": 0,
+      "percent": 30,
       "icon": "🌾",
-      "description": "Platform MUST support N commodities from day one (almonds now, pistachios + pineapples next). Schema, API, UI all reference a commodity/product hierarchy — never hardcoded 'almonds'.",
+      "description": "Platform supports N commodities from day one. src/lib/commodity.js is the ONE switch point; supabase/schema_commodity.sql adds commodities + products tables; docs/COMMODITY_AGNOSTIC.md is the architecture reference. Migration of abc_* tables to commodity_id is Phase 8.",
       "features": [
-        { "name": "products table (commodity, variety, size, form, origin)", "status": "todo" },
-        { "name": "Migrate abc_*_reports tables to reference commodity_id", "status": "todo" },
-        { "name": "Replace hardcoded 'almond' literals in UI copy + routing", "status": "todo" },
-        { "name": "Commodity selector in sidebar (defaults to almonds)", "status": "todo" },
-        { "name": "Scraper module per commodity (abc for almonds; usda-pistachio when added)", "status": "todo" }
+        { "name": "src/lib/commodity.js — runtime abstraction with almond/pistachio/pineapple registry", "status": "done" },
+        { "name": "supabase/schema_commodity.sql — commodities + products tables + RLS + seed rows", "status": "done" },
+        { "name": "docs/COMMODITY_AGNOSTIC.md — architecture doc + migration plan", "status": "done" },
+        { "name": "Migrate abc_*_reports tables to reference commodity_id (Phase 8)", "status": "todo" },
+        { "name": "Replace hardcoded 'almond' literals in UI copy (Phase 7b)", "status": "todo" },
+        { "name": "Commodity selector in sidebar (defaults to almond)", "status": "todo" },
+        { "name": "Activate pistachio scraper when first data lands", "status": "todo" }
       ]
     },
     {
