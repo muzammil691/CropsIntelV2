@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { toNum } from '../lib/utils';
+import FilterBar, { CROP_YEAR_COLORS } from '../components/FilterBar';
 
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -48,6 +49,9 @@ export default function Reports() {
   const [search, setSearch] = useState('');
   const [showFull, setShowFull] = useState(false);
   const [viewMode, setViewMode] = useState('compact'); // compact | expanded
+  // Phase C7: multi-year compare chip bar (overlay of multiple crop years)
+  const [compareYears, setCompareYears] = useState([]);
+  const [compareMode, setCompareMode] = useState(false);
 
   const [loadError, setLoadError] = useState(null);
   useEffect(() => {
@@ -147,6 +151,28 @@ export default function Reports() {
     }, 0) / supplyCount;
     return { latest, totalSupply, totalShipped, totalCommitted, avgSold, count: filtered.length };
   }, [filtered]);
+
+  // Phase C7: per-year totals used when compare mode is on
+  const compareStats = useMemo(() => {
+    if (!compareYears.length) return [];
+    return compareYears.map(cy => {
+      const rows = reports.filter(r => r.crop_year === cy);
+      const totalSupply    = rows.reduce((s, r) => s + toNum(r.total_supply_lbs), 0);
+      const totalShipped   = rows.reduce((s, r) => s + toNum(r.total_shipped_lbs), 0);
+      const totalCommitted = rows.reduce((s, r) => s + toNum(r.total_committed_lbs), 0);
+      const uncommitted    = rows.reduce((s, r) => s + toNum(r.uncommitted_lbs), 0);
+      const latestSoldPct  = rows.length && totalSupply > 0
+        ? ((totalSupply - uncommitted) / totalSupply) * 100
+        : 0;
+      return {
+        cropYear: cy,
+        color: CROP_YEAR_COLORS[cy] || '#6b7280',
+        rowCount: rows.length,
+        totalSupply, totalShipped, totalCommitted, uncommitted,
+        latestSoldPct,
+      };
+    });
+  }, [reports, compareYears]);
 
   const yoyBadge = (current, prior) => {
     if (!current || !prior || prior === 0) return null;
@@ -263,6 +289,62 @@ export default function Reports() {
           </div>
         </div>
       )}
+
+      {/* Phase C7: crop-year compare panel */}
+      <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h3 className="text-sm font-semibold text-white">Crop Year Compare</h3>
+          <button
+            onClick={() => setCompareMode(!compareMode)}
+            className={`text-[11px] px-3 py-1 rounded-lg border transition-colors ${
+              compareMode
+                ? 'border-green-500/40 bg-green-500/10 text-green-400'
+                : 'border-gray-700 text-gray-400 hover:text-white'
+            }`}
+          >
+            {compareMode ? 'Hide compare' : 'Compare mode'}
+          </button>
+        </div>
+        {compareMode && (
+          <>
+            <FilterBar
+              label="Pick crop years to compare"
+              options={cropYears.map(cy => ({
+                value: cy, label: cy, color: CROP_YEAR_COLORS[cy] || '#6b7280',
+              }))}
+              selected={compareYears}
+              onToggle={(v) => setCompareYears(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v])}
+              quickActions={[
+                { label: 'Last 3', action: () => setCompareYears(cropYears.slice(0, 3)) },
+                { label: 'Last 5', action: () => setCompareYears(cropYears.slice(0, 5)) },
+                { label: 'Clear',  action: () => setCompareYears([]) },
+              ]}
+              emptyHint="Pick 2 or more for side-by-side"
+            />
+            {compareStats.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mt-2">
+                {compareStats.map(stat => (
+                  <div
+                    key={stat.cropYear}
+                    className="rounded-xl p-3 border"
+                    style={{ borderColor: stat.color + '44', backgroundColor: stat.color + '0D' }}
+                  >
+                    <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: stat.color }}>{stat.cropYear}</p>
+                    <p className="text-[10px] text-gray-500 mb-2">{stat.rowCount} monthly reports</p>
+                    <div className="space-y-1 text-[11px]">
+                      <div className="flex justify-between"><span className="text-gray-500">Supply</span><span className="text-green-400 font-medium">{fmtM(stat.totalSupply)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">Shipped</span><span className="text-white">{fmtM(stat.totalShipped)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">Committed</span><span className="text-blue-400">{fmtM(stat.totalCommitted)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500">Uncommitted</span><span className="text-amber-400">{fmtM(stat.uncommitted)}</span></div>
+                      <div className="flex justify-between border-t border-gray-800/60 pt-1 mt-1"><span className="text-gray-500">Sold %</span><span className="text-white font-semibold">{stat.latestSoldPct.toFixed(1)}%</span></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Filters Bar */}
       <div className="flex flex-wrap items-center gap-3 bg-gray-900/50 border border-gray-800 rounded-xl p-3">
