@@ -88,11 +88,18 @@ export default function Destinations() {
     [shipments]
   );
 
-  // Export vs Domestic split for selected crop year
+  // Export vs Domestic split for selected crop year.
+  // 2026-04-24 display-audit fix: previously the "export" side summed EVERY
+  // row with destination_region='export', which double-counted because the
+  // scraper writes both per-country rows AND a "Total Export" summary row
+  // (see shipment-parser.js:141). The old math made export appear \u00d72 its
+  // real value; users saw inflated export share on the pie. The fix below
+  // uses just the per-country rows (excluding Total Export) so the sum
+  // equals the actual exported volume once, not twice.
   const exportDomesticSplit = useMemo(() => {
     const filtered = shipments.filter(r => r.crop_year === selectedCropYear);
     const exportTotal = filtered
-      .filter(r => r.destination_region === 'export')
+      .filter(r => r.destination_region === 'export' && r.destination_country !== 'Total Export')
       .reduce((s, r) => s + toNum(r.monthly_lbs), 0);
     const domesticTotal = filtered
       .filter(r => r.destination_region === 'domestic')
@@ -156,7 +163,15 @@ export default function Destinations() {
     });
   }, [shipments, selectedCropYear, topDestinations]);
 
-  // Export vs Domestic monthly trend
+  // Export vs Domestic monthly trend.
+  // 2026-04-24 display-audit fix: previously this filter required
+  // destination_country === 'Total Export', but the modeled-data generator
+  // (shipment-parser.js:generateShipmentDataFromPositionReports) writes
+  // per-country rows only \u2014 it does NOT emit a Total Export summary row.
+  // Result: every export bar in the monthly chart was rendering as ZERO.
+  // This was likely "Destinations not shown properly" per user directive.
+  // Fix: sum per-country rows (exclude Total Export in case real PDFs add
+  // that row later) so the chart works for both modeled and real data.
   const monthlyExpDom = useMemo(() => {
     const filtered = shipments.filter(r => r.crop_year === selectedCropYear);
     const monthLabels = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
@@ -165,7 +180,8 @@ export default function Destinations() {
       const monthData = filtered.filter(r => r.report_month === month);
       return {
         label,
-        export: monthData.filter(r => r.destination_region === 'export' && r.destination_country === 'Total Export')
+        export: monthData
+          .filter(r => r.destination_region === 'export' && r.destination_country !== 'Total Export')
           .reduce((s, r) => s + toNum(r.monthly_lbs), 0),
         domestic: monthData.filter(r => r.destination_region === 'domestic')
           .reduce((s, r) => s + toNum(r.monthly_lbs), 0),
@@ -181,9 +197,15 @@ export default function Destinations() {
     if (prevIdx < 0) return [];
     const prevCY = allCropYears[prevIdx];
 
+    // Defensive exclusion of 'Total Export' in case a caller ever passes it
+    // as a country name (it's excluded from topDestinations, so shouldn't
+    // happen today, but keeps this helper safe for future reuse).
     const getTotal = (cy, country) => {
       return shipments
-        .filter(r => r.crop_year === cy && r.destination_country === country && r.destination_region === 'export')
+        .filter(r => r.crop_year === cy &&
+                     r.destination_country === country &&
+                     r.destination_country !== 'Total Export' &&
+                     r.destination_region === 'export')
         .reduce((s, r) => s + toNum(r.monthly_lbs), 0);
     };
 
@@ -206,12 +228,17 @@ export default function Destinations() {
 
   // Phase C2: cross-year × country compare — one row per crop year with a
   // column per selected country (total export lbs for that year/country).
+  // Guard against 'Total Export' summary rows so real-PDF integration
+  // doesn't double-count when both per-country and summary rows coexist.
   const crossYearCountry = useMemo(() => {
     return comparedYears.map(cy => {
       const row = { crop_year: cy };
       for (const c of comparedCountries) {
         row[c] = shipments
-          .filter(r => r.crop_year === cy && r.destination_country === c && r.destination_region === 'export')
+          .filter(r => r.crop_year === cy &&
+                       r.destination_country === c &&
+                       r.destination_country !== 'Total Export' &&
+                       r.destination_region === 'export')
           .reduce((s, r) => s + toNum(r.monthly_lbs), 0);
       }
       return row;
@@ -266,9 +293,16 @@ export default function Destinations() {
 
   const exportDestCSV = () => {
     const headers = ['Rank', 'Country', 'Total Volume (lbs)', 'Months Active', 'Avg/Month', 'Share %'];
-    const totalVol = topDestinations.reduce((s, d) => s + d.total, 0);
-    const rows = topDestinations.map((d, i) => [
-      i + 1, d.country, d.total, d.months, Math.round(d.total / d.months), (d.total / totalVol * 100).toFixed(1)
+    // Share % must use the full-year export total, NOT the top-N visible
+    // slice, otherwise shares are inflated whenever the user narrows the
+    // ranking chart to Top 10/15 (previously the denominator was topDestinations
+    // total, which was wrong when displayLimitRank < allDestinationsSorted.length).
+    const totalVol = allDestinationsSorted.reduce((s, d) => s + d.total, 0) || 1;
+    // Export EVERY country when share % is computed, not just the slice \u2014
+    // the CSV is a full-year record, not a snapshot of the visible chart.
+    const rows = allDestinationsSorted.map((d, i) => [
+      i + 1, d.country, d.total, d.months, Math.round(d.total / Math.max(d.months, 1)),
+      (d.total / totalVol * 100).toFixed(1)
     ]);
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -296,12 +330,12 @@ export default function Destinations() {
       {/* Modeled data disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-4">
         <div className="flex items-start gap-3">
-          <div className="text-amber-400 text-lg leading-none mt-0.5">⚠️</div>
+          <div className="text-amber-400 text-lg leading-none mt-0.5">\u26a0\ufe0f</div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-amber-400 mb-1">Modeled Destination Data</h3>
             <p className="text-xs text-amber-200/80 leading-relaxed">
-              The country splits below are <strong>modeled</strong> from ABC position-report export totals using standard distribution shares (Spain ~12%, India ~11%, China/HK ~9%, Germany ~7%, UAE ~6%, etc.). They are <em>not</em> yet populated from real ABC Shipment Report PDFs.
-              Real PDF scraping across all 11 crop years × 45 destinations is Phase B2 of the current sprint — live tracking at cropsintel.com/map.
+              Country splits below are <strong>generated</strong> from real ABC position-report export totals using standard distribution shares (Spain ~12%, India ~11%, China/HK ~9%, Germany ~7%, UAE ~6%, etc.). Totals are accurate; the per-country split is a model, not an ABC Shipment Report PDF parse.
+              Real per-country PDF scraping across all 11 crop years \u00d7 45 destinations is Phase B2 of the current sprint \u2014 live tracking at cropsintel.com/map.
             </p>
           </div>
         </div>
@@ -544,11 +578,16 @@ export default function Destinations() {
                   // F2: "All Export Destinations" table now shows every country
                   // (filtered by the search box if active), not the slice-capped
                   // top list. Share % is calculated against the full-year total.
+                  // 2026-04-24 fix: when search is active, the rank column shows
+                  // the GLOBAL rank (position in allDestinationsSorted), not the
+                  // filtered-list index \u2014 so a search hit for "India" shows its
+                  // real rank (#2) instead of "#1" after filtering.
                   const tableRows = countrySearch ? searchedDestinations : allDestinationsSorted;
                   const totalExport = allDestinationsSorted.reduce((s, x) => s + x.total, 0);
-                  return tableRows.map((d, i) => (
+                  const rankLookup = new Map(allDestinationsSorted.map((d, idx) => [d.country, idx + 1]));
+                  return tableRows.map((d) => (
                     <tr key={d.country} className="border-b border-gray-800/50 hover:bg-gray-900/50">
-                      <td className="py-2 px-3 text-gray-600 text-xs">{i + 1}</td>
+                      <td className="py-2 px-3 text-gray-600 text-xs">{rankLookup.get(d.country) ?? '\u2014'}</td>
                       <td className="py-2 px-3">
                         <span className="text-white text-xs font-medium">{d.country}</span>
                       </td>
