@@ -4,6 +4,9 @@
 
 import { supabase } from './supabase';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 // ─── V2 Upgrade WhatsApp Message ──────────────────────────────────
 export function getV2UpgradeWhatsAppMessage(contactName = '') {
   const greeting = contactName ? `Hi ${contactName},` : 'Hello,';
@@ -185,10 +188,13 @@ export async function broadcastWhatsAppUpgrade() {
     const message = getV2UpgradeWhatsAppMessage(contact.contact_name);
     try {
       const res = await fetch(
-        `https://eywsfmixzrdfcywmdaaw.supabase.co/functions/v1/whatsapp-send`,
+        `${SUPABASE_URL}/functions/v1/whatsapp-send`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
           body: JSON.stringify({
             type: 'custom',
             to: contact.phone,
