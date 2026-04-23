@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T14:30:00Z",
-  "updatedBy": "Claude AI — 9-commit night-shift wrap. Final polish: Reports loadError banner (silent failures now visible), role-aware Zyra lenses, role-aware sidebar, C6+C7 FilterBar retrofit, PersonaInsights live stat row, Zyra Trainer loop.",
+  "lastUpdated": "2026-04-24T14:45:00Z",
+  "updatedBy": "Claude AI — 10-commit night-shift wrap. Final polish: Reports loadError banner (silent failures now visible), role-aware Zyra lenses, role-aware sidebar, C6+C7 FilterBar retrofit, PersonaInsights live stat row, Zyra Trainer loop. recentCommits array refreshed so /map shows actual night-shift SHAs.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 94,
   "launchFindings": [
@@ -56,7 +56,16 @@
   },
   "blockers": [],
   "recentCommits": [
-    { "sha": "pending", "message": "Night shift: vision handoff aligned — Phase 7 + 9 new first-class systems on /map", "branch": "main", "date": "2026-04-24", "landed": false },
+    { "sha": "aa01620", "message": "progress.json: bump to 14:30Z reflecting Reports error-banner fix", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "f2e83bc", "message": "Reports: render loadError banner — silent failures now visible", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "6fb3339", "message": "Progress.json: night-shift wrap + final recompute", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "0d386a6", "message": "D4: Role-aware Zyra prompts — 8 role lenses injected into system prompt", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "6b22ed2", "message": "D2/D3: role-aware sidebar ordering + requireTeam leak fix", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "fd634bb", "message": "D2/D3: PersonaInsights live stat row on /dashboard", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "7252baa", "message": "Zyra Trainer loop 15% → 55%: thumbs + correction feed back into prompt", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "5a35bb4", "message": "Phase C7: Reports multi-year compare panel with chip bar", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "6ed45fe", "message": "Phase C6: CRM pipeline stage-compare + period-compare filter bar", "branch": "main", "date": "2026-04-24", "landed": true },
+    { "sha": "272796f", "message": "F3 + F7 closed: Welcome 'Export Markets' + Destinations sparse-month notice", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "c7d17ad", "message": "Phase F1a: V1 Returning-User Popup (OTP verify + password set, global modal)", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "9042da8", "message": "C5 round 2: dual-channel invite + tier filter + V1 badge + admin Verify User", "branch": "main", "date": "2026-04-24", "landed": true },
     { "sha": "697ed05", "message": "Phase C5b + scope capture: CRM Bulk WhatsApp Invite + V1 popup/C5a/C5c on roadmap", "branch": "main", "date": "2026-04-24", "landed": true },
