@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T17:00:00Z",
-  "updatedBy": "Claude AI \u2014 Wave 2 offer builder rebuild",
+  "lastUpdated": "2026-04-24T18:45:00Z",
+  "updatedBy": "Claude AI \u2014 Wave 3 Zyra unification (shared prompts lib, kill keyword-routing)",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 62,
   "launchReadinessPercent": 85,
@@ -306,7 +306,14 @@
         "rank": 2,
         "task": "Zyra priority \u2014 make Zyra a first-class surface",
         "scope": "Audit Zyra bubble + full-page + trainer + WhatsApp + prescriptions. Identify gaps between plan (5 split systems) and reality. Fix routing, role-lens accuracy, multilingual handling.",
-        "status": "queued",
+        "status": "shipped",
+        "shippedDate": "2026-04-24",
+        "shipped": {
+          "extract": "Moved QUICK_TOPICS, ROLE_LENS (8 roles), detectLanguage (ar/hi/tr/es/en via Unicode script ranges), LANG_INSTRUCTION, resolveUserTier, buildZyraSystemPrompt, zyraOfflineMessage into src/lib/zyra-prompts.js (209 lines).",
+          "bubbleRefactor": "src/components/ZyraWidget.jsx 779 \u2192 646 lines; imports from shared lib; same behaviour.",
+          "fullPageRefactor": "src/pages/Intelligence.jsx rewritten: removed ZYRA_RESPONSES canned-paragraph object + getZyraResponse keyword-router (user flagged this as anti-human). Now uses buildZyraSystemPrompt with role-lens + multilingual detection + learning context + correction context + page context. Added thumbs \ud83d\udc4d/\ud83d\udc4e trainer UI, detectedLang pill badge, honest multilingual offline message via zyraOfflineMessage().",
+          "parity": "Full-page /intelligence chat now matches bubble: 8 role lenses, multilingual, trainer loop, memory, correction feed."
+        },
         "blockers": []
       },
       {
@@ -648,9 +655,22 @@
   ],
   "recentCommits": [
     {
-      "sha": "pending-wave2",
+      "sha": "pending-wave3",
       "date": "2026-04-24",
-      "subject": "offer-builder: Trading.jsx 846\u2192371 lines; extract OfferBuilder + OfferLineItem + offerCalcs.js (preview modal, incoterm warnings, margin-per-lb, landed-cost)"
+      "subject": "zyra: unify prompt builder across bubble + /intelligence; kill keyword-routing fallback (Wave 3)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "fd3feef",
+      "date": "2026-04-24",
+      "subject": "offer-builder rebuild (Wave 2): Trading.jsx 846\u2192409 lines; extract components + pure calcs",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "9dad236",
+      "date": "2026-04-24",
+      "subject": "destinations: 5 display bug fixes (export double-count, monthly=0, CSV share, rank, defensive)",
+      "author": "Claude AI"
     },
     {
       "sha": "6e41c7e",
@@ -878,9 +898,9 @@
       "id": 6,
       "name": "Honesty + Completion Sprint",
       "status": "active",
-      "percent": 88,
+      "percent": 90,
       "completedDate": null,
-      "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. UI polish (sidebar reorg + shared Card component + premium page treatment) in flight."
+      "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. UI polish (sidebar reorg + shared Card component + premium page treatment) in flight. Wave 3 (2026-04-24 evening): Zyra unified across bubble + /intelligence full-page via src/lib/zyra-prompts.js; removed anti-human keyword-routing fallback on /intelligence; added trainer thumbs + multilingual pill."
     },
     {
       "id": 7,
@@ -2543,7 +2563,10 @@
     "ui-polish": 65,
     "sidebar-grouping": 100,
     "shared-card-component": 100,
-    "zyra-priority": 40,
+    "zyra-priority": 80,
+    "zyra-unified-prompts": 100,
+    "zyra-intelligence-page": 85,
+    "zyra-multilingual-fallback": 100,
     "data-scrapers-verified": 35,
     "destinations-display": 55,
     "reports-data-completeness": 40,
