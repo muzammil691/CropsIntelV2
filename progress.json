@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-24T02:00:00Z",
-  "updatedBy": "Claude AI \u2014 V2 Welcome UX + Team sidebar link",
+  "lastUpdated": "2026-04-24T02:30:00Z",
+  "updatedBy": "Claude AI \u2014 Broadcast panel + email_subscribers cohort",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 97,
+  "overallPercent": 98,
   "launchFindings": [
     {
       "id": "F1",
@@ -241,10 +241,17 @@
     {
       "id": "v1-subscribers-broadcast",
       "item": "V1 subscribers (email-only, never registered) + V1 registered users \u2014 both visible in user mgmt with broadcast UI to re-engage",
-      "currentWorkaround": "V1 registered users migrated (see markedForLater v1-login-live-verify). V1 subscribers cohort (email-only) not yet imported. Broadcast UI not built.",
+      "currentWorkaround": "Broadcast UI shipped 2026-04-24: /settings#broadcast-panel (admin-only sidebar link), email_subscribers + email_broadcasts tables + RLS, cohort filters (V1 subscribers/V1 registered/V2 signup/footer/zyra), bulk send via email-send edge fn. V1 subscriber CSV import still user-hand \u2014 point existing V1 subscribers table at new email_subscribers via SQL once user provides CSV.",
       "markedDate": "2026-04-24",
+      "resolvedDate": "2026-04-24",
       "category": "feature",
-      "priority": "post-launch-high"
+      "status": "ui-shipped-csv-import-pending",
+      "priority": "post-launch-high",
+      "shipped": {
+        "ui": "src/pages/Settings.jsx broadcast panel",
+        "sidebar": "App.jsx broadcast sidebar link (admin-only)",
+        "migration": "supabase/migrations/20260424_email_subscribers.sql"
+      }
     },
     {
       "id": "email-smtp-setup",
