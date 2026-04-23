@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T09:45:00Z",
-  "updatedBy": "Claude AI — LAUNCH L3 Zyra expansion: 5 new Zyra systems on /map (bubble/full-page/trainer/whatsapp/prescriptions) + honest AI-stack panel",
+  "lastUpdated": "2026-04-24T10:00:00Z",
+  "updatedBy": "Claude AI — Monitor Bot MVP shipped: scripts/monitor-agent.js + seeded monitor-log.json + /map system entry (user ask: 'multi-brain navigates + reports, Claude fixes, stable')",
   "sessionStatus": "autonomous-night-shift-launch-focus",
   "overallPercent": 92,
   "launchFindings": [
@@ -640,6 +640,27 @@
         { "name": "Gemini edge function (zyra-gemini) — Phase 8", "status": "todo" },
         { "name": "Multi-model council edge function (brain-ai) — Phase 10", "status": "todo" },
         { "name": "Existing Zyra callers migrate to routeAIJob()", "status": "todo" }
+      ]
+    },
+    {
+      "id": "monitor-bot",
+      "name": "Monitor Bot — Background Self-Audit",
+      "category": "ai",
+      "percent": 25,
+      "icon": "🤖",
+      "priority": true,
+      "description": "User ask 2026-04-24: 'multi-brain AI that navigates like human, reports errors, Claude fixes, keeps app stable.' Shipped lean MVP tonight — scripts/monitor-agent.js walks public routes, scans for error signals, writes public/monitor-log.json. /map reads + renders findings. Full auto-fix loop is Phase 10 (ATLAS) — gated on founder WhatsApp+OTP per vision.",
+      "features": [
+        { "name": "scripts/monitor-agent.js — route walker + signal scanner", "status": "done" },
+        { "name": "14 routes covered (all public + login + register + map)", "status": "done" },
+        { "name": "8 heuristic signals (NaN, TypeError, [object Object], cropsintel.net leak, empty states…)", "status": "done" },
+        { "name": "public/monitor-log.json — structured findings report", "status": "done" },
+        { "name": "docs/project_monitor_bot.md — plan + non-negotiables + phase map", "status": "done" },
+        { "name": "/map panel renders latest Monitor Bot run", "status": "todo" },
+        { "name": "Wire to GitHub Actions workflow (needs workflow-scope token)", "status": "todo" },
+        { "name": "Authenticated Playwright walker (bypasses SPA hydration limit)", "status": "todo" },
+        { "name": "Multi-model AI council scoring of each finding (Phase 10)", "status": "todo" },
+        { "name": "Auto-propose PR fixes gated on founder WhatsApp+OTP (Phase 10)", "status": "todo" }
       ]
     },
     {
