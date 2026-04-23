@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T20:45:00Z",
-  "updatedBy": "Claude AI \u2014 Wave 6 Premium Card retrofit (Dashboard + Destinations + Supply)",
+  "lastUpdated": "2026-04-24T21:10:00Z",
+  "updatedBy": "Claude AI \u2014 F4 ABC audit results (106 rows, 7 gap years; 2020/21 worst at 3/12)",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 62,
   "launchReadinessPercent": 85,
@@ -227,6 +227,22 @@
         "severity": "medium",
         "question": "Paste the SUPABASE_SERVICE_ROLE_KEY value so I can add it to my local .env and run `ABC_SCRAPE_LIMIT=200 node src/scrapers/abc-scraper.js` to backfill the 10-year position-report gaps. (Or: trigger GitHub Actions workflow_dispatch for auto-scrape.yml with ABC_SCRAPE_LIMIT=200.)",
         "impact": "Without it, I can't locally re-run scrapers to fill gap crop years 2015/16, 2016/17, 2019/20\u20132023/24.",
+        "auditResults2026-04-24": {
+          "totalRowsPresent": 106,
+          "expectedWhenFullyBackfilled": 128,
+          "completeCropYears": ["2017/18", "2018/19", "2024/25"],
+          "cropYearsWithGaps": {
+            "2015/16": { "rowsPresent": 7, "missingReportMonths": [8, 9, 10, 11, 12] },
+            "2016/17": { "rowsPresent": 10, "missingReportMonths": [4, 12] },
+            "2019/20": { "rowsPresent": 9, "missingReportMonths": [7, 8, 10] },
+            "2020/21": { "rowsPresent": 3, "missingReportMonths": [1, 2, 4, 5, 8, 9, 10, 11, 12], "note": "biggest hole \u2014 prioritize" },
+            "2021/22": { "rowsPresent": 11, "missingReportMonths": [2] },
+            "2022/23": { "rowsPresent": 11, "missingReportMonths": [8] },
+            "2023/24": { "rowsPresent": 11, "missingReportMonths": [10] },
+            "2025/26": { "rowsPresent": 8, "missingReportMonths": [4, 5, 6, 7], "note": "live year \u2014 months 4-7 expected Nov-Feb per ABC calendar; not yet due" }
+          },
+          "auditMethod": "REST query against abc_position_reports using anon key extracted from production bundle; grouped by crop_year, min/max report_month."
+        },
         "oneLineAnswer": ""
       },
       {
@@ -848,8 +864,10 @@
   ],
   "stats": {
     "pagesLive": 21,
-    "realReports": 116,
-    "positionReports": 116,
+    "realReports": 106,
+    "positionReports": 106,
+    "positionReportsTargetWhenBackfilled": 128,
+    "positionReportsAuditDate": "2026-04-24",
     "cropYearsPositionReports": 11,
     "cropYears": 11,
     "cropYearsShipments": 4,
@@ -2486,6 +2504,10 @@
     }
   ],
   "milestones": [
+    {
+      "date": "2026-04-24",
+      "text": "F4 ABC audit: actual 106 position-report rows across 11 crop years (not 116 as stats claimed). 3 crop years complete, 7 have month gaps; 2020/21 is worst at 3/12. Target 128 when fully backfilled. Stats corrected + gaps queued in markedForLater.abc-position-month-gaps."
+    },
     {
       "date": "2026-04-23",
       "text": "HONESTY PASS: progress.json rewritten with accurate per-subsystem %, V1 legacy claims removed"
