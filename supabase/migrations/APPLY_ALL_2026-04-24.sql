@@ -270,7 +270,237 @@ END $$;
 COMMIT;
 
 -- ═══════════════════════════════════════════════════════════════
+-- Evening additions (2026-04-24 night shift):
+--   5. Widget Library foundation (widget_configs table + RLS + RPC)
+--   6. Team-can-verify-users RLS + column-lock trigger
+-- Both are idempotent. The evening sections are safe to re-run
+-- independently if the morning bundle was already applied.
+-- ═══════════════════════════════════════════════════════════════
+
+-- ─────────────────────────────────────────────────────────────
+-- (5) Widget Library — from 20260424_widget_configs.sql
+-- ─────────────────────────────────────────────────────────────
+-- Table + indexes + updated_at trigger + RLS (authenticated read
+-- published, admin full CRUD) + publish_widget_config() RPC.
+-- Powers the useWidgetConfig hook in src/hooks/useWidgetConfig.js.
+-- Zero risk if skipped — the hook falls back to hardcoded defaults
+-- when the table is missing.
+
+create table if not exists widget_configs (
+  id            uuid primary key default gen_random_uuid(),
+  widget_key    text not null,
+  version       int  not null default 1,
+  status        text not null default 'draft'
+                  check (status in ('draft', 'published', 'archived')),
+  title         text,
+  description   text,
+  config        jsonb not null default '{}'::jsonb,
+  created_by    uuid references auth.users(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  published_at  timestamptz,
+  unique (widget_key, version)
+);
+
+comment on table widget_configs is
+  'Per-widget published configuration merged over hardcoded defaults at runtime via useWidgetConfig(widgetKey). Admin-only write surface, authenticated-read for published rows.';
+
+create index if not exists idx_widget_configs_key_status
+  on widget_configs (widget_key, status);
+
+create index if not exists idx_widget_configs_key_published
+  on widget_configs (widget_key, published_at desc)
+  where status = 'published';
+
+create or replace function update_widget_configs_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_widget_configs_updated_at on widget_configs;
+create trigger trg_widget_configs_updated_at
+  before update on widget_configs
+  for each row execute function update_widget_configs_updated_at();
+
+alter table widget_configs enable row level security;
+
+drop policy if exists "authenticated read published widget configs" on widget_configs;
+create policy "authenticated read published widget configs"
+  on widget_configs for select
+  using (status = 'published' and auth.uid() is not null);
+
+drop policy if exists "admins read all widget configs" on widget_configs;
+create policy "admins read all widget configs"
+  on widget_configs for select
+  using (exists (
+    select 1 from user_profiles p
+    where p.id = auth.uid() and (p.role = 'admin' or p.access_tier = 'admin')
+  ));
+
+drop policy if exists "admins insert widget configs" on widget_configs;
+create policy "admins insert widget configs"
+  on widget_configs for insert
+  with check (exists (
+    select 1 from user_profiles p
+    where p.id = auth.uid() and (p.role = 'admin' or p.access_tier = 'admin')
+  ));
+
+drop policy if exists "admins update widget configs" on widget_configs;
+create policy "admins update widget configs"
+  on widget_configs for update
+  using (exists (
+    select 1 from user_profiles p
+    where p.id = auth.uid() and (p.role = 'admin' or p.access_tier = 'admin')
+  ))
+  with check (exists (
+    select 1 from user_profiles p
+    where p.id = auth.uid() and (p.role = 'admin' or p.access_tier = 'admin')
+  ));
+
+drop policy if exists "admins delete widget configs" on widget_configs;
+create policy "admins delete widget configs"
+  on widget_configs for delete
+  using (exists (
+    select 1 from user_profiles p
+    where p.id = auth.uid() and (p.role = 'admin' or p.access_tier = 'admin')
+  ));
+
+create or replace function publish_widget_config(p_widget_key text, p_version int)
+returns uuid language plpgsql security definer as $$
+declare
+  target_id uuid;
+begin
+  if not exists (
+    select 1 from user_profiles p
+    where p.id = auth.uid() and (p.role = 'admin' or p.access_tier = 'admin')
+  ) then
+    raise exception 'publish_widget_config: caller is not admin';
+  end if;
+
+  update widget_configs
+  set status = 'archived'
+  where widget_key = p_widget_key and status = 'published';
+
+  update widget_configs
+  set status = 'published', published_at = now()
+  where widget_key = p_widget_key and version = p_version
+  returning id into target_id;
+
+  if target_id is null then
+    raise exception 'publish_widget_config: no matching draft (widget_key=%, version=%)',
+                    p_widget_key, p_version;
+  end if;
+
+  return target_id;
+end;
+$$;
+
+comment on function publish_widget_config(text, int) is
+  'Atomically publish a widget_configs version: archives previous published row + promotes the specified version. Admin-only.';
+
+grant select on widget_configs to authenticated;
+grant execute on function publish_widget_config(text, int) to authenticated;
+
+-- ─────────────────────────────────────────────────────────────
+-- (6) Team-can-verify-users — from 20260424_team_can_verify_users.sql
+-- ─────────────────────────────────────────────────────────────
+-- Allows MAXONS team members to promote newly-registered users
+-- from access_tier='registered' → 'verified'. Trigger locks all
+-- other columns (role, email, name, phone, etc.) for non-admins.
+-- Admins retain full CRUD; service role bypasses RLS entirely.
+
+DROP POLICY IF EXISTS "Team can verify registered users" ON user_profiles;
+
+CREATE POLICY "Team can verify registered users" ON user_profiles
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles self
+      WHERE self.id = auth.uid()
+        AND (
+          self.role IN ('admin','analyst','broker','seller','trader','sales','maxons_team')
+          OR self.access_tier IN ('maxons_team','admin')
+        )
+    )
+    AND access_tier = 'registered'
+  )
+  WITH CHECK (access_tier = 'verified');
+
+COMMENT ON POLICY "Team can verify registered users" ON user_profiles IS
+  'Allows MAXONS team members to promote registered → verified. Row-level guard only; column-level guard enforced by trigger lock_team_column_writes.';
+
+CREATE OR REPLACE FUNCTION lock_team_column_writes()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+  updater_role TEXT;
+  updater_tier TEXT;
+  is_admin BOOLEAN;
+  is_team BOOLEAN;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF OLD.id = auth.uid() THEN
+    IF NEW.access_tier IS DISTINCT FROM OLD.access_tier THEN
+      RAISE EXCEPTION 'Users cannot change their own access_tier. Contact an admin.'
+        USING ERRCODE = '42501';
+    END IF;
+    IF NEW.role IS DISTINCT FROM OLD.role THEN
+      RAISE EXCEPTION 'Users cannot change their own role. Contact an admin.'
+        USING ERRCODE = '42501';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  SELECT role, access_tier INTO updater_role, updater_tier
+  FROM user_profiles WHERE id = auth.uid();
+
+  is_admin := (updater_role = 'admin' OR updater_tier = 'admin');
+  is_team := (
+    updater_role IN ('admin','analyst','broker','seller','trader','sales','maxons_team')
+    OR updater_tier IN ('maxons_team','admin')
+  );
+
+  IF is_admin THEN RETURN NEW; END IF;
+
+  IF NOT is_team THEN
+    RAISE EXCEPTION 'Only team members can update other user profiles.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF NEW.access_tier IS DISTINCT FROM OLD.access_tier
+     AND NOT (OLD.access_tier = 'registered' AND NEW.access_tier = 'verified') THEN
+    RAISE EXCEPTION 'Team members can only promote access_tier registered → verified, not % → %',
+      OLD.access_tier, NEW.access_tier
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF NEW.role            IS DISTINCT FROM OLD.role            THEN RAISE EXCEPTION 'Team members cannot change role.'            USING ERRCODE='42501'; END IF;
+  IF NEW.email           IS DISTINCT FROM OLD.email           THEN RAISE EXCEPTION 'Team members cannot change email.'           USING ERRCODE='42501'; END IF;
+  IF NEW.full_name       IS DISTINCT FROM OLD.full_name       THEN RAISE EXCEPTION 'Team members cannot change name.'            USING ERRCODE='42501'; END IF;
+  IF NEW.phone           IS DISTINCT FROM OLD.phone           THEN RAISE EXCEPTION 'Team members cannot change phone.'           USING ERRCODE='42501'; END IF;
+  IF NEW.whatsapp_number IS DISTINCT FROM OLD.whatsapp_number THEN RAISE EXCEPTION 'Team members cannot change WhatsApp number.' USING ERRCODE='42501'; END IF;
+  IF NEW.company         IS DISTINCT FROM OLD.company         THEN RAISE EXCEPTION 'Team members cannot change company.'         USING ERRCODE='42501'; END IF;
+  IF NEW.id              IS DISTINCT FROM OLD.id              THEN RAISE EXCEPTION 'Profile id is immutable.'                    USING ERRCODE='42501'; END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_lock_team_column_writes ON user_profiles;
+CREATE TRIGGER trg_lock_team_column_writes
+  BEFORE UPDATE ON user_profiles
+  FOR EACH ROW EXECUTE FUNCTION lock_team_column_writes();
+
+-- ═══════════════════════════════════════════════════════════════
 -- Done. Expected final state:
 --   • email_subscribers(source='v1_registered') = 62 rows
 --   • user_profiles(migrated_from_v1=true) = 62 rows
+--   • widget_configs table exists with 0 rows (Workshop UI post-launch fills it)
+--   • policy "Team can verify registered users" exists on user_profiles
+--   • trigger trg_lock_team_column_writes exists on user_profiles
 -- ═══════════════════════════════════════════════════════════════
