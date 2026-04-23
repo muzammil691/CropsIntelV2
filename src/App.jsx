@@ -135,18 +135,47 @@ function UserMenu() {
 }
 
 const ADMIN_ROLES = ['admin'];
-const TEAM_ROLES = ['admin', 'analyst', 'broker', 'seller'];
+const TEAM_ROLES = ['admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team'];
+
+// Role → paths this role cares about most (shown first). Everything else
+// stays visible but drops below. Closes the Phase D "role-aware nav" todo.
+const ROLE_PRIORITY = {
+  grower:    ['/dashboard', '/forecasts', '/supply', '/pricing', '/news', '/analysis'],
+  supplier:  ['/dashboard', '/supply', '/forecasts', '/pricing', '/destinations', '/analysis'],
+  processor: ['/dashboard', '/forecasts', '/pricing', '/supply', '/analysis'],
+  broker:    ['/dashboard', '/brokers', '/destinations', '/analysis', '/pricing', '/news'],
+  buyer:     ['/dashboard', '/pricing', '/destinations', '/news', '/intelligence', '/analysis'],
+  trader:    ['/dashboard', '/analysis', '/supply', '/trading', '/pricing', '/intelligence'],
+  analyst:   ['/dashboard', '/analysis', '/forecasts', '/reports', '/news'],
+  logistics: ['/dashboard', '/destinations', '/supply', '/news'],
+  finance:   ['/dashboard', '/reports', '/pricing', '/analysis'],
+  admin:     ['/dashboard', '/autonomous', '/crm', '/intelligence', '/trading'],
+};
 
 function Sidebar() {
   const location = useLocation();
   const { isAuthenticated, profile } = useAuth();
   const userRole = profile?.role || 'buyer';
+  const userTier = profile?.access_tier || profile?.tier;
+  const isTeam = ADMIN_ROLES.includes(userRole) || TEAM_ROLES.includes(userRole) || userTier === 'admin' || userTier === 'maxons_team';
 
-  // Filter nav items based on user role
-  const visibleItems = NAV_ITEMS.filter(item => {
-    if (item.requireAdmin && !ADMIN_ROLES.includes(userRole)) return false;
+  // Filter nav items based on user role + tier
+  const filtered = NAV_ITEMS.filter(item => {
+    if (item.requireAdmin && !ADMIN_ROLES.includes(userRole) && userTier !== 'admin') return false;
+    if (item.requireTeam && !isTeam) return false;
     if (item.requireAuth && !isAuthenticated) return false;
     return true;
+  });
+
+  // Reorder by role priority — preferred paths first, rest in original order
+  const priority = ROLE_PRIORITY[userRole] || [];
+  const visibleItems = [...filtered].sort((a, b) => {
+    const ai = priority.indexOf(a.path);
+    const bi = priority.indexOf(b.path);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
   });
 
   return (
@@ -255,8 +284,12 @@ function MobileNav() {
   const userRole = profile?.role || 'buyer';
   const [showMore, setShowMore] = React.useState(false);
 
+  const userTier = profile?.access_tier || profile?.tier;
+  const isTeam = ADMIN_ROLES.includes(userRole) || TEAM_ROLES.includes(userRole) || userTier === 'admin' || userTier === 'maxons_team';
+
   const moreItems = MOBILE_MORE.filter(item => {
-    if (item.requireAdmin && !ADMIN_ROLES.includes(userRole)) return false;
+    if (item.requireAdmin && !ADMIN_ROLES.includes(userRole) && userTier !== 'admin') return false;
+    if (item.requireTeam && !isTeam) return false;
     if (item.requireAuth && !isAuthenticated) return false;
     return true;
   });
