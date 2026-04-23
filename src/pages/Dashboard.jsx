@@ -7,6 +7,7 @@ import { seedAiAnalyses } from '../lib/seed-ai-analyses';
 import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 import PersonaBanner from '../components/PersonaBanner';
 import PersonaInsights from '../components/PersonaInsights';
+import Card from '../components/Card';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts';
@@ -180,7 +181,7 @@ function SupplyPositionWidget({ current, prior }) {
   const delta = soldPctPrior !== null ? (soldPctCurrent - soldPctPrior).toFixed(1) : null;
 
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+    <Card>
       <h3 className="text-lg font-semibold text-white mb-1">Crop Sold Progress</h3>
       <p className="text-[10px] text-gray-500 mb-4">
         {current.crop_year} — total sold as % of total supply
@@ -254,7 +255,7 @@ function SupplyPositionWidget({ current, prior }) {
           <p className="text-[10px] text-gray-600">{(toNum(current.uncommitted_lbs) / 1e6).toFixed(0)}M lbs</p>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -619,9 +620,9 @@ export default function Dashboard() {
         <SupplyPositionWidget current={lr} prior={py} />
 
         {/* Shipment Trend */}
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+        <Card>
           <ShipmentTrend reports={allReports} />
-        </div>
+        </Card>
       </div>
 
       {/* AI Insights + System Status */}
@@ -741,7 +742,7 @@ export default function Dashboard() {
       {/* Live Pricing, News Feed, System Pipeline */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         {/* Live Pricing Widget */}
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+        <Card>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">
               Live Almond Prices
@@ -784,10 +785,10 @@ export default function Dashboard() {
               <p className="text-[10px] text-gray-600 mt-1">Strata scraper will populate prices</p>
             </div>
           )}
-        </div>
+        </Card>
 
         {/* Industry News Feed Widget */}
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+        <Card>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">
               Latest News &amp; Intel
@@ -836,10 +837,10 @@ export default function Dashboard() {
               <p className="text-[10px] text-gray-600 mt-1">News scraper will populate intel</p>
             </div>
           )}
-        </div>
+        </Card>
 
         {/* Autonomous Pipeline Status Widget */}
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+        <Card>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Pipeline Status</h3>
             <div className="flex items-center gap-1.5">
@@ -901,7 +902,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
