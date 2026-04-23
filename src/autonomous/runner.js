@@ -25,8 +25,21 @@ import { scrapeBountiful } from '../scrapers/bountiful-scraper.js';
 import { scrapeNews } from '../scrapers/news-scraper.js';
 import { pollInbox } from './imap-reader.js';
 import { runEmailIngestion } from './email-ingestor.js';
-import { flushOnce as flushEmailQueue } from './email-flusher.js';
-import { archiveABCReports, backupDatabase } from './gdrive-uploader.js';
+
+// Dynamic (lazy) imports for optional outbound pipelines so that auto-scrape
+// CI — which runs `npm ci` against a pinned lock — doesn't break when new
+// deps (nodemailer, googleapis) haven't been added to the lockfile yet.
+// The user installs these locally (`npm install nodemailer googleapis`) to
+// enable the 5-min email flusher + daily Google Drive backup.
+async function lazyImport(modulePath, missingDepsMsg) {
+  try {
+    return await import(modulePath);
+  } catch (err) {
+    console.warn(`[runner] skipped ${modulePath}: ${missingDepsMsg}`);
+    console.warn(`[runner] underlying error: ${err?.message || err}`);
+    return null;
+  }
+}
 
 const RUNNER_VERSION = '5.2.0';
 
@@ -146,11 +159,16 @@ async function runAutonomousCycle() {
     const aiResult = await runAIAnalysis();
     steps.push({ step: 'ai_analysis', monthly_brief: aiResult.monthlyBrief ? 'generated' : 'skipped', yoy_insight: aiResult.yoyInsight ? 'generated' : 'skipped' });
 
-    // Step 6: Archive ABC PDFs to Google Drive (non-fatal — skip if creds missing)
+    // Step 6: Archive ABC PDFs to Google Drive (non-fatal — skip if deps or creds missing)
     console.log('\n--- STEP 6: Google Drive Archive ---');
     try {
-      const archiveResult = await archiveABCReports();
-      steps.push({ step: 'gdrive_archive', found: archiveResult.found, uploaded: archiveResult.uploaded, skipped: archiveResult.skipped });
+      const gd = await lazyImport('./gdrive-uploader.js', 'npm install googleapis to enable Drive archival');
+      if (gd?.archiveABCReports) {
+        const archiveResult = await gd.archiveABCReports();
+        steps.push({ step: 'gdrive_archive', found: archiveResult.found, uploaded: archiveResult.uploaded, skipped: archiveResult.skipped });
+      } else {
+        steps.push({ step: 'gdrive_archive', skipped: 'googleapis dep not installed' });
+      }
     } catch (gdErr) {
       console.warn('Google Drive archive failed (non-fatal — check GOOGLE_SERVICE_ACCOUNT_KEY_* env):', gdErr.message);
       steps.push({ step: 'gdrive_archive', error: gdErr.message });
@@ -232,9 +250,12 @@ function startRunner() {
   // Every 5 minutes: Flush email_queue (outbound) — drains messages the
   // edge function couldn't send live (Deno Deploy ↔ Office 365 SMTP fails).
   // Uses the same Office 365 creds proven working by imap-reader.js.
+  // Lazy-loaded: if nodemailer isn't installed, the cron tick logs and skips.
   cron.schedule('*/5 * * * *', async () => {
     try {
-      const result = await flushEmailQueue();
+      const flusher = await lazyImport('./email-flusher.js', 'npm install nodemailer to enable email queue flushing');
+      if (!flusher?.flushOnce) return;
+      const result = await flusher.flushOnce();
       if (result.found > 0) {
         console.log(`Email flush: ${result.sent}/${result.found} sent, ${result.failed} failed`);
       }
@@ -256,10 +277,12 @@ function startRunner() {
 
   // Daily: Google Drive DB backup at 02:00 UTC (after health check, before
   // the busy EU morning). Dumps key tables → Backups_YYYY-MM-DD/ subfolder.
+  // Lazy-loaded: if googleapis isn't installed, the cron tick logs and skips.
   cron.schedule('0 2 * * *', async () => {
     console.log('Scheduled trigger: Google Drive DB backup');
     try {
-      await backupDatabase();
+      const gd = await lazyImport('./gdrive-uploader.js', 'npm install googleapis to enable Drive backup');
+      if (gd?.backupDatabase) await gd.backupDatabase();
     } catch (err) {
       console.warn('Scheduled DB backup failed:', err.message);
     }
