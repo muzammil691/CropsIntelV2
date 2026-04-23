@@ -45,6 +45,11 @@ function useCounter(end, duration = 2000, startDelay = 0) {
 }
 
 /* ── Fade-in on scroll (below-the-fold sections) ── */
+// 2026-04-24 launch-audit fix: if the element is ALREADY within (or above)
+// the viewport at mount, reveal immediately instead of waiting for the
+// IntersectionObserver to fire. Previously, content above the viewport at
+// mount stayed invisible permanently — the rest of the Welcome page below
+// the hero was rendering as a blank screen for real visitors.
 function FadeIn({ children, className = '', delay = 0 }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -52,12 +57,18 @@ function FadeIn({ children, className = '', delay = 0 }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // If element is already within or above the viewport on mount, reveal now.
+    const rect = el.getBoundingClientRect();
+    const alreadyReady = rect.top < window.innerHeight && rect.bottom > -200;
+    if (alreadyReady) { setVisible(true); return; }
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setVisible(true); },
-      { threshold: 0.15 }
+      { threshold: 0.05, rootMargin: '0px 0px -5% 0px' }
     );
     obs.observe(el);
-    return () => obs.disconnect();
+    // Failsafe: reveal after 1.5s regardless so Welcome is never blank.
+    const t = setTimeout(() => setVisible(true), 1500);
+    return () => { obs.disconnect(); clearTimeout(t); };
   }, []);
 
   return (
@@ -163,7 +174,7 @@ export default function Welcome() {
   const [yearsCount, yearsRef] = useCounter(10, 1800, 800);
   const [reportsCount, reportsRef] = useCounter(116, 2200, 900);
   const [countriesCount, countriesRef] = useCounter(45, 2000, 1000);
-  const [cropYearsCount, cropYearsRef] = useCounter(9, 1600, 1100);
+  const [cropYearsCount, cropYearsRef] = useCounter(11, 1600, 1100);
   const [chatStep, setChatStep] = useState(0);
 
   useEffect(() => {
