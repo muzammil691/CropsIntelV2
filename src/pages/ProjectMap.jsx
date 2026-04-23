@@ -341,17 +341,203 @@ function RecentCommitsRow({ commits }) {
   );
 }
 
+// LaunchFindingsPanel — renders the /map logbook of walkthrough bugs
+// found + fixed by Claude during the L1 data-correctness audit.
+function LaunchFindingsPanel({ findings }) {
+  if (!findings?.length) return null;
+  const sevColor = {
+    critical: 'bg-red-600/25 text-red-300 border-red-500/40',
+    high:     'bg-red-500/20 text-red-400 border-red-500/30',
+    medium:   'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    low:      'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    info:     'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  };
+  const statusColor = {
+    fixed:       'text-green-400',
+    open:        'text-amber-400',
+    observed:    'text-gray-400',
+    false_alarm: 'text-gray-500',
+  };
+  const fixedCount = findings.filter(f => f.status === 'fixed').length;
+  const openCount  = findings.filter(f => f.status === 'open').length;
+  return (
+    <div className="bg-gray-900/30 border border-gray-800 rounded-xl p-5">
+      <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+        <div>
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            {'\uD83D\uDD0D'} Launch Walkthrough Findings
+            <span className="text-[10px] font-normal text-gray-500">({findings.length} total)</span>
+          </h3>
+          <p className="text-[10px] text-gray-600 mt-0.5">
+            Real bugs Claude caught during the live-site audit tonight. Fixed = already shipped to cropsintel.com.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          {fixedCount > 0 && <span className="text-green-400">✓ {fixedCount} fixed</span>}
+          {openCount  > 0 && <span className="text-amber-400">◉ {openCount} open</span>}
+        </div>
+      </div>
+      <div className="space-y-2">
+        {findings.map(f => (
+          <div key={f.id} className="bg-gray-900/50 border border-gray-800 rounded-lg p-3">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className={`text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border ${sevColor[f.severity] || sevColor.info}`}>
+                {f.severity}
+              </span>
+              <span className="text-[10px] text-gray-500 font-mono">{f.id}</span>
+              <span className="text-[10px] text-gray-400">{f.found_at}</span>
+              <span className={`ml-auto text-[10px] font-mono ${statusColor[f.status] || 'text-gray-500'}`}>
+                {f.status === 'fixed' ? '✓ fixed' : f.status === 'false_alarm' ? 'false alarm' : f.status}
+              </span>
+            </div>
+            <p className="text-xs text-gray-300 leading-relaxed">{f.issue}</p>
+            {f.note && <p className="text-[11px] text-gray-500 mt-1 italic leading-relaxed">{f.note}</p>}
+            {f.fixCommit && f.fixCommit !== 'pending' && (
+              <p className="text-[10px] text-green-400/70 mt-1 font-mono">fix: {f.fixCommit}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// NightShiftPanel — renders launchFocusPlan + nightShiftPlan blocks so
+// the user can see what Claude was working on + what's queued next.
+function NightShiftPanel({ launchFocus, nightShift }) {
+  if (!launchFocus?.items && !nightShift?.blocks) return null;
+  const statusIcon = {
+    done:        '✓',
+    in_progress: '…',
+    queued:      '○',
+    parked:      '⏸',
+  };
+  const statusColor = {
+    done:        'text-green-400',
+    in_progress: 'text-amber-400',
+    queued:      'text-gray-500',
+    parked:      'text-gray-600',
+  };
+  return (
+    <div className="bg-gray-900/30 border border-gray-800 rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        {'\uD83C\uDF19'} Night-Shift Plan
+      </h3>
+      {launchFocus?.items?.length > 0 && (
+        <div className="mb-4">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Launch-focus queue</p>
+          <div className="space-y-1.5">
+            {launchFocus.items.map(item => (
+              <div key={item.id} className="flex items-center gap-3 text-xs">
+                <span className={`shrink-0 w-5 text-center ${statusColor[item.status] || 'text-gray-500'}`}>
+                  {statusIcon[item.status] || '○'}
+                </span>
+                <span className="font-mono text-[10px] text-gray-500 w-6">{item.id}</span>
+                <span className={`flex-1 ${item.status === 'done' ? 'text-gray-400 line-through' : 'text-gray-300'}`}>
+                  {item.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {nightShift?.blocks?.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
+            Night-shift blocks {nightShift.note ? '(vision scaffolds — see note)' : ''}
+          </p>
+          <div className="space-y-1">
+            {nightShift.blocks.map(b => (
+              <div key={b.id} className="flex items-center gap-3 text-[11px]">
+                <span className={`shrink-0 w-5 text-center ${statusColor[b.status] || 'text-gray-500'}`}>
+                  {statusIcon[b.status] || '○'}
+                </span>
+                <span className="text-gray-500 w-4">{b.id}</span>
+                <span className={`flex-1 ${b.status === 'done' ? 'text-gray-400 line-through' : b.status === 'parked' ? 'text-gray-500 italic' : 'text-gray-300'}`}>
+                  {b.name}
+                </span>
+              </div>
+            ))}
+          </div>
+          {nightShift.note && <p className="text-[10px] text-gray-600 mt-2 italic">{nightShift.note}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// MonitorBotPanel — renders public/monitor-log.json (findings from the
+// background self-audit agent). Empty-state when the agent hasn't run yet.
+function MonitorBotPanel({ monitorLog }) {
+  if (!monitorLog) {
+    return (
+      <div className="bg-gray-900/30 border border-gray-800 rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+          {'\uD83E\uDD16'} Monitor Bot
+        </h3>
+        <p className="text-[11px] text-gray-500 leading-relaxed">
+          Background self-audit agent. Walks the public site, scans for error signals, reports findings back to Claude.
+          Shipped MVP 2026-04-24 — see <code>scripts/monitor-agent.js</code>. Runs will start streaming here after workflow wiring (Phase 10 also adds the auto-fix loop behind founder WhatsApp+OTP gate).
+        </p>
+      </div>
+    );
+  }
+  const { totals = {}, entries = [], generated_at } = monitorLog;
+  const failing = entries.filter(e => !e.ok || e.findings?.length > 0);
+  return (
+    <div className="bg-gray-900/30 border border-gray-800 rounded-xl p-5">
+      <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            {'\uD83E\uDD16'} Monitor Bot — latest run
+          </h3>
+          <p className="text-[10px] text-gray-600 mt-0.5 font-mono">{generated_at}</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-green-400">✓ {totals.ok_count || 0}/{totals.routes_checked || 0} OK</span>
+          {totals.findings_count > 0 && <span className="text-amber-400">{totals.findings_count} findings</span>}
+        </div>
+      </div>
+      {failing.length === 0 ? (
+        <p className="text-[11px] text-gray-500 italic">No active findings. All {totals.routes_checked || 0} scanned routes are clean.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {failing.slice(0, 10).map(e => (
+            <div key={e.route} className="flex items-center gap-3 text-[11px]">
+              <span className={`shrink-0 font-mono ${e.ok ? 'text-amber-400' : 'text-red-400'}`}>
+                {e.status ?? 'ERR'}
+              </span>
+              <span className="text-gray-400 flex-1 truncate">{e.route}</span>
+              <span className="text-gray-500">{e.findings?.length || 0}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectMap() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [lastRefresh, setLastRefresh] = useState(null);
 
+  const [monitorLog, setMonitorLog] = useState(null);
   const fetchData = async () => {
     try {
-      const res = await fetch('/progress.json?t=' + Date.now());
-      const json = await res.json();
+      const [progressRes, monitorRes] = await Promise.all([
+        fetch('/progress.json?t=' + Date.now()),
+        fetch('/monitor-log.json?t=' + Date.now()).catch(() => null),
+      ]);
+      const json = await progressRes.json();
       setData(json);
+      if (monitorRes && monitorRes.ok) {
+        try {
+          const ml = await monitorRes.json();
+          setMonitorLog(ml);
+        } catch { /* ignore */ }
+      }
       setLastRefresh(new Date());
     } catch (e) {
       console.error('Failed to load progress.json:', e);
@@ -497,6 +683,11 @@ export default function ProjectMap() {
                 {data.accessTiers.map(t => <AccessTierCard key={t.id} tier={t} />)}
               </div>
             </div>
+            {/* Night-shift plan + Launch findings + Monitor Bot — night-shift session panels */}
+            <NightShiftPanel launchFocus={data.launchFocusPlan} nightShift={data.nightShiftPlan} />
+            <LaunchFindingsPanel findings={data.launchFindings} />
+            <MonitorBotPanel monitorLog={monitorLog} />
+
             {/* Recent commits — small chip list, only renders when present */}
             <RecentCommitsRow commits={data.recentCommits} />
           </div>
