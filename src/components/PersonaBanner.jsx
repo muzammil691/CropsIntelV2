@@ -124,6 +124,50 @@ const PERSONA_MAP = {
       { label: 'AI Intelligence', to: '/intelligence', desc: 'Ask Zyra anything about the market' },
     ],
   },
+  admin: {
+    icon: '🛡️',
+    title: 'MAXONS Admin',
+    tagline: 'Full platform view — CRM, BRM, SRM, scrapers, users. All relationships, all systems.',
+    accent: 'purple',
+    actions: [
+      { label: 'CRM & Deals', to: '/crm', desc: 'Pipeline + Users (tier filter + Verify)' },
+      { label: 'Brokers (BRM)', to: '/brokers', desc: 'Market signals + broker pipeline' },
+      { label: 'Suppliers (SRM)', to: '/suppliers', desc: 'County analysis + demand signals' },
+    ],
+  },
+  maxons_team: {
+    icon: '🏢',
+    title: 'MAXONS Team',
+    tagline: 'Every relationship, every deal, every signal — the operational cockpit of MAXONS.',
+    accent: 'purple',
+    actions: [
+      { label: 'CRM & Deals', to: '/crm', desc: 'Customer pipeline + bulk invite + verify users' },
+      { label: 'Brokers (BRM)', to: '/brokers', desc: 'Market signals + broker pipeline' },
+      { label: 'Trading Portal', to: '/trading', desc: 'Offer builder + deal management' },
+    ],
+  },
+  sales: {
+    icon: '💼',
+    title: 'MAXONS Sales',
+    tagline: 'Customer intelligence with Zyra as your coworker — target the right deal at the right time.',
+    accent: 'green',
+    actions: [
+      { label: 'CRM & Deals', to: '/crm', desc: 'Your customer pipeline + Zyra sales tips' },
+      { label: 'Trading Portal', to: '/trading', desc: 'Offer builder + margin calculator' },
+      { label: 'Pricing', to: '/pricing', desc: 'Variety × grade with MAXONS margin' },
+    ],
+  },
+  seller: {
+    icon: '💼',
+    title: 'Seller',
+    tagline: 'Offer building + margin visibility + customer matching.',
+    accent: 'green',
+    actions: [
+      { label: 'Trading Portal', to: '/trading', desc: 'Offer builder' },
+      { label: 'CRM & Deals', to: '/crm', desc: 'Customer pipeline + verification' },
+      { label: 'Pricing', to: '/pricing', desc: 'Live Strata + MAXONS margin' },
+    ],
+  },
 };
 
 const ACCENTS = {
@@ -141,7 +185,14 @@ export default function PersonaBanner() {
   if (!isAuthenticated) return null;
 
   const role = (profile?.role || 'other').toLowerCase();
-  const persona = PERSONA_MAP[role] || PERSONA_MAP.other;
+  const tier = (profile?.access_tier || '').toLowerCase();
+  // MAXONS admin/team tier takes precedence over the role dropdown — if the
+  // user is on the team, show them the team persona even if their role is
+  // 'buyer' or empty. Keeps admin/maxons_team views stable.
+  const key = (tier === 'admin' && PERSONA_MAP.admin) ? 'admin'
+             : (tier === 'maxons_team' && PERSONA_MAP.maxons_team) ? 'maxons_team'
+             : role;
+  const persona = PERSONA_MAP[key] || PERSONA_MAP.other;
   const accent = ACCENTS[persona.accent] || ACCENTS.gray;
   const name = profile?.full_name?.split(' ')[0] || 'there';
 
