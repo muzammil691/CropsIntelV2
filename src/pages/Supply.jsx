@@ -6,6 +6,9 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   ComposedChart, ReferenceLine
 } from 'recharts';
+import FilterBar from '../components/FilterBar';
+import VarietySection from '../components/VarietySection';
+import CountySection from '../components/CountySection';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -90,7 +93,10 @@ export default function Supply() {
       if (data) {
         setReports(data);
         const crops = [...new Set(data.map(r => r.crop_year))].sort();
-        setSelectedCrops(crops.slice(-3));
+        // F3: Default to the last 5 crop years (was 3). Users have quick
+        // actions for Last 3 / Last 5 / All below if they want to widen
+        // or narrow the comparison window.
+        setSelectedCrops(crops.slice(-5));
       }
       setLoading(false);
     }
@@ -312,39 +318,26 @@ export default function Supply() {
         </div>
       )}
 
-      {/* Crop Year Selector */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {allCropYears.map(cy => (
-          <button
-            key={cy}
-            onClick={() => toggleCrop(cy)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              selectedCrops.includes(cy)
-                ? 'text-white border'
-                : 'bg-gray-800/50 text-gray-500 border border-gray-800 hover:border-gray-600'
-            }`}
-            style={selectedCrops.includes(cy) ? {
-              backgroundColor: (CROP_COLORS[cy] || '#888') + '20',
-              borderColor: (CROP_COLORS[cy] || '#888') + '60',
-              color: CROP_COLORS[cy] || '#888'
-            } : undefined}
-          >
-            {cy}
-          </button>
-        ))}
-        <button
-          onClick={() => setSelectedCrops(allCropYears)}
-          className="px-3 py-1.5 rounded-lg text-xs text-gray-500 border border-gray-800 hover:border-gray-600"
-        >
-          All
-        </button>
-        <button
-          onClick={() => setSelectedCrops(allCropYears.slice(-3))}
-          className="px-3 py-1.5 rounded-lg text-xs text-gray-500 border border-gray-800 hover:border-gray-600"
-        >
-          Last 3
-        </button>
-      </div>
+      {/* F3: Crop-year compare — replaces bespoke chip buttons with the
+          shared FilterBar. Quick actions let users switch the comparison
+          window between Last 3 / Last 5 / All (11) with one click. */}
+      <FilterBar
+        label={`Crop Years to compare (${allCropYears.length} available)`}
+        options={allCropYears.map(cy => ({
+          value: cy,
+          label: cy,
+          color: CROP_COLORS[cy] || '#888',
+        }))}
+        selected={selectedCrops}
+        onToggle={toggleCrop}
+        quickActions={[
+          { label: 'Last 3', action: () => setSelectedCrops(allCropYears.slice(-3)) },
+          { label: 'Last 5', action: () => setSelectedCrops(allCropYears.slice(-5)) },
+          { label: `All (${allCropYears.length})`, action: () => setSelectedCrops(allCropYears) },
+          { label: 'Clear',  action: () => setSelectedCrops([]) },
+        ]}
+        emptyHint="Pick at least one crop year"
+      />
 
       {/* Row 1: Commitment Rate + Draw-Down */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -566,6 +559,20 @@ export default function Supply() {
           </table>
         </div>
       </ChartCard>
+
+      {/* F3: Variety breakdown from abc_crop_receipts — lets traders
+          compare variety share across years + drill into specific
+          varieties. Component already powers Forecasts.jsx. */}
+      <div className="mt-6">
+        <VarietySection />
+      </div>
+
+      {/* F3: County breakdown from abc_crop_receipts — Fresno / Kern /
+          Madera / etc. Lets growers see their region's contribution to
+          total receipts. Same shared component as Forecasts.jsx. */}
+      <div className="mt-6">
+        <CountySection />
+      </div>
     </div>
   );
 }
