@@ -37,6 +37,25 @@ const PAYMENT_TERMS = [
   'TT Against BL', 'DA 30/60/90', 'Open Account',
 ];
 
+// Grade + size taxonomy — aligned with ABC + industry conventions.
+// User directive 2026-04-24: capture grades, sizes as selectable tags
+// so the rich profile can drive personalized offer matching.
+const GRADES = [
+  'US Extra No.1', 'US No.1 (Supreme)', 'US Select Sheller Run',
+  'US Standard Sheller Run', 'NP-Select',
+  'Whole & Broken', 'Pieces', 'Meal/Butter grade',
+  'Insecticide-free', 'Natural',
+];
+
+const SIZES = [
+  // Inshell
+  '18/20', '20/22', '23/25', '27/30', '30/32', '32/34',
+  // Shelled (count per ounce)
+  '16/18', '18/20 (Shelled)', '20/22 (Shelled)', '23/25 (Shelled)',
+  '25/27', '27/30 (Shelled)', '30/32 (Shelled)', '32/34 (Shelled)',
+  '34/36', '36/40', 'Baker', 'Manufacturing',
+];
+
 const MAJOR_PORTS = [
   // Middle East
   'Jebel Ali (UAE)', 'Khalifa Port (UAE)', 'Hamad Port (Qatar)',
@@ -138,11 +157,14 @@ export default function Register() {
     annual_volume: '',
     products_of_interest: [],
     preferred_ports: [],
+    preferred_grades: [],
+    preferred_sizes: [],
     certifications: [],
     payment_terms: [],
-    // Step 4 — Social (optional)
+    // Step 4 — Social + references (optional, helps AI invite network)
     linkedin: '',
     twitter: '',
+    references: '',
   });
 
   const [error, setError] = useState('');
@@ -215,8 +237,11 @@ export default function Register() {
         annual_volume: form.annual_volume,
         products_of_interest: form.products_of_interest,
         preferred_ports: form.preferred_ports,
+        preferred_grades: form.preferred_grades,
+        preferred_sizes: form.preferred_sizes,
         certifications: form.certifications,
         payment_terms: form.payment_terms,
+        references: form.references || null,
         website: form.website,
         social_links: {
           linkedin: form.linkedin || null,
@@ -478,6 +503,40 @@ export default function Register() {
                 )}
               </div>
 
+              {/* Grades */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Preferred Grades</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {GRADES.map(g => {
+                    const sel = form.preferred_grades.includes(g);
+                    return (
+                      <button key={g} type="button" onClick={() => toggleArrayItem('preferred_grades', g)}
+                        className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                          sel ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400'
+                              : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                        }`}>{g}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sizes */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Preferred Sizes <span className="text-[10px] text-gray-600">(inshell or shelled count per oz)</span></label>
+                <div className="flex flex-wrap gap-1.5">
+                  {SIZES.map(s => {
+                    const sel = form.preferred_sizes.includes(s);
+                    return (
+                      <button key={s} type="button" onClick={() => toggleArrayItem('preferred_sizes', s)}
+                        className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                          sel ? 'bg-teal-500/20 border-teal-500/40 text-teal-400'
+                              : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                        }`}>{s}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Certifications */}
               <div>
                 <label className="block text-xs text-gray-400 mb-2">Certifications</label>
@@ -536,6 +595,8 @@ export default function Register() {
                   ['Annual Volume', form.annual_volume || 'Not specified'],
                   ['Products', form.products_of_interest.join(', ') || 'None selected'],
                   ['Ports', form.preferred_ports.join(', ') || 'None selected'],
+                  ['Grades', form.preferred_grades.join(', ') || 'None selected'],
+                  ['Sizes', form.preferred_sizes.join(', ') || 'None selected'],
                   ['Certifications', form.certifications.join(', ') || 'None'],
                   ['Payment Terms', form.payment_terms.join(', ') || 'Not specified'],
                 ]} />
@@ -548,6 +609,23 @@ export default function Register() {
                   <InputField label="LinkedIn" value={form.linkedin} onChange={v => updateField('linkedin', v)} placeholder="linkedin.com/in/..." small />
                   <InputField label="Twitter / X" value={form.twitter} onChange={v => updateField('twitter', v)} placeholder="@handle" small />
                 </div>
+              </div>
+
+              {/* References (optional — seeds AI-driven network invitations) */}
+              <div className="border-t border-gray-800 pt-4 mt-4">
+                <label className="block text-xs text-gray-400 mb-1.5">
+                  References <span className="text-[10px] text-gray-600">(optional — so Zyra can introduce you to the right people)</span>
+                </label>
+                <textarea
+                  value={form.references}
+                  onChange={e => updateField('references', e.target.value)}
+                  rows={3}
+                  placeholder="Who do you trade with? Companies, handlers, brokers, growers you already work with — we'll use this to surface relevant contacts and invites."
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50 resize-y"
+                />
+                <p className="text-[10px] text-gray-600 mt-1">
+                  Private — never shown to other users without your permission. Zyra uses this to match offers + flag when someone you know joins the platform.
+                </p>
               </div>
             </>
           )}
