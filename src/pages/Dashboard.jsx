@@ -6,6 +6,7 @@ import { getAIStatus, loadAPIKeys } from '../lib/ai-engine';
 import { seedAiAnalyses } from '../lib/seed-ai-analyses';
 import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 import PersonaBanner from '../components/PersonaBanner';
+import PersonaInsights from '../components/PersonaInsights';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts';
@@ -489,6 +490,8 @@ export default function Dashboard() {
     <div className="p-6 lg:p-8 max-w-7xl">
       {/* Phase D MVP: role-aware welcome + shortcuts */}
       <PersonaBanner />
+      {/* Phase D2/D3: persona-specific live numeric insights */}
+      <PersonaInsights />
 
       {/* Header */}
       <div className="mb-8">
