@@ -172,6 +172,19 @@ async function downloadPDF(url) {
 
 // ============================================================
 // Parse Position Report PDF into structured data
+//
+// SCOPE (2026-04-24 audit): This parser extracts PAGE-1 SUMMARY KPIs only
+// (carry_in, receipts, total_supply, shipped, committed, uncommitted).
+//
+// Pages 2-8 contain destination countries, variety breakdowns, multi-year
+// history, county\u00d7variety matrix, and region rollups. Those are parsed by
+// the sibling shipment-parser.js + receipts-parser.js which piggy-back on
+// the same PDF download via abc-scraper.js lines 386-397.
+//
+// GAP (tracked in progress.json.scraperAudit_2026_04_24.findings.medium):
+// The full 8-page parse is deferred to post-launch. Current impl gives us
+// honest supply/demand KPIs per month. Variety/county/region detail comes
+// from the other parsers, not from this function.
 // ============================================================
 async function parsePositionReport(pdfBuffer, sourceUrl) {
   try {
