@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T20:05:00Z",
+  "lastUpdated": "2026-04-24T20:45:00Z",
   "updatedBy": "Claude AI \u2014 Wave 6 Premium Card retrofit (Dashboard + Destinations + Supply)",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 62,
@@ -258,10 +258,10 @@
         "oneLineAnswer": ""
       },
       {
-        "id": "B9-apply-widget-configs-migration",
+        "id": "B9-apply-migrations-bundle",
         "severity": "low",
-        "question": "Apply supabase/migrations/20260424_widget_configs.sql to production Supabase. Either: (a) supabase db push (if CLI linked), (b) paste into Supabase SQL editor, or (c) run the pg8000 helper you used for prior migrations. Confirm done. Until applied, useWidgetConfig returns defaults silently \u2014 nothing breaks, but Workshop UI (post-launch) won't be able to save.",
-        "impact": "Blocks Wave 5 widget-config DB reads, but hook is already coded to no-op if table missing. Zero-risk to ship without.",
+        "question": "Apply supabase/migrations/APPLY_ALL_2026-04-24.sql (now 506 lines, 6 sections). Either: (a) supabase db push (if CLI linked), (b) paste into Supabase SQL editor, or (c) run the pg8000 helper you used for prior migrations. The bundle now includes all 6 evening-shift migrations incl. widget_configs (Wave 5) + team_can_verify_users (F6).",
+        "impact": "Without applying: (1) useWidgetConfig returns defaults silently \u2014 Workshop UI can't save (post-launch feature); (2) team members get RLS-denied when they click \"Verify\" \u2014 the UI panel shows but verification fails. All other code paths work without the migration.",
         "oneLineAnswer": ""
       }
     ],
@@ -980,9 +980,9 @@
       "id": 6,
       "name": "Honesty + Completion Sprint",
       "status": "active",
-      "percent": 90,
+      "percent": 92,
       "completedDate": null,
-      "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. UI polish (sidebar reorg + shared Card component + premium page treatment) in flight. Wave 3 (2026-04-24 evening): Zyra unified across bubble + /intelligence full-page via src/lib/zyra-prompts.js; removed anti-human keyword-routing fallback on /intelligence; added trainer thumbs + multilingual pill."
+      "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. UI polish (sidebar reorg + shared Card component + premium page treatment) in flight. Wave 3 (2026-04-24 evening): Zyra unified across bubble + /intelligence full-page via src/lib/zyra-prompts.js; removed anti-human keyword-routing fallback on /intelligence; added trainer thumbs + multilingual pill. Launch-blocker F1\u2013F6 audit (2026-04-24 night): all 6 fixes verified already-shipped or non-issue (whatsapp-login orphan/mutex/OTP, Destinations country filter + slice caps, Supply FilterBar+VarietySection+CountySection+last-5, team-verify Settings panel + RLS/trigger migration). APPLY_ALL_2026-04-24.sql extended with widget_configs + team_can_verify_users sections so one paste applies both remaining DB migrations. permissions.js got isTeamMember/canVerifyUsers/isAdminUser helpers."
     },
     {
       "id": 7,
