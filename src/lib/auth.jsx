@@ -71,6 +71,22 @@ export function AuthProvider({ children }) {
       .eq('id', userId)
       .single();
     setProfile(data);
+    // Phase L4: reconcile any pending CRM bulk-invite against this user.
+    // If someone invited them via /crm Invite tab before they registered,
+    // this auto-flips their crm_contacts row to invite_status='joined'
+    // with tags 'joined' + relationship_score bumped.
+    if (data) {
+      try {
+        const { reconcileInviteForUser } = await import('./invite-reconcile');
+        reconcileInviteForUser({
+          user_id: userId,
+          whatsapp: data.whatsapp_number,
+          email: data.email,
+        });
+      } catch (err) {
+        console.warn('invite-reconcile skipped:', err?.message);
+      }
+    }
   }
 
   const signUp = useCallback(async (email, password, metadata = {}) => {
