@@ -259,6 +259,8 @@ function SupplyPositionWidget({ current, prior }) {
 }
 
 function ShipmentTrend({ reports }) {
+  const [windowSize, setWindowSize] = React.useState('all'); // 'last3' | 'last5' | 'all'
+
   if (!reports || reports.length < 2) return null;
 
   // Build annual cumulative shipments by crop year (sum of monthly totals = final shipped)
@@ -273,17 +275,41 @@ function ShipmentTrend({ reports }) {
     }
   });
 
-  const chartData = Object.entries(byCropYear)
+  const allChartData = Object.entries(byCropYear)
     .map(([cy, lbs]) => ({ crop_year: cy, shipped: lbs }))
     .sort((a, b) => a.crop_year.localeCompare(b.crop_year));
+
+  // Apply window filter (tail of sorted array — most recent N years)
+  const chartData = windowSize === 'last3' ? allChartData.slice(-3)
+                  : windowSize === 'last5' ? allChartData.slice(-5)
+                  : allChartData;
 
   // Determine the current crop year (last one)
   const currentCY = chartData.length > 0 ? chartData[chartData.length - 1].crop_year : null;
 
   return (
     <div>
-      <h3 className="text-lg font-semibold text-white mb-1">Shipment Trend</h3>
-      <p className="text-[10px] text-gray-500 mb-3">Cumulative shipments by crop year (Aug–Jul)</p>
+      <div className="flex items-start justify-between mb-1 gap-2">
+        <div>
+          <h3 className="text-lg font-semibold text-white">Shipment Trend</h3>
+          <p className="text-[10px] text-gray-500 mb-3">Cumulative shipments by crop year (Aug–Jul)</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {[{ k: 'last3', l: '3y' }, { k: 'last5', l: '5y' }, { k: 'all', l: 'All' }].map(b => (
+            <button
+              key={b.k}
+              onClick={() => setWindowSize(b.k)}
+              className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
+                windowSize === b.k
+                  ? 'bg-green-500/20 border-green-500/40 text-green-300'
+                  : 'border-gray-700 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+              }`}
+            >
+              {b.l}
+            </button>
+          ))}
+        </div>
+      </div>
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
