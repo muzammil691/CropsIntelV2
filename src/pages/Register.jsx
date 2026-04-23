@@ -674,7 +674,7 @@ export default function Register() {
             <p className="text-[10px] text-gray-500">Years of Data</p>
           </div>
           <div className="bg-gray-900/50 border border-gray-800/50 rounded-xl p-3">
-            <p className="text-lg mb-1">116</p>
+            <p className="text-lg mb-1">106</p>
             <p className="text-[10px] text-gray-500">Monthly Reports</p>
           </div>
           <div className="bg-gray-900/50 border border-gray-800/50 rounded-xl p-3">

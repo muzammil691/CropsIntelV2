@@ -104,7 +104,7 @@ const DEMO_CHAT = [
 
 /* ── Stakeholder roles ── */
 const ROLES = [
-  { icon: '\u{1F331}', title: 'Growers', desc: 'Orchard insights, harvest timing, and crop receipt tracking across 9 crop years.' },
+  { icon: '\u{1F331}', title: 'Growers', desc: 'Orchard insights, harvest timing, and crop receipt tracking across 11 crop years.' },
   { icon: '\u{1F3ED}', title: 'Handlers', desc: 'Processing volumes, quality mix analysis, and handler-level position data.' },
   { icon: '\u{1F4CA}', title: 'Traders', desc: 'Market timing signals, deal analytics, and AI trade prescriptions.' },
   { icon: '\u{1F6D2}', title: 'Buyers', desc: 'Sourcing strategies, price alerts, and personalized market briefs.' },
@@ -129,7 +129,7 @@ const PILLARS = [
       </svg>
     ),
     title: 'Verified Data',
-    desc: 'Every number traced to its source PDF. 116 monthly ABC position reports spanning 9 crop years, independently verified.',
+    desc: 'Every number traced to its source PDF. 106 monthly ABC position reports spanning 11 crop years, independently verified.',
     bg: 'from-green-500/20 to-green-500/5 border-green-500/20',
     iconBg: 'bg-green-500/10',
     iconColor: 'text-green-400',
@@ -172,7 +172,7 @@ const CAPABILITIES = [
 
 export default function Welcome() {
   const [yearsCount, yearsRef] = useCounter(10, 1800, 800);
-  const [reportsCount, reportsRef] = useCounter(116, 2200, 900);
+  const [reportsCount, reportsRef] = useCounter(106, 2200, 900);
   const [countriesCount, countriesRef] = useCounter(45, 2000, 1000);
   const [cropYearsCount, cropYearsRef] = useCounter(11, 1600, 1100);
   const [chatStep, setChatStep] = useState(0);
