@@ -220,7 +220,7 @@ export default function CRM() {
     setInviting(prev => ({ ...prev, [contact.id]: 'sending' }));
     try {
       // Use Supabase edge function for email sending
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -263,7 +263,7 @@ export default function CRM() {
           const phone = contact.whatsapp || contact.phone;
           await sendWhatsAppMessage(phone, getV2UpgradeWhatsAppMessage(contact.contact_name || contact.company_name));
         } else {
-          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-send`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
