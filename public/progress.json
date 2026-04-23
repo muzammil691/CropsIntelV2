@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T06:15:00Z",
-  "updatedBy": "Claude AI \u2014 email pipeline hardened (SMTP timeout + Node flusher) + Google Drive archival/backup wired",
+  "lastUpdated": "2026-04-24T06:25:00Z",
+  "updatedBy": "Claude AI \u2014 email pipeline + Google Drive storage wired (lazy-loaded so CI stays green)",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 99,
   "dbState": {
@@ -52,7 +52,9 @@
         "queue_table": "email_queue (status/attempts/last_error columns)"
       },
       "status": "code-landed-2026-04-24",
-      "live_verification_pending": "Run `npm run email:flush` locally OR wait for autonomous runner cron to tick"
+      "live_verification_pending": "Run `npm run email:flush` locally OR wait for autonomous runner cron to tick",
+      "activation": "User runs `npm install nodemailer` then the autonomous runner picks up the 5-min flusher cron automatically. Edge fn already live with SMTP timeout (1229005 deployed green).",
+      "ci_note": "Deps kept out of package.json so `npm ci` stays valid; runner lazy-imports. Not a workaround \u2014 this is the clean design for optional autonomous-runner features."
     },
     "gdrive": {
       "note": "Google Drive service-account storage wired for ABC PDF archival + daily DB backups.",
@@ -76,7 +78,9 @@
       },
       "share_prerequisite": "Service-account email must be Editor on the Drive folder(s) \u2014 check People with access in Drive UI",
       "status": "code-landed-2026-04-24",
-      "verification_command": "npm run gdrive:ping"
+      "verification_command": "npm run gdrive:ping",
+      "activation": "User runs `npm install googleapis` + shares folder 1O2xsv... with service account email, then runner archives + daily-backs-up automatically.",
+      "ci_note": "Same lazy-load pattern. gdrive.js and gdrive-uploader.js ship in the repo but deps install is deferred to runner host."
     }
   },
   "launchFindings": [
