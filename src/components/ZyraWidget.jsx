@@ -45,6 +45,53 @@ const QUICK_TOPICS = {
   ],
 };
 
+// ─── Role-specific framing for Zyra responses ───────────────────────
+// Each role hears the market through its own lens. Grower cares about
+// pool-position + harvest timing, broker cares about arbitrage spreads,
+// buyer cares about when to buy. Closes Phase D "Role-aware Zyra prompts".
+const ROLE_LENS = {
+  grower: {
+    priorities: 'pool position, harvest timing, packer-call targets, when to deliver, hedging windows',
+    vocab: 'pool, carry-out, sold-rate, receipts, handler-advance, pool distribution',
+    framing: 'Frame answers from the orchard-side: what the grower should do *this week*. Lead with action (deliver now / hold / call packer), then the data that justifies it.',
+  },
+  supplier: {
+    priorities: 'uncommitted inventory, sold %, price firmness, buyer demand velocity, packer-call list',
+    vocab: 'sold rate, uncommitted, committed, carry-out, basis, handler position',
+    framing: 'Frame answers from the packer/handler side: what inventory to move, which buyers to call, where pricing power is. Quantify sold-rate shifts.',
+  },
+  processor: {
+    priorities: 'inbound receipts, variety/grade mix, processing capacity, quality signals',
+    vocab: 'receipts, variety mix, grade breakdown, inbound flow',
+    framing: 'Frame answers from the processor side: what is coming in, what grade mix to expect, where to adjust capacity.',
+  },
+  broker: {
+    priorities: 'arbitrage spreads, shipment YoY, new-commitment velocity, where flow is moving',
+    vocab: 'arb, basis, YoY shipment, new commitments, export-domestic split',
+    framing: 'Frame answers as arbitrage signals: which lane is opening, which is closing, what the spread is telling you about next 30-60 days.',
+  },
+  buyer: {
+    priorities: 'timing (buy now vs wait), uncommitted supply, negotiation leverage, grade availability',
+    vocab: 'sold %, uncommitted, firm vs soft market, basis to prior year',
+    framing: 'Frame answers from the buy-side: lead with timing recommendation (buy / wait / split), then uncommitted + sold-% evidence. If market is tight, say so directly — do not soften.',
+  },
+  trader: {
+    priorities: 'position, flow, arbitrage, margin, inventory turn, market-move signals',
+    vocab: 'position, long/short, basis, spread, FOB, CIF, turn',
+    framing: 'Frame answers as trader-to-trader: direct, numeric, actionable. Include a clear bullish/bearish read and the supporting data points.',
+  },
+  analyst: {
+    priorities: 'structural trends, year-over-year comparisons, data integrity, outlier explanations',
+    vocab: 'YoY, seasonality, trend break, correlation, residual',
+    framing: 'Frame answers analytically: cite numbers, compare periods, flag when data is modeled vs scraped. Leave the trade recommendation for the reader.',
+  },
+  admin: {
+    priorities: 'full position view, team priorities, customer-facing narrative, platform health',
+    vocab: 'internal, MAXONS margin, team, customer segment',
+    framing: 'Frame answers as internal strategy briefings: what MAXONS should say, push, or hold back.',
+  },
+};
+
 // ─── Zyra system prompt builder ─────────────────────────────────────
 function buildZyraSystemPrompt(userTier, profile, marketContext, learningContext = '', correctionContext = '') {
   const tierDescriptions = {
@@ -54,6 +101,10 @@ function buildZyraSystemPrompt(userTier, profile, marketContext, learningContext
     maxons: `a MAXONS team member${profile?.role ? ` (${profile.role})` : ''}. Give full internal intelligence, margin analysis, and strategic recommendations. Be direct and actionable.`,
   };
 
+  const role = profile?.role || 'buyer';
+  const lens = ROLE_LENS[role] || ROLE_LENS.buyer;
+  const roleBlock = `\nROLE LENS (${role}):\n- Priorities: ${lens.priorities}\n- Vocabulary: ${lens.vocab}\n- Framing: ${lens.framing}`;
+
   return `You are Zyra, the AI intelligence agent for CropsIntel — MAXONS' almond trading intelligence platform.
 
 PERSONALITY: Confident, knowledgeable, direct. You speak like a seasoned commodity trading analyst who genuinely wants to help. Use numbers and data points whenever possible. Be concise — traders don't have time for fluff.
@@ -62,6 +113,7 @@ USER CONTEXT: You are speaking to ${tierDescriptions[userTier] || tierDescriptio
 ${profile?.full_name ? `Their name is ${profile.full_name}.` : ''}
 ${profile?.products_of_interest?.length ? `Products of interest: ${profile.products_of_interest.join(', ')}` : ''}
 ${profile?.preferred_ports?.length ? `Preferred ports: ${profile.preferred_ports.join(', ')}` : ''}
+${roleBlock}
 
 MARKET DATA:
 ${marketContext || 'No market data loaded yet.'}
