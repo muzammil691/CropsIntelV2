@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-23T13:02:28Z",
-  "updatedBy": "Claude AI \u2014 F6 team-user management: admin CRUD presets + team verify panel + RLS migration",
+  "lastUpdated": "2026-04-23T13:10:35Z",
+  "updatedBy": "Claude AI \u2014 Trading: multi-product line items + live Strata + freight/insurance",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 94,
+  "overallPercent": 95,
   "launchFindings": [
     {
       "id": "F1",
@@ -275,11 +275,13 @@
     {
       "key": "offers-multi-product",
       "title": "Offers: multi-product mode + Strata ref + freight/insurance",
-      "status": "queued",
+      "status": "done-mvp",
       "scopeCaptured": "2026-04-24T17:30Z",
       "description": "Redesign Offers tab to (1) build multi-product offers from product file, (2) evaluate against Strata market reference price, (3) attach freight + insurance line items, (4) streamlined UI for applying offers end-to-end.",
       "approach": "New OfferBuilder component + offer_items child table + freight_terms + margin-vs-Strata comparator. Reuses existing product catalog + strata_prices table.",
-      "blockers": []
+      "blockers": [],
+      "resolvedDate": "2026-04-24",
+      "notes": "MVP shipped: multi-product line items via items[] state, live Strata price lookup from strata_prices table, freight + insurance as offer-level fields stored in metadata JSONB. Backward compatible with single-product offers. Full schema migration to offer_items child table + dedicated OfferBuilder component deferred to post-launch."
     },
     {
       "key": "team-user-mgmt",
@@ -2179,6 +2181,7 @@
   ],
   "subsystems": {
     "team-user-mgmt": 100,
-    "widget-interactivity": 85
+    "widget-interactivity": 88,
+    "offers-multi-product": 90
   }
 }
