@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-24T06:45:00Z",
-  "updatedBy": "Claude AI — Night shift Block 4: /brokers BRM portal skeleton with market-signal intelligence shipped",
+  "lastUpdated": "2026-04-24T07:30:00Z",
+  "updatedBy": "Claude AI — Night shift Block 5: /suppliers SRM portal with county analysis tool shipped",
   "sessionStatus": "autonomous-night-shift-active",
-  "overallPercent": 90,
+  "overallPercent": 91,
   "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
   "targetPercent": 95,
   "domain": "cropsintel.com",
@@ -21,7 +21,7 @@
       { "id": 2, "name": "Commodity-agnostic foundation (product_catalog, remove hardcoded almond)", "status": "done", "eta_min": 90 },
       { "id": 3, "name": "Info walls scaffolding (audit_log table + helper + RLS policy doc)", "status": "done", "eta_min": 90 },
       { "id": 4, "name": "BRM portal skeleton /brokers", "status": "done", "eta_min": 60 },
-      { "id": 5, "name": "SRM portal skeleton /suppliers (county analysis stub)", "status": "queued", "eta_min": 60 },
+      { "id": 5, "name": "SRM portal skeleton /suppliers (county analysis stub)", "status": "done", "eta_min": 60 },
       { "id": 6, "name": "ADELA AI-model router abstraction", "status": "queued", "eta_min": 45 },
       { "id": 7, "name": "Full app walkthrough via Chrome MCP", "status": "queued", "eta_min": 60 },
       { "id": 8, "name": "Fix issues found", "status": "queued", "eta_min": 90 },
@@ -56,7 +56,7 @@
     { "sha": "1ee2ea5", "message": "feat: add ProjectMap page at /map — live progress tracker", "branch": "main", "date": "2026-04-23", "landed": true }
   ],
   "stats": {
-    "pagesLive": 20,
+    "pagesLive": 21,
     "realReports": 116,
     "positionReports": 116,
     "cropYearsPositionReports": 11,
@@ -436,15 +436,19 @@
       "id": "srm",
       "name": "SRM (Supplier Relationship Management)",
       "category": "users",
-      "percent": 0,
+      "percent": 35,
       "icon": "🏭",
-      "description": "Supplier/packer-scoped portal. Suppliers see own shipments, county-level analysis tools, anonymized demand signals. Never see customer identities or MAXONS' margin. Phase 8 scope per vision handoff.",
+      "description": "/suppliers route shipped 2026-04-24. County-level analysis tool with 11 CA counties + San Joaquin/Sacramento region presets + variety mix pie + anonymized demand signals. Info walls active via projectArrayForRole.",
       "features": [
-        { "name": "Supplier portal route /suppliers (team-gated scaffold)", "status": "todo" },
-        { "name": "County-level analysis tool (supplier selects own sourcing counties)", "status": "todo" },
-        { "name": "Own-records input + variety mix / value share analysis", "status": "todo" },
-        { "name": "Anonymized demand signals (what the market wants, without revealing who)", "status": "todo" },
-        { "name": "Info walls: supplier queries never return customer identities or MAXONS margin", "status": "todo" }
+        { "name": "Supplier portal route /suppliers (team-gated scaffold)", "status": "done" },
+        { "name": "County selector (11 CA counties + region presets)", "status": "done" },
+        { "name": "Variety mix pie chart from abc_crop_receipts", "status": "done" },
+        { "name": "Anonymized demand signals panel (high/steady/softening)", "status": "done" },
+        { "name": "Info walls: projectArrayForRole applied on every fetch", "status": "done" },
+        { "name": "Real Land IQ county data (replaces modeled shares) — Phase 8", "status": "todo" },
+        { "name": "Supplier own-shipment tracking + documentation exchange", "status": "todo" },
+        { "name": "Own-records input + custom analysis", "status": "todo" },
+        { "name": "Dedicated supplier portal shell (today in MAXONS app)", "status": "todo" }
       ]
     },
     {
