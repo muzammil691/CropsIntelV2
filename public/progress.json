@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T19:10:00Z",
-  "updatedBy": "Claude AI \u2014 Wave 4 Reports coverage panel (per-crop-year gap visualization)",
+  "lastUpdated": "2026-04-24T19:35:00Z",
+  "updatedBy": "Claude AI \u2014 Wave 5 Widget Library foundation (widget_configs migration + useWidgetConfig hook)",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 62,
   "launchReadinessPercent": 85,
@@ -363,11 +363,23 @@
       {
         "rank": 6,
         "task": "Widget Library + Workshop (user re-flagged 2026-04-24 12:45Z)",
-        "scope": "V1 had /admin/widget-workshop: split-view with widget picker (left), Before\u2194After live preview (center), Zyra chat+voice panel (right), Save Draft/Publish/Revert + Version History. Backed by widget_configs table, useWidgetConfig hook, Zyra propose_widget_edit tool, auto data-gap detection. V2 has ZERO of this shipped \u2014 only the Card primitive (landed this pass) as the visual foundation. Steps to port: (a) Card primitive \u2705 DONE; (b) widget_configs migration + RLS (admin rw, authenticated read published); (c) useWidgetConfig hook merging published DB config over hardcoded defaults; (d) retrofit 6 priority widgets (Dashboard share pie, sentiment, export bar, price trend, forecast, supply trend) to consume config; (e) /admin/widget-workshop route with 3-column split view + AdminRoute guard; (f) extend Zyra with propose_widget_edit tool; (g) Revert + Version History drawer.",
-        "status": "partially-unblocked",
-        "progress": 5,
+        "scope": "V1 had /admin/widget-workshop: split-view with widget picker (left), Before\u2194After live preview (center), Zyra chat+voice panel (right), Save Draft/Publish/Revert + Version History. Backed by widget_configs table, useWidgetConfig hook, Zyra propose_widget_edit tool, auto data-gap detection. V2 has ZERO of this shipped \u2014 only the Card primitive (landed this pass) as the visual foundation. Steps to port: (a) Card primitive \u2705 DONE; (b) widget_configs migration + RLS (admin rw, authenticated read published) \u2705 DONE (Wave 5); (c) useWidgetConfig hook merging published DB config over hardcoded defaults \u2705 DONE (Wave 5); (d) retrofit 6 priority widgets (Dashboard share pie, sentiment, export bar, price trend, forecast, supply trend) to consume config; (e) /admin/widget-workshop route with 3-column split view + AdminRoute guard; (f) extend Zyra with propose_widget_edit tool; (g) Revert + Version History drawer.",
+        "status": "foundation-landed",
+        "progress": 45,
+        "shipped": {
+          "wave5": {
+            "migration": "supabase/migrations/20260424_widget_configs.sql \u2014 widget_configs table with (widget_key, version, status='draft|published|archived', config JSONB, created_by). Indexes on (key,status) + (key,published_at DESC) WHERE status='published'. Trigger auto-updates updated_at. RLS: authenticated read published; admins full CRUD. SECURITY-DEFINER function publish_widget_config(key,version) atomically archives prior + publishes target. Admin-only via explicit check in fn body.",
+            "hook": "src/hooks/useWidgetConfig.js (196 lines) \u2014 returns { config, loading, isDefault, error, reload }. Shallow-merges DB config over defaultConfig. Anon short-circuit avoids round-trip. Tolerates missing table (fresh envs) by returning defaults silently. saveWidgetDraft(widgetKey, config, {publish:true}) helper bumps version, inserts draft, optionally calls publish_widget_config RPC."
+          }
+        },
         "blockers": [
-          "Card primitive in place, but widget_configs table + hook + route are all missing"
+          "Migration must be applied to live DB (user-hand via pg8000 or supabase CLI). Site-side hook is safe to ship now \u2014 returns defaults if table doesn't exist."
+        ],
+        "remaining": [
+          "(d) retrofit 6 widgets \u2014 Wave 6 will pilot the first few",
+          "(e) /admin/widget-workshop route \u2014 post-launch",
+          "(f) Zyra propose_widget_edit tool \u2014 post-launch",
+          "(g) version history drawer \u2014 post-launch"
         ],
         "priority": "post-launch \u2014 but foundational for Zyra priority since Workshop IS a Zyra surface"
       }
@@ -662,7 +674,13 @@
   ],
   "recentCommits": [
     {
-      "sha": "pending-wave4",
+      "sha": "pending-wave5",
+      "date": "2026-04-24",
+      "subject": "widget-library: widget_configs migration + useWidgetConfig hook + saveWidgetDraft helper (Wave 5 foundation)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "06eb2b1",
       "date": "2026-04-24",
       "subject": "reports: per-crop-year Data Coverage panel \u2014 month grid w/ gap visualization (Wave 4)",
       "author": "Claude AI"
@@ -2585,7 +2603,9 @@
     "reports-data-completeness": 40,
     "reports-coverage-visibility": 100,
     "map-honesty": 100,
-    "widget-library": 15,
+    "widget-library": 45,
+    "widget-library-migration": 100,
+    "widget-library-hook": 100,
     "widget-workshop": 5,
     "offer-builder-rebuild": 95,
     "scraper-verification": 40,
