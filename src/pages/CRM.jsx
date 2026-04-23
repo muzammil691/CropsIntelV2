@@ -431,11 +431,20 @@ export default function CRM() {
           <p className="text-[10px] text-gray-500 uppercase tracking-wider">Total Contacts</p>
           <p className="text-xl font-bold text-white mt-1">{contacts.length}</p>
           <div className="flex items-center gap-2 mt-1">
-            {Object.entries(typeCounts).map(([type, count]) => (
-              <span key={type} className={`text-[10px] ${CONTACT_TYPE_COLORS[type] || 'text-gray-400'}`}>
-                {count} {type}s
-              </span>
-            ))}
+            {Object.entries(typeCounts).map(([type, count]) => {
+              // Pluralize properly: 'logistics' + 'industry' stay as-is;
+              // other types get 's' only when count != 1. Fixes the
+              // "1 logisticss" / "1 brokers" bug on /crm.
+              const UNCOUNTABLE = ['logistics', 'industry'];
+              const label = UNCOUNTABLE.includes(type)
+                ? type
+                : (count === 1 ? type : type + 's');
+              return (
+                <span key={type} className={`text-[10px] ${CONTACT_TYPE_COLORS[type] || 'text-gray-400'}`}>
+                  {count} {label}
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

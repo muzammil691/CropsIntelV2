@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T09:00:00Z",
-  "updatedBy": "Claude AI — LAUNCH L1 F6 fix: normalizeCropYear() collapses /destinations duplicate chip bug (2016/17 vs 2016/2017)",
+  "lastUpdated": "2026-04-24T09:15:00Z",
+  "updatedBy": "Claude AI — LAUNCH L1 F9 fix: CRM pluralization ('1 logisticss' / '1 brokers' → '1 logistics' / '1 broker')",
   "sessionStatus": "autonomous-night-shift-launch-focus",
   "overallPercent": 92,
   "launchFindings": [
@@ -10,7 +10,9 @@
     { "id": "F4", "severity": "medium",   "found_at": "/dashboard", "issue": "Admin (MAXONS team tier) saw the generic 'Welcome' persona banner — PersonaBanner map missing admin/maxons_team/sales/seller entries", "status": "fixed", "fixCommit": "f46d2e2" },
     { "id": "F5", "severity": "high",     "found_at": "/brokers",      "issue": "Market-signal YoY compared latest year vs SUM of all-prior years (not just the prior year). Made every market show -87% YoY / Avoid. Logic bug.", "status": "fixed", "fixCommit": "a777a01" },
     { "id": "F6", "severity": "medium",   "found_at": "/destinations", "issue": "Duplicate crop-year chips: '2016/17' + '2016/2017' both present because seed/backfill/parser wrote the field in different formats. Confusing UI; same underlying year counted twice in filters.", "status": "fixed", "fixCommit": "pending", "note": "Added normalizeCropYear() in src/lib/utils.js and applied on Destinations + Variety + Analysis fetch paths" },
-    { "id": "F7", "severity": "low",      "found_at": "/destinations", "issue": "Monthly Export-vs-Domestic bars only render for Aug + Oct; other months empty. Symptom of sparse modeled data for certain crop years. Non-critical — honest view of what's in DB.", "status": "observed" }
+    { "id": "F7", "severity": "low",      "found_at": "/destinations", "issue": "Monthly Export-vs-Domestic bars only render for Aug + Oct; other months empty. Symptom of sparse modeled data for certain crop years. Non-critical — honest view of what's in DB.", "status": "observed" },
+    { "id": "F8", "severity": "info",     "found_at": "/forecasts",    "issue": "Thought Bearing Acreage lines weren't rendering — was a scroll-position screenshot artifact. Lines render correctly (green/amber/blue dashed for Bearing/Non-Bearing/Total). No action needed.", "status": "false_alarm" },
+    { "id": "F9", "severity": "low",      "found_at": "/crm",          "issue": "Pluralization glitch in contact-type summary: '1 logisticss' and '1 brokers' (double-s / singular-count-plural-noun). UNCOUNTABLE list + count===1 singular logic added.", "status": "fixed", "fixCommit": "pending" }
   ],
   "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
   "targetPercent": 95,
