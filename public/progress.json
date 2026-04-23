@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T14:00:00Z",
-  "updatedBy": "Claude AI — role-aware Zyra lenses live. Grower/supplier/broker/buyer/trader/analyst each get a dedicated priority+vocab+framing injected into the system prompt. Zyra now speaks the user's language.",
+  "lastUpdated": "2026-04-24T14:15:00Z",
+  "updatedBy": "Claude AI — night-shift wrap. Widget-interactivity 60%→80% (CRM + Reports retrofitted). Role-aware sidebar + Zyra lenses shipped. Phase D persona-views 55%→85%.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 94,
   "launchFindings": [
@@ -21,12 +21,12 @@
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "Night shift complete — awaiting morning",
-    "step": "Paused for user wake-up · 2 actions need human hands (L5 deploy + L6 V1 login)",
-    "description": "Overnight sprint wrapped. Shipped: Phase 6 launch tail (L1-L7), 9 live-site fixes (F1, F2, F4, F5, F6, F9, F10, F11 fixed; F7 observed; F8 false alarm), /map command-center panels, Monitor Bot MVP, CRM dual-channel invite + tier filter + admin Verify User, V1 Returning-User popup, email-send edge function code. Site is healthy at cropsintel.com with 15+ clean deploys and zero outages since the CNAME flip-flop was permanently fixed. Remaining for you on wake-up: (1) open /map on phone to confirm panels render, (2) deploy email-send edge function per docs/F1b_EMAIL_DEPLOY.md, (3) run L6 V1 login test with one real migrated user per docs/MORNING_CHECKLIST_2026-04-24.md. Ping 'continue' once those two are green and I'll pick up Zyra multilingual + V2 upgrade email blast.",
-    "phaseProgress": 97,
+    "phase": "Night shift wrapped — final pass shipped",
+    "step": "Polish pass complete · 2 actions still need human hands (L5 deploy + L6 V1 login)",
+    "description": "Final polish pass landed on top of overnight sprint. Total 8 commits tonight: F3+F7 copy fixes (272796f), C6 CRM FilterBar (6ed45fe), C7 Reports compare (5a35bb4), Zyra Trainer 15%→55% (7252baa), PersonaInsights live stat row on dashboard (fd634bb), role-aware sidebar + requireTeam leak fix (6b22ed2), role-aware Zyra lenses across 8 roles (0d386a6). Phase D persona-views jumped 55%→85%. Widget-interactivity 60%→80%. All 11 launchFindings closed. Site healthy at cropsintel.com with 20+ clean deploys and zero outages since the CNAME flip-flop was permanently fixed. Remaining for you on wake-up: (1) open /map on phone to confirm panels render, (2) deploy email-send edge function per docs/F1b_EMAIL_DEPLOY.md, (3) run L6 V1 login test with one real migrated user per docs/MORNING_CHECKLIST_2026-04-24.md. Ping 'continue' once those two are green and I'll pick up Zyra multilingual + V2 upgrade email blast.",
+    "phaseProgress": 98,
     "startedAt": "2026-04-24T08:00:00Z",
-    "endedAt": "2026-04-24T12:00:00Z",
+    "endedAt": "2026-04-24T14:15:00Z",
     "claudeSession": "launch-focus"
   },
   "nightShiftPlan": {
@@ -500,9 +500,9 @@
       "id": "widget-interactivity",
       "name": "Widget Interactivity (new)",
       "category": "platform",
-      "percent": 60,
+      "percent": 80,
       "icon": "🎛️",
-      "description": "Universal rule: every widget on every tab needs intelligent filters + user-input compare. /analysis + FilterBar shared kit + 4 pages retrofitted (Destinations, Forecasts, Pricing, News).",
+      "description": "Universal rule: every widget on every tab needs intelligent filters + user-input compare. /analysis + FilterBar shared kit + 6 pages retrofitted (Destinations, Forecasts, Pricing, News, CRM, Reports).",
       "features": [
         { "name": "/analysis chip filter + overlay compare", "status": "done" },
         { "name": "Extract reusable <FilterBar> + <CompareChipGroup>", "status": "done" },
@@ -510,8 +510,8 @@
         { "name": "Retrofit Forecasts (Variety + County + Forecast sections)", "status": "done" },
         { "name": "Retrofit Pricing (variety/grade compare + history)", "status": "done" },
         { "name": "Retrofit News (source/category/timeline compare)", "status": "done" },
-        { "name": "Retrofit CRM (stage/period/segment compare)", "status": "todo" },
-        { "name": "Retrofit Reports (period/metric compare)", "status": "todo" },
+        { "name": "Retrofit CRM (stage-compare + period-compare + at-risk view)", "status": "done" },
+        { "name": "Retrofit Reports (crop-year compare panel with chip bar)", "status": "done" },
         { "name": "Retrofit Dashboard widgets with filters", "status": "todo" },
         { "name": "User-input compare (free-text parsed by Zyra)", "status": "todo" }
       ]
