@@ -2,17 +2,18 @@
 //
 // Unlocks the email leg of CRM Bulk Invite + V2 upgrade email to 65 users.
 //
-// TWO SEND PATHS — feature works immediately without Resend:
-//   1) If RESEND_API_KEY is set → send via Resend from intel@cropsintel.com
-//   2) If not set → queue into `email_queue` table (sent later by cron or
-//      manual flush once SMTP is configured). UI still gets success=true
-//      so the CRM/V2-upgrade flows don't block on infra.
+// THREE SEND PATHS — uses existing GoDaddy/Office 365 infra first:
+//   1) SMTP_HOST+SMTP_USER+SMTP_PASS set → send via direct SMTP (Office 365
+//      via GoDaddy, matches the existing imap-reader.js config for
+//      intel@cropsintel.com). This is the primary path.
+//   2) Else RESEND_API_KEY set → send via Resend API.
+//   3) Else → queue into `email_queue` table for later flush.
 //
-// Deploy:   supabase functions deploy email-send
-// Env:      RESEND_API_KEY   (optional — empty = queue-mode)
-//           SUPABASE_URL
-//           SUPABASE_SERVICE_ROLE_KEY
-// Optional: FROM_EMAIL (defaults to "CropsIntel <intel@cropsintel.com>")
+// Deploy:   supabase functions deploy email-send  (auto via GH Actions)
+// Env:      SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASS
+//           RESEND_API_KEY   (fallback)
+//           SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (for queue fallback)
+//           FROM_EMAIL (defaults to "CropsIntel <intel@cropsintel.com>")
 //
 // POST body:
 //   { type: 'invite' | 'upgrade' | 'trade_alert' | 'custom',
@@ -23,15 +24,21 @@
 //     context?: object   // for template-driven types
 //   }
 //
-// Returns: { success: boolean, id?: string, queued?: boolean, error?: string }
+// Returns: { success: boolean, mode: 'smtp'|'resend'|'queued', ... }
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 
+const SMTP_HOST       = Deno.env.get('SMTP_HOST');
+const SMTP_PORT       = parseInt(Deno.env.get('SMTP_PORT') || '587', 10);
+const SMTP_USER       = Deno.env.get('SMTP_USER');
+const SMTP_PASS       = Deno.env.get('SMTP_PASS');
 const RESEND_API_KEY  = Deno.env.get('RESEND_API_KEY');
 const FROM_EMAIL      = Deno.env.get('FROM_EMAIL') || 'CropsIntel <intel@cropsintel.com>';
 const SUPABASE_URL    = Deno.env.get('SUPABASE_URL');
 const SERVICE_ROLE    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const RESEND_URL      = 'https://api.resend.com/emails';
+const SMTP_CONFIGURED = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
 
 // ─── Templates ───────────────────────────────────────────────────────
 function inviteTemplate({ name, role = 'buyer', inviterName = 'MAXONS Team' } = {}) {
@@ -136,7 +143,33 @@ function tradeAlertTemplate({ name, title, summary, urgency = 'medium' } = {}) {
   };
 }
 
-// ─── Send via Resend ────────────────────────────────────────────────
+// ─── Send via SMTP (Office 365 / GoDaddy) — primary path ─────────────
+async function sendViaSMTP({ to, subject, html, text }) {
+  const client = new SMTPClient({
+    connection: {
+      hostname: SMTP_HOST!,
+      port: SMTP_PORT,
+      tls: SMTP_PORT === 465,           // implicit TLS on 465, STARTTLS on 587
+      auth: { username: SMTP_USER!, password: SMTP_PASS! },
+    },
+  });
+  try {
+    await client.send({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      content: text || '',
+      html,
+    });
+    return { success: true, id: `smtp-${Date.now()}` };
+  } catch (err) {
+    return { success: false, error: err?.message || String(err) };
+  } finally {
+    try { await client.close(); } catch (_) { /* ignore */ }
+  }
+}
+
+// ─── Send via Resend (fallback) ─────────────────────────────────────
 async function sendViaResend({ to, subject, html, text }) {
   const res = await fetch(RESEND_URL, {
     method: 'POST',
@@ -191,8 +224,22 @@ async function queueEmail({ to, subject, html, text, type }) {
 }
 
 async function sendOne({ to, subject, html, text, type }) {
-  if (RESEND_API_KEY) return await sendViaResend({ to, subject, html, text });
-  return await queueEmail({ to, subject, html, text, type });
+  // Priority 1: SMTP (Office 365 via GoDaddy) — uses existing intel@cropsintel.com infra
+  if (SMTP_CONFIGURED) {
+    const out = await sendViaSMTP({ to, subject, html, text });
+    if (out.success) return { ...out, mode: 'smtp' };
+    // SMTP failed (auth? network? rate limit?) — fall through to Resend or queue
+    console.warn('[email-send] SMTP send failed:', out.error);
+  }
+  // Priority 2: Resend (if API key is set)
+  if (RESEND_API_KEY) {
+    const out = await sendViaResend({ to, subject, html, text });
+    if (out.success) return { ...out, mode: 'resend' };
+    console.warn('[email-send] Resend send failed:', out.error);
+  }
+  // Priority 3: queue for later
+  const q = await queueEmail({ to, subject, html, text, type });
+  return { ...q, mode: 'queued' };
 }
 
 // ─── HTTP handler ───────────────────────────────────────────────────
@@ -221,7 +268,8 @@ serve(async (req) => {
       results.push({ to: r, ...out });
     }
     const allOk = results.every(r => r.success);
-    const mode = RESEND_API_KEY ? 'live' : 'queued';
+    // Report the mode used by the first recipient (mixed modes unlikely in a single call)
+    const mode = results[0]?.mode || (SMTP_CONFIGURED ? 'smtp' : RESEND_API_KEY ? 'resend' : 'queued');
     return j({ success: allOk, mode, results, type, sent: results.filter(r => r.success).length, total: results.length });
   } catch (err) {
     return j({ success: false, error: err?.message || String(err) }, 500);
