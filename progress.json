@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-24T06:00:00Z",
-  "updatedBy": "Claude AI — Night shift Block 3: Info Walls scaffolding shipped (RLS + permissions + audit-log + doc)",
+  "lastUpdated": "2026-04-24T06:45:00Z",
+  "updatedBy": "Claude AI — Night shift Block 4: /brokers BRM portal skeleton with market-signal intelligence shipped",
   "sessionStatus": "autonomous-night-shift-active",
-  "overallPercent": 89,
+  "overallPercent": 90,
   "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
   "targetPercent": 95,
   "domain": "cropsintel.com",
@@ -20,7 +20,7 @@
       { "id": 1, "name": "Vision alignment + /map refresh", "status": "in_progress", "eta_min": 30 },
       { "id": 2, "name": "Commodity-agnostic foundation (product_catalog, remove hardcoded almond)", "status": "done", "eta_min": 90 },
       { "id": 3, "name": "Info walls scaffolding (audit_log table + helper + RLS policy doc)", "status": "done", "eta_min": 90 },
-      { "id": 4, "name": "BRM portal skeleton /brokers", "status": "queued", "eta_min": 60 },
+      { "id": 4, "name": "BRM portal skeleton /brokers", "status": "done", "eta_min": 60 },
       { "id": 5, "name": "SRM portal skeleton /suppliers (county analysis stub)", "status": "queued", "eta_min": 60 },
       { "id": 6, "name": "ADELA AI-model router abstraction", "status": "queued", "eta_min": 45 },
       { "id": 7, "name": "Full app walkthrough via Chrome MCP", "status": "queued", "eta_min": 60 },
@@ -56,7 +56,7 @@
     { "sha": "1ee2ea5", "message": "feat: add ProjectMap page at /map — live progress tracker", "branch": "main", "date": "2026-04-23", "landed": true }
   ],
   "stats": {
-    "pagesLive": 19,
+    "pagesLive": 20,
     "realReports": 116,
     "positionReports": 116,
     "cropYearsPositionReports": 11,
@@ -418,15 +418,18 @@
       "id": "brm",
       "name": "BRM (Broker Relationship Management)",
       "category": "users",
-      "percent": 0,
+      "percent": 35,
       "icon": "🤝",
-      "description": "Broker-scoped portal + graph. Brokers see MAXONS' needs + margin targets + market intelligence. Never see customer identities or supplier pricing. Phase 8 scope per vision handoff.",
+      "description": "/brokers route shipped 2026-04-24 with market-signal intelligence (focus/hold/avoid per market based on YoY flow). Internal team sees all brokers; broker portal shell + broker-owned offer management is Phase 9.",
       "features": [
-        { "name": "Broker portal route /brokers (team-gated scaffold)", "status": "todo" },
-        { "name": "crm_contacts.contact_type='broker' scoped queries", "status": "todo" },
-        { "name": "Broker-specific market intelligence view (which markets to focus/avoid)", "status": "todo" },
+        { "name": "Broker portal route /brokers (team-gated scaffold)", "status": "done" },
+        { "name": "Market-signal engine (focus/hold/avoid per country based on YoY)", "status": "done" },
+        { "name": "Region filter (ME/EU/Asia/Americas/Africa) + per-region KPIs", "status": "done" },
+        { "name": "Info-walls note + projectArrayForRole applied to queries", "status": "done" },
+        { "name": "MAXONS Needs + Margin Targets surface (internal only)", "status": "todo" },
         { "name": "Broker offer-management surface (post inventory into Cropsintel)", "status": "todo" },
-        { "name": "Info walls: broker queries never return customer identities or customer pricing", "status": "todo" }
+        { "name": "Broker-scoped crm_contacts queries (broker sees only own row)", "status": "todo" },
+        { "name": "Dedicated broker portal shell (today renders inside MAXONS app)", "status": "todo" }
       ]
     },
     {
