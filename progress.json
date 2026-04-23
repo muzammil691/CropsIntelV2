@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-24T13:30:00Z",
-  "updatedBy": "Claude AI — role-aware sidebar ordering + requireTeam leak fix. Sidebar now prioritizes paths by role (grower sees /forecasts first, broker sees /brokers first) and correctly hides CRM/Brokers/Suppliers from non-team users.",
+  "lastUpdated": "2026-04-24T14:00:00Z",
+  "updatedBy": "Claude AI — role-aware Zyra lenses live. Grower/supplier/broker/buyer/trader/analyst each get a dedicated priority+vocab+framing injected into the system prompt. Zyra now speaks the user's language.",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 93,
+  "overallPercent": 94,
   "launchFindings": [
     { "id": "F1", "severity": "critical", "found_at": "/welcome",   "issue": "7 FadeIn sections stuck at opacity-0 — content below hero invisible for real visitors", "status": "fixed", "fixCommit": "067fa6f" },
     { "id": "F2", "severity": "medium",   "found_at": "/welcome",   "issue": "Crop Years stat hardcoded to 9; actual data covers 11 crop years (2015/16-2025/26)", "status": "fixed", "fixCommit": "067fa6f" },
@@ -700,7 +700,7 @@
       "id": "persona-views",
       "name": "Persona Views (new)",
       "category": "users",
-      "percent": 70,
+      "percent": 85,
       "icon": "🧑‍🌾",
       "description": "Role-aware Persona Banner + persona-specific live numeric insights on /dashboard. Grower/Packer/Processor/Broker/Buyer/Trader/Admin all see role-tailored stat rows pulling from abc_position_reports + abc_crop_receipts. Full role-specific pages still pending.",
       "features": [
@@ -710,9 +710,9 @@
         { "name": "PersonaInsights live stat row (grower/packer/processor/broker/buyer/trader/admin)", "status": "done" },
         { "name": "Role-aware sidebar ordering (priority paths first per role)", "status": "done" },
         { "name": "Role-aware tier gating (requireTeam now enforced, was leaking)", "status": "done" },
+        { "name": "Role-aware Zyra prompts (grower/supplier/processor/broker/buyer/trader/analyst/admin lenses)", "status": "done" },
         { "name": "Full Grower page (pool position, harvest timing, packer-call list)", "status": "todo" },
-        { "name": "Full Packer/Handler page (handler position, pool selling, quality mix)", "status": "todo" },
-        { "name": "Role-aware Zyra prompts", "status": "todo" }
+        { "name": "Full Packer/Handler page (handler position, pool selling, quality mix)", "status": "todo" }
       ]
     },
     {
