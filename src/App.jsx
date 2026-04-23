@@ -39,28 +39,59 @@ function PageLoader() {
   );
 }
 
+// Flat list kept for back-compat (ROLE_PRIORITY + filter logic references it).
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: '📊' },
+  { path: '/analysis', label: 'Analysis', icon: '📈' },
   { path: '/supply', label: 'Supply & Demand', icon: '⚖️' },
   { path: '/destinations', label: 'Destinations', icon: '🌍' },
   { path: '/pricing', label: 'Pricing', icon: '💰' },
   { path: '/forecasts', label: 'Forecasts', icon: '🔮' },
   { path: '/news', label: 'News & Intel', icon: '📰' },
-  { path: '/analysis', label: 'Analysis', icon: '📈' },
+  { path: '/intelligence', label: 'AI Intelligence', icon: '🧠' },
+  { path: '/reports', label: 'Reports', icon: '📋' },
   { path: '/crm', label: 'CRM & Deals', icon: '🤝', requireTeam: true },
   { path: '/brokers', label: 'Brokers (BRM)', icon: '🗺️', requireTeam: true },
   { path: '/suppliers', label: 'Suppliers (SRM)', icon: '🏭', requireTeam: true },
-  { path: '/intelligence', label: 'AI Intelligence', icon: '🧠' },
   { path: '/trading', label: 'Trading Portal', icon: '💼', requireTeam: true },
-  { path: '/reports', label: 'Reports', icon: '📋' },
-  { path: '/autonomous', label: 'Autonomous', icon: '🤖', requireAdmin: true },
   // Team & Users — direct link to the user-mgmt panel embedded in Settings.
   // Was previously buried inside /settings; user flagged they couldn't find it.
   // The #team-panel hash causes Settings.jsx to scroll the panel into view.
   { path: '/settings#team-panel', label: 'Team & Users', icon: '👥', requireTeam: true },
   // Email Broadcast — admin-only cohort email sender (V1 subscribers + registered)
   { path: '/settings#broadcast-panel', label: 'Broadcast', icon: '📣', requireAdmin: true },
+  { path: '/autonomous', label: 'Autonomous', icon: '🤖', requireAdmin: true },
   { path: '/settings', label: 'Settings', icon: '⚙️', requireAuth: true }
+];
+
+// Grouped sections for the sidebar render. User directive 2026-04-24:
+// "make the dash board and analysis at one side and team and admin clubbed together".
+// MAIN groups Dashboard + Analysis (command surfaces).
+// MARKET DATA groups the raw-data pages.
+// AI & INTELLIGENCE groups the AI-driven surfaces.
+// RELATIONSHIPS groups the CRM/BRM/SRM/Trading portals.
+// ADMIN clubs team, broadcast, autonomous, settings.
+const NAV_SECTIONS = [
+  {
+    label: 'Main',
+    items: ['/dashboard', '/analysis'],
+  },
+  {
+    label: 'Market Data',
+    items: ['/supply', '/destinations', '/pricing', '/forecasts', '/news'],
+  },
+  {
+    label: 'AI & Intelligence',
+    items: ['/intelligence', '/reports'],
+  },
+  {
+    label: 'Relationships',
+    items: ['/crm', '/brokers', '/suppliers', '/trading'],
+  },
+  {
+    label: 'Admin',
+    items: ['/settings#team-panel', '/settings#broadcast-panel', '/autonomous', '/settings'],
+  },
 ];
 
 function formatTime(ms) {
@@ -163,19 +194,28 @@ function Sidebar() {
   const { isAuthenticated, profile } = useAuth();
   const userRole = profile?.role || 'buyer';
   const userTier = profile?.access_tier || profile?.tier;
-  const isTeam = ADMIN_ROLES.includes(userRole) || TEAM_ROLES.includes(userRole) || userTier === 'admin' || userTier === 'maxons_team';
+  const isAdmin = ADMIN_ROLES.includes(userRole) || userTier === 'admin';
+  const isTeam = isAdmin || TEAM_ROLES.includes(userRole) || userTier === 'maxons_team';
 
-  // Filter nav items based on user role + tier
-  const filtered = NAV_ITEMS.filter(item => {
-    if (item.requireAdmin && !ADMIN_ROLES.includes(userRole) && userTier !== 'admin') return false;
-    if (item.requireTeam && !isTeam) return false;
-    if (item.requireAuth && !isAuthenticated) return false;
-    return true;
-  });
+  // Index nav items by path so section render can look them up.
+  const byPath = Object.fromEntries(NAV_ITEMS.map(i => [i.path, i]));
 
-  // Reorder by role priority — preferred paths first, rest in original order
+  // Per-section filter — hides requireAdmin/requireTeam/requireAuth items the
+  // current user can't access. Returns empty array to suppress section entirely.
+  const visibleIn = (section) => section.items
+    .map(p => byPath[p])
+    .filter(Boolean)
+    .filter(item => {
+      if (item.requireAdmin && !isAdmin) return false;
+      if (item.requireTeam && !isTeam) return false;
+      if (item.requireAuth && !isAuthenticated) return false;
+      return true;
+    });
+
+  // Role priority is applied WITHIN a section (not across). Keeps the user's
+  // most-used pages at the top of each section without shuffling the grouping.
   const priority = ROLE_PRIORITY[userRole] || [];
-  const visibleItems = [...filtered].sort((a, b) => {
+  const sortByPriority = (items) => [...items].sort((a, b) => {
     const ai = priority.indexOf(a.path);
     const bi = priority.indexOf(b.path);
     if (ai === -1 && bi === -1) return 0;
@@ -189,7 +229,7 @@ function Sidebar() {
       {/* Brand Header */}
       <div className="p-5 border-b border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-green-500/20">
             CI
           </div>
           <div>
@@ -199,29 +239,46 @@ function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1">
-        {visibleItems.map(item => {
-          const isActive = location.pathname === item.path;
-          const isLocked = item.requireTeam && !TEAM_ROLES.includes(userRole);
+      {/* Navigation — grouped into labeled sections */}
+      <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+        {NAV_SECTIONS.map(section => {
+          const sectionItems = sortByPriority(visibleIn(section));
+          if (sectionItems.length === 0) return null;
           return (
-            <Link
-              key={item.path}
-              to={isLocked ? '#' : item.path}
-              onClick={isLocked ? e => e.preventDefault() : undefined}
-              title={isLocked ? 'Team access required' : item.label}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                isLocked
-                  ? 'text-gray-700 cursor-not-allowed'
-                  : isActive
-                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-              }`}
-            >
-              <span className="text-base">{item.icon}</span>
-              <span>{item.label}</span>
-              {isLocked && <span className="ml-auto text-[10px] text-gray-700">🔒</span>}
-            </Link>
+            <div key={section.label}>
+              <div className="px-3 pb-1.5 text-[10px] uppercase tracking-wider text-gray-600 font-semibold">
+                {section.label}
+              </div>
+              <div className="space-y-0.5">
+                {sectionItems.map(item => {
+                  const isActive = location.pathname === item.path.split('#')[0] &&
+                                   (location.hash === `#${item.path.split('#')[1]}` || !item.path.includes('#'));
+                  const isLocked = item.requireTeam && !isTeam;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={isLocked ? '#' : item.path}
+                      onClick={isLocked ? e => e.preventDefault() : undefined}
+                      title={isLocked ? 'Team access required' : item.label}
+                      className={`group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                        isLocked
+                          ? 'text-gray-700 cursor-not-allowed'
+                          : isActive
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20 shadow-sm shadow-green-500/10'
+                          : 'text-gray-400 hover:text-white hover:bg-gray-800/50 border border-transparent'
+                      }`}
+                    >
+                      <span className="text-base leading-none">{item.icon}</span>
+                      <span className="truncate">{item.label}</span>
+                      {isLocked && <span className="ml-auto text-[10px] text-gray-700">🔒</span>}
+                      {isActive && !isLocked && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
