@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T15:00:00Z",
-  "updatedBy": "Claude AI — workaround pattern applied. email-send now works immediately without Resend key (queues to email_queue table). FROM defaults to intel@cropsintel.com. markedForLater[] registry added to /map for end-of-sprint polish items. No more stopping on infra — build first, polish at end.",
+  "lastUpdated": "2026-04-24T15:15:00Z",
+  "updatedBy": "Claude AI — Zyra multilingual shipped. Auto-detects Arabic/Hindi/Turkish/Spanish + English; LANG_INSTRUCTION injected into system prompt with natural-register guidance. Technical terms (FOB/CIF/YoY/Nonpareil) stay in English. Closes markedForLater:zyra-multilingual.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 94,
   "launchFindings": [
@@ -101,9 +101,11 @@
     {
       "id": "zyra-multilingual",
       "item": "Zyra Arabic/Hindi/Turkish/Spanish responses (conversational, not translated)",
-      "currentWorkaround": "Claude handles non-English input well in practice but no explicit language-lens in prompt yet",
+      "currentWorkaround": "DONE 2026-04-24 — detectLanguage() auto-detects Arabic/Hindi/Devanagari/Turkish/Spanish scripts + keyword markers, LANG_INSTRUCTION block injected into system prompt with natural-register guidance",
       "markedDate": "2026-04-24",
-      "category": "feature"
+      "resolvedDate": "2026-04-24",
+      "category": "feature",
+      "status": "done"
     }
   ],
   "recentCommits": [

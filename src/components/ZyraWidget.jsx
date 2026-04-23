@@ -93,7 +93,29 @@ const ROLE_LENS = {
 };
 
 // ─── Zyra system prompt builder ─────────────────────────────────────
-function buildZyraSystemPrompt(userTier, profile, marketContext, learningContext = '', correctionContext = '') {
+// ─── Language auto-detect (last user message) ───────────────────────
+// Lightweight script-block detection. No external library; works for
+// Arabic, Hindi/Devanagari, Turkish (Latin+diacritics), Spanish (Latin
+// +tilde/accent). Falls back to English when signals are weak.
+function detectLanguage(text) {
+  if (!text || typeof text !== 'string') return 'en';
+  const s = text.slice(0, 400);
+  if (/[\u0600-\u06FF]/.test(s)) return 'ar';  // Arabic block
+  if (/[\u0900-\u097F]/.test(s)) return 'hi';  // Devanagari
+  if (/[ğĞıİşŞçÇöÖüÜ]/.test(s) && /\b(ve|bir|bu|için|ben|biz)\b/i.test(s)) return 'tr';
+  if (/[ñÑáéíóúÁÉÍÓÚ¿¡]/.test(s) && /\b(el|la|los|las|que|para|con|por)\b/i.test(s)) return 'es';
+  return 'en';
+}
+
+const LANG_INSTRUCTION = {
+  en: '',
+  ar: '\nLANGUAGE: Respond in conversational Arabic (Modern Standard with business register). Use natural trader phrasing — avoid formal/literary tone. Keep technical terms (FOB, CIF, YoY, Nonpareil) in English.',
+  hi: '\nLANGUAGE: Respond in conversational Hindi using Devanagari. Natural trader phrasing, not formal literary. Keep technical terms (FOB, CIF, YoY, Nonpareil) in English.',
+  tr: '\nLANGUAGE: Respond in conversational Turkish with business register. Natural trader phrasing. Keep technical terms (FOB, CIF, YoY, Nonpareil) in English.',
+  es: '\nLANGUAGE: Respond in conversational Spanish (neutral Latin-American register). Natural trader phrasing. Keep technical terms (FOB, CIF, YoY, Nonpareil) in English.',
+};
+
+function buildZyraSystemPrompt(userTier, profile, marketContext, learningContext = '', correctionContext = '', detectedLang = 'en') {
   const tierDescriptions = {
     guest: 'a guest visitor exploring CropsIntel. Give helpful but general information. Encourage them to register for deeper insights.',
     registered: 'a registered user with basic access. Provide good market insights but remind them that verified users get personalized prescriptions.',
@@ -104,6 +126,7 @@ function buildZyraSystemPrompt(userTier, profile, marketContext, learningContext
   const role = profile?.role || 'buyer';
   const lens = ROLE_LENS[role] || ROLE_LENS.buyer;
   const roleBlock = `\nROLE LENS (${role}):\n- Priorities: ${lens.priorities}\n- Vocabulary: ${lens.vocab}\n- Framing: ${lens.framing}`;
+  const langBlock = LANG_INSTRUCTION[detectedLang] || '';
 
   return `You are Zyra, the AI intelligence agent for CropsIntel — MAXONS' almond trading intelligence platform.
 
@@ -114,6 +137,7 @@ ${profile?.full_name ? `Their name is ${profile.full_name}.` : ''}
 ${profile?.products_of_interest?.length ? `Products of interest: ${profile.products_of_interest.join(', ')}` : ''}
 ${profile?.preferred_ports?.length ? `Preferred ports: ${profile.preferred_ports.join(', ')}` : ''}
 ${roleBlock}
+${langBlock}
 
 MARKET DATA:
 ${marketContext || 'No market data loaded yet.'}
@@ -445,7 +469,8 @@ export default function ZyraWidget() {
 
     try {
       const correctionContext = buildCorrectionContext();
-      const systemPrompt = buildZyraSystemPrompt(userTier, profile, marketContext, learningContext, correctionContext);
+      const detectedLang = detectLanguage(text);
+      const systemPrompt = buildZyraSystemPrompt(userTier, profile, marketContext, learningContext, correctionContext, detectedLang);
 
       const result = await askClaude(text, {
         system: systemPrompt,
