@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
 import { seedAiAnalyses } from '../lib/seed-ai-analyses';
 import { askClaude, smartQuery, getAIStatus, loadAPIKeys, textToSpeech } from '../lib/ai-engine';
-
-// ─── Zyra chat offline fallback responses ────────────────────────────────
-const ZYRA_RESPONSES = {
-  default: "I'm Zyra, your AI trading intelligence assistant. I analyze almond market data, generate trade signals, and provide actionable insights for MAXONS. Ask me about market conditions, pricing trends, supply outlook, or specific trade opportunities.",
-  price: "Based on current Strata market data, Nonpareil 23/25 is trading at $3.85/lb (MAXONS price: $3.97/lb with 3% margin). Prices have firmed $0.12 over the past 30 days. The tightening supply position and strong export pace support current levels. I'd watch for further upside if the April position report shows continued uncommitted inventory decline.",
-  supply: "The 2024/2025 supply position shows 81.9% of marketable supply is sold or committed as of March — running about 3.7 percentage points tighter than the same month last year. Uncommitted inventory at 550M lbs is the lowest at this point in the season since 2021/2022. This supports a bullish bias for remaining uncommitted inventory.",
-  india: "India shipments are running 28% ahead of prior year through March. The tariff reduction from 42% to 35% effective April 1 is the primary driver. India is now the #1 export destination by volume. For MAXONS, this creates opportunity in the CFR Mumbai corridor — recommend quoting Nonpareil 25/27 aggressively to your Delhi and Mumbai contacts.",
-  forecast: "The 2025 crop outlook is mixed. Bee colony health improved (30% loss vs 40% prior year), supporting normal pollination. However, total bearing acreage declined to 1.29M acres. USDA subjective estimate (May) will be the key data point. My preliminary model suggests 2.6-2.8 billion lbs — below the 3-year average of 2.85B. A below-average crop on declining acreage would be strongly bullish.",
-  maxons: "For MAXONS specifically, I recommend: (1) Secure 200-300 MT Carmel 25/27 at current $3.20/lb levels for Gulf region orders — prices likely to firm in Q3. (2) Follow up with Al Rayyan Foods on the Q3 Nonpareil commitment — they're your highest-scoring contact at 85/100. (3) Send updated pricing to Delhi Dry Fruits — India demand surge creates urgency. (4) Lock supply agreements with Blue Diamond for 2025/26 before crop estimate release.",
-};
+// Wave 3 (2026-04-24): Intelligence.jsx was running a DEGRADED Zyra —
+// no role-lens, no language detection, and a keyword-routing fallback that
+// pattern-matched "india"/"supply"/"price" to return canned paragraphs. User
+// explicitly flagged that as anti-human. Now uses the same prompt builder
+// as the floating bubble.
+import {
+  detectLanguage, buildZyraSystemPrompt, resolveUserTier, zyraOfflineMessage,
+} from '../lib/zyra-prompts';
+import {
+  generateSessionId, getFullLearningContext,
+} from '../lib/zyra-memory';
+import {
+  recordFeedback, buildCorrectionContext,
+} from '../lib/zyra-trainer';
 
 /* Strip markdown formatting for clean card display */
 function stripMd(text) {
@@ -26,16 +31,6 @@ function stripMd(text) {
     .trim();
 }
 
-function getZyraResponse(msg) {
-  const lower = msg.toLowerCase();
-  if (lower.includes('price') || lower.includes('cost') || lower.includes('strata')) return ZYRA_RESPONSES.price;
-  if (lower.includes('supply') || lower.includes('position') || lower.includes('inventory')) return ZYRA_RESPONSES.supply;
-  if (lower.includes('india') || lower.includes('delhi') || lower.includes('mumbai')) return ZYRA_RESPONSES.india;
-  if (lower.includes('forecast') || lower.includes('crop') || lower.includes('acreage')) return ZYRA_RESPONSES.forecast;
-  if (lower.includes('maxon') || lower.includes('recommend') || lower.includes('action') || lower.includes('what should')) return ZYRA_RESPONSES.maxons;
-  return ZYRA_RESPONSES.default;
-}
-
 const ANALYSIS_TYPE_CONFIG = {
   trade_signal: { icon: '📡', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
   monthly_brief: { icon: '📊', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
@@ -47,11 +42,21 @@ const ANALYSIS_TYPE_CONFIG = {
 function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
 
 export default function Intelligence() {
+  const { user, profile } = useAuth();
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+
+  const userTier = resolveUserTier(user, profile);
+  const welcomeByTier = {
+    guest:      'Hi — I\u2019m Zyra. Register for deeper market intel; right now I can sketch out trends and answer general questions.',
+    registered: 'Zyra here. Ask me about the market — supply, prices, destinations. Verified tier unlocks personalized prescriptions.',
+    verified:   'Zyra here. Fully online. Ask for a market brief, price call, or destination deep-dive.',
+    maxons:     'Zyra, MAXONS mode. Ready for internal strategy — margin, CRM priorities, council opinions.',
+  };
+
   const [chatMessages, setChatMessages] = useState([
-    { role: 'assistant', text: ZYRA_RESPONSES.default, provider: 'zyra' }
+    { role: 'assistant', text: welcomeByTier[userTier] || welcomeByTier.guest, provider: 'zyra' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -59,16 +64,28 @@ export default function Intelligence() {
   const [councilMode, setCouncilMode] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [playingVoice, setPlayingVoice] = useState(null); // index of message being played
+  const [feedback, setFeedback] = useState({}); // msgIdx → 'up' | 'down'
+  const [learningContext, setLearningContext] = useState('');
+  const [sessionId] = useState(() => generateSessionId());
   const audioRef = useRef(null);
   const chatEndRef = useRef(null);
 
   const [marketContext, setMarketContext] = useState('');
 
-  // Load API keys, AI status, and market context on mount
+  // Load API keys, AI status, market context, and Zyra memory on mount
   useEffect(() => {
     (async () => {
       await loadAPIKeys();
       setAiStatus(getAIStatus());
+
+      // Load past learning context from zyra-memory so the full-page chat
+      // doesn't start "cold" relative to bubble conversations.
+      try {
+        if (user?.id) {
+          const lc = await getFullLearningContext(user.id);
+          if (lc) setLearningContext(lc);
+        }
+      } catch { /* graceful — memory table may not be ready */ }
 
       // Build market context for Zyra system prompt
       try {
@@ -99,7 +116,7 @@ export default function Intelligence() {
         setMarketContext(ctx);
       } catch (e) { /* graceful */ }
     })();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => { loadAnalyses(); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
@@ -150,14 +167,20 @@ export default function Intelligence() {
       .slice(-6)
       .map(m => ({ role: m.role, content: m.text }));
 
-    const zyraSystem = `You are Zyra, MAXONS' AI trading intelligence. You specialize in California almond markets. Be concise, data-driven, actionable. Use trading terminology.\n\nMARKET DATA:\n${marketContext || 'Loading...'}`;
+    // Build the SAME Zyra system prompt the floating bubble uses: role-lens
+    // (grower/broker/buyer/trader/…), multilingual (ar/hi/tr/es/en),
+    // learning + correction context from past conversations, page context.
+    const detectedLang     = detectLanguage(userMsg);
+    const correctionContext = buildCorrectionContext();
+    const zyraSystem = buildZyraSystemPrompt(userTier, profile, marketContext, {
+      learningContext, correctionContext, detectedLang, pageContext: 'intelligence',
+    });
 
     try {
       let result;
       if (councilMode) {
-        result = await smartQuery(userMsg, { mode: 'council' });
+        result = await smartQuery(userMsg, { mode: 'council', system: zyraSystem });
       } else {
-        // Use askClaude directly with system prompt and history
         result = await askClaude(userMsg, {
           system: zyraSystem,
           history,
@@ -165,10 +188,8 @@ export default function Intelligence() {
         });
       }
 
-      // Check if we got a real response
       const text = result.consensus || result.text;
       if (text && !result.fallback && result.type !== 'offline') {
-        // Real AI response
         const providerLabel = result.type === 'council'
           ? `AI Council (${result.modelsUsed?.join(', ')})`
           : result.provider || 'AI';
@@ -178,29 +199,50 @@ export default function Intelligence() {
           provider: providerLabel,
           isCouncil: result.type === 'council',
           unanimity: result.unanimity,
+          detectedLang,
         }]);
       } else {
-        // Fallback to sample responses
-        const fallbackText = getZyraResponse(userMsg);
+        // HONEST offline mode — no keyword-routed canned paragraphs. The user
+        // flagged the old behaviour ("india" → pre-written canned response)
+        // as anti-human. Show the real situation instead.
         setChatMessages(prev => [...prev, {
           role: 'assistant',
-          text: fallbackText,
+          text: zyraOfflineMessage(detectedLang),
           provider: 'zyra-offline',
+          detectedLang,
         }]);
       }
     } catch (err) {
-      // Network error — use sample responses
-      const fallbackText = getZyraResponse(userMsg);
       setChatMessages(prev => [...prev, {
         role: 'assistant',
-        text: fallbackText,
+        text: zyraOfflineMessage(detectedLang),
         provider: 'zyra-offline',
+        detectedLang,
       }]);
     }
 
-    // Refresh AI status after each query
     setAiStatus(getAIStatus());
     setChatLoading(false);
+  }
+
+  // Trainer loop — thumbs up/down on assistant replies
+  async function rateMessage(msgIdx, rating) {
+    const msg = chatMessages[msgIdx];
+    if (!msg || msg.role !== 'assistant') return;
+    const prev = chatMessages[msgIdx - 1];
+    const userQuery = prev?.role === 'user' ? prev.text : '';
+    setFeedback(f => ({ ...f, [msgIdx]: rating }));
+    try {
+      await recordFeedback({
+        sessionId,
+        userId: user?.id || null,
+        userQuery,
+        assistantReply: msg.text,
+        rating,
+        pageContext: 'intelligence',
+        userTier,
+      });
+    } catch { /* best-effort */ }
   }
 
   async function playVoice(text, msgIndex) {
@@ -371,7 +413,7 @@ export default function Intelligence() {
                   {msg.role === 'assistant' && (
                     <div className="mt-1.5 pt-1.5 border-t border-gray-700/30 flex items-center gap-1.5">
                       {msg.provider === 'zyra-offline' ? (
-                        <span className="text-[9px] text-amber-500/60">Offline mode — sample response</span>
+                        <span className="text-[9px] text-amber-500/60">Offline — AI backend unreachable</span>
                       ) : msg.provider && msg.provider !== 'zyra' ? (
                         <>
                           <span className={`text-[9px] ${msg.isCouncil ? 'text-purple-400' : 'text-green-500/60'}`}>
@@ -384,8 +426,40 @@ export default function Intelligence() {
                               {msg.unanimity === 'full' ? 'Unanimous' : 'Partial'}
                             </span>
                           )}
+                          {msg.detectedLang && msg.detectedLang !== 'en' && (
+                            <span className="text-[9px] px-1 rounded bg-blue-500/20 text-blue-400">
+                              {msg.detectedLang.toUpperCase()}
+                            </span>
+                          )}
                         </>
                       ) : null}
+                      {/* Trainer loop — thumbs up/down */}
+                      {msg.provider && msg.provider !== 'zyra-offline' && msg.provider !== 'zyra' && (
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => rateMessage(i, 'up')}
+                            title="Good answer — helps train Zyra"
+                            className={`text-[10px] leading-none px-1 py-0.5 rounded transition-colors ${
+                              feedback[i] === 'up'
+                                ? 'text-green-300'
+                                : 'text-gray-600 hover:text-green-400'
+                            }`}
+                          >
+                            👍
+                          </button>
+                          <button
+                            onClick={() => rateMessage(i, 'down')}
+                            title="Bad answer"
+                            className={`text-[10px] leading-none px-1 py-0.5 rounded transition-colors ${
+                              feedback[i] === 'down'
+                                ? 'text-red-300'
+                                : 'text-gray-600 hover:text-red-400'
+                            }`}
+                          >
+                            👎
+                          </button>
+                        </div>
+                      )}
                       {/* Voice play button */}
                       <button
                         onClick={() => playVoice(msg.text, i)}
