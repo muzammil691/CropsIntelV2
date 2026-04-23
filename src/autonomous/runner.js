@@ -25,8 +25,9 @@ import { scrapeBountiful } from '../scrapers/bountiful-scraper.js';
 import { scrapeNews } from '../scrapers/news-scraper.js';
 import { pollInbox } from './imap-reader.js';
 import { runEmailIngestion } from './email-ingestor.js';
+import { flushOnce as flushEmailQueue } from './email-flusher.js';
 
-const RUNNER_VERSION = '5.0.0';
+const RUNNER_VERSION = '5.1.0';
 
 // ============================================================
 // Health check — log that the runner is alive
@@ -217,6 +218,20 @@ function startRunner() {
     }
   }, { timezone: 'UTC' });
 
+  // Every 5 minutes: Flush email_queue (outbound) — drains messages the
+  // edge function couldn't send live (Deno Deploy ↔ Office 365 SMTP fails).
+  // Uses the same Office 365 creds proven working by imap-reader.js.
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const result = await flushEmailQueue();
+      if (result.found > 0) {
+        console.log(`Email flush: ${result.sent}/${result.found} sent, ${result.failed} failed`);
+      }
+    } catch (err) {
+      console.warn('Scheduled email flush failed:', err.message);
+    }
+  }, { timezone: 'UTC' });
+
   // Monthly: Full cycle on 15th at 8 AM UTC (when ABC publishes)
   cron.schedule('0 8 15 * *', () => {
     console.log('Scheduled trigger: Monthly ABC scrape cycle');
@@ -235,10 +250,11 @@ function startRunner() {
   }, { timezone: 'UTC' });
 
   console.log('Scheduled jobs:');
-  console.log('  - Email inbox poll: Every 15 minutes');
+  console.log('  - Email inbox poll:  Every 15 minutes');
+  console.log('  - Email queue flush: Every 5 minutes');
   console.log('  - Full scrape cycle: 15th of each month, 8 AM UTC');
-  console.log('  - Data reprocess: Every Monday, 6 AM UTC');
-  console.log('  - Health check: Daily at midnight UTC');
+  console.log('  - Data reprocess:    Every Monday, 6 AM UTC');
+  console.log('  - Health check:      Daily at midnight UTC');
   console.log('\nRunner is live. Waiting for scheduled triggers...');
   console.log('Press Ctrl+C to stop.\n');
 
