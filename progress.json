@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-23T13:19:20Z",
-  "updatedBy": "Claude AI \u2014 F2 Destinations filter + F3 Supply retrofit + F4 ABC audit",
+  "lastUpdated": "2026-04-23T19:45:00Z",
+  "updatedBy": "Claude AI + user \u2014 WhatsApp OTP revived via CLI redeploy",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 96,
+  "overallPercent": 97,
   "launchFindings": [
     {
       "id": "F1",
@@ -95,6 +95,15 @@
       "status": "fixed",
       "fixCommit": "pending",
       "note": "Split into 5 first-class systems: zyra-bubble, zyra-full-page, zyra-trainer, zyra-whatsapp, zyra-prescriptions. Each with real feature done/todo breakdown."
+    },
+    {
+      "id": "WA-OTP",
+      "severity": "critical",
+      "found_at": "/login",
+      "issue": "All 4 WhatsApp edge functions returning 503 BOOT_ERROR \u2014 bundles were missing on Supabase edge storage despite metadata rows existing. Root cause: deploy corruption at some point during earlier session.",
+      "status": "fixed",
+      "fixCommit": "user-manual-redeploy",
+      "note": "User ran supabase CLI locally: supabase functions deploy whatsapp-{login,send,verify,webhook} --project-ref eywsfmixzrdfcywmdaaw. All 4 fns now return HTTP 200 on valid calls. Verified via curl."
     }
   ],
   "overallNote": "Adjusted 97\u219287 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems \u2014 honest total is lower against the full vision.",
@@ -231,7 +240,10 @@
       "item": "End-to-end V1 login test with one real migrated user (WhatsApp OTP \u2192 V1 popup \u2192 password set \u2192 logged in)",
       "currentWorkaround": "Flow code is complete + unit-tested; unverified against a live migrated account",
       "markedDate": "2026-04-24",
-      "category": "manual-qa"
+      "category": "manual-qa",
+      "status": "ready-for-user-test",
+      "edge_fns_deployed": "2026-04-23T19:44Z",
+      "next_step": "User tests OTP with real V1 migrated phone on cropsintel.com/login"
     },
     {
       "id": "abc-shipment-scraper",
@@ -2219,7 +2231,8 @@
     "widget-interactivity": 92,
     "offers-multi-product": 90,
     "destinations-filters": 100,
-    "supply-filters": 100
+    "supply-filters": 100,
+    "whatsapp-otp": 100
   },
   "dataHealth": {
     "abc_position_reports": {
