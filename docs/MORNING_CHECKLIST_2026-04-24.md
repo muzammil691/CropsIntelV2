@@ -10,7 +10,7 @@ You should see these panels, in this order, on the Overview tab:
 
 1. **Now Working On** — the green pulsing banner with Claude's current step
 2. **Blockers** — should be EMPTY (the workflow CNAME flip-flop is permanently fixed)
-3. **Hero stats** — overall 92%, target 95%, 21 pages, 116 reports, 45 countries, 65 users, 4 login methods, 11 crop years
+3. **Hero stats** — overall 92%, target 95%, 21 pages, 106 reports (target 128 after ABC backfill; see B4), 45 countries, 65 users, 4 login methods, 11 crop years
 4. **Phase Progress** — phases 1-6 done, 7 active at 97%, 8-10 queued
 5. **Next Priorities** — launch-first order
 6. **Access Tiers** — Guest/Registered/Verified/MAXONS all marked built
