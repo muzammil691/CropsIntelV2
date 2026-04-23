@@ -253,41 +253,86 @@
       {
         "id": "B8-reports-page-context",
         "severity": "medium",
-        "question": "When you said 'reports are not completely uploaded' \u2014 do you mean (a) /reports page renders but data is missing; (b) abc_position_reports DB rows are missing crop years; (c) PDF file_url not set on existing rows; (d) something else?",
+        "question": "When you said 'reports are not completely uploaded' \u2014 do you mean (a) /reports page renders but data is missing; (b) abc_position_reports DB rows are missing crop years; (c) PDF file_url not set on existing rows; (d) something else? (Partially addressed Wave 4: /reports now shows a Data Coverage panel surfacing missing months per crop year. Confirm whether that matches what you meant; if (b) or (c), see B4/B9.)",
         "impact": "Determines whether I fix the UI or re-run the scraper.",
+        "oneLineAnswer": ""
+      },
+      {
+        "id": "B9-apply-widget-configs-migration",
+        "severity": "low",
+        "question": "Apply supabase/migrations/20260424_widget_configs.sql to production Supabase. Either: (a) supabase db push (if CLI linked), (b) paste into Supabase SQL editor, or (c) run the pg8000 helper you used for prior migrations. Confirm done. Until applied, useWidgetConfig returns defaults silently \u2014 nothing breaks, but Workshop UI (post-launch) won't be able to save.",
+        "impact": "Blocks Wave 5 widget-config DB reads, but hook is already coded to no-op if table missing. Zero-risk to ship without.",
         "oneLineAnswer": ""
       }
     ],
+    "waveSummary": {
+      "status": "all 6 waves shipped",
+      "startedAt": "2026-04-24T13:30:00Z",
+      "endedAt": "2026-04-24T20:05:00Z",
+      "commits": [
+        "9dad236  Wave 1 \u2014 Destinations display bugs",
+        "fd3feef  Wave 2 \u2014 Offer builder rebuild",
+        "2b8f0ab  Wave 3 \u2014 Zyra unification",
+        "06eb2b1  Wave 4 \u2014 Reports coverage panel",
+        "417e531  Wave 5 \u2014 Widget Library foundation",
+        "2ec6886  Wave 6 \u2014 Card retrofit"
+      ],
+      "userHandsNeeded": "See morningBlockers B1\u2013B9. Code side is complete \u2014 remaining items are all infra/permissions (PAT scope, npm install, Drive share, SERVICE_ROLE key, Resend, V1 login test, migration apply).",
+      "nextCandidates": [
+        "Sweep other pages for Card retrofit (Trading, Forecasts, News, Pricing, CRM, Analysis, Welcome, ProjectMap, Brokers, Suppliers, Settings, Autonomous, Intelligence, Reports, Register \u2014 11 files still have raw pattern).",
+        "First widget-library consumer: wire useWidgetConfig into Dashboard's ShipmentTrend to demo DB-backed config (tone, year window defaults).",
+        "Wave 3 follow-up: add same role-lens pill + trainer thumbs to WhatsApp Zyra surface (edge fn whatsapp-zyra).",
+        "Wave 4 follow-up: after B4/B9 land, re-scrape missing months + re-verify /reports Data Coverage pill hits 100%."
+      ]
+    },
     "waves": [
       {
         "id": 1,
         "name": "Destinations display fix",
-        "status": "starting"
+        "status": "shipped",
+        "shippedDate": "2026-04-24",
+        "commit": "9dad236",
+        "summary": "5 display bug fixes in Destinations.jsx: exportDomesticSplit Total Export exclusion, monthlyExpDom inversion (the critical always-0 bug), yoyComparison + crossYearCountry defensive exclusions, exportDestCSV denominator fix."
       },
       {
         "id": 2,
         "name": "Offer builder rebuild (8 steps)",
-        "status": "queued"
+        "status": "shipped",
+        "shippedDate": "2026-04-24",
+        "commit": "fd3feef",
+        "summary": "Trading.jsx 846\u2192409 lines. Extracted OfferBuilder.jsx (585), OfferLineItem.jsx (191), offerCalcs.js (348). Added Strata coverage indicator, incoterm warnings, per-line margin delta, preview modal, weighted margin %, landed-cost-per-lb."
       },
       {
         "id": 3,
         "name": "Zyra priority audit + fixes",
-        "status": "queued"
+        "status": "shipped",
+        "shippedDate": "2026-04-24",
+        "commit": "2b8f0ab",
+        "summary": "Created src/lib/zyra-prompts.js (209 lines) unifying QUICK_TOPICS + ROLE_LENS + detectLanguage + buildZyraSystemPrompt. Refactored ZyraWidget 779\u2192646 lines. Rewrote /intelligence to use shared lib + trainer UI + multilingual pill; removed anti-human keyword-routing fallback."
       },
       {
         "id": 4,
         "name": "Reports page gap audit",
-        "status": "queued"
+        "status": "shipped",
+        "shippedDate": "2026-04-24",
+        "commit": "06eb2b1",
+        "summary": "Added coverageStats memo + collapsible Data Coverage panel in Reports.jsx. Per-crop-year Sep\u2013Jul 11-dot grid: green=present, red-dashed=missing, gray=not due. Click-to-filter. Overall X/132 pill. No service-role key needed \u2014 client-computed."
       },
       {
         "id": 5,
         "name": "Widget Library foundation (migration + hook, no UI yet)",
-        "status": "queued"
+        "status": "shipped",
+        "shippedDate": "2026-04-24",
+        "commit": "417e531",
+        "summary": "Migration supabase/migrations/20260424_widget_configs.sql (table + indexes + RLS + publish_widget_config RPC). Hook src/hooks/useWidgetConfig.js (196 lines) with saveWidgetDraft helper. Admin-write, authenticated-read-published. Tolerates missing table for pre-migration envs."
       },
       {
         "id": 6,
         "name": "Premium Card retrofit on Dashboard + Destinations + Supply",
-        "status": "queued"
+        "status": "shipped",
+        "shippedDate": "2026-04-24",
+        "commit": "2ec6886",
+        "summary": "Swapped 5 Dashboard raw-card shells + 3 Destinations (ChartCard helper + empty-state + Cross-Year compare) + 2 Supply (ChartCard helper + trader-context) to <Card>. Every target page is grep-clean of the raw pattern. 11 other pages still use raw pattern \u2014 future work."
       }
     ]
   },
