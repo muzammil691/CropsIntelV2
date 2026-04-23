@@ -58,6 +58,8 @@ const NAV_ITEMS = [
   // Was previously buried inside /settings; user flagged they couldn't find it.
   // The #team-panel hash causes Settings.jsx to scroll the panel into view.
   { path: '/settings#team-panel', label: 'Team & Users', icon: '👥', requireTeam: true },
+  // Email Broadcast — admin-only cohort email sender (V1 subscribers + registered)
+  { path: '/settings#broadcast-panel', label: 'Broadcast', icon: '📣', requireAdmin: true },
   { path: '/settings', label: 'Settings', icon: '⚙️', requireAuth: true }
 ];
 

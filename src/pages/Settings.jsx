@@ -100,6 +100,15 @@ export default function Settings() {
   const [pendingLoading, setPendingLoading] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState('');
 
+  // Admin-only: email broadcast UI state
+  const [subscribers, setSubscribers] = useState([]);
+  const [subsLoading, setSubsLoading] = useState(false);
+  const [broadcastFilter, setBroadcastFilter] = useState({ source: 'all', includeRegistered: true });
+  const [broadcast, setBroadcast] = useState({ subject: '', html: '', text: '' });
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [broadcastHistory, setBroadcastHistory] = useState([]);
+
   useEffect(() => { loadSettings(); }, []);
 
   // Load profile when auth profile is available
@@ -223,7 +232,11 @@ export default function Settings() {
 
   // Admin: load all users
   useEffect(() => {
-    if (isAdmin) loadAllUsers();
+    if (isAdmin) {
+      loadAllUsers();
+      loadSubscribers();
+      loadBroadcastHistory();
+    }
   }, [isAdmin]);
 
   // Team-only: load pending verification queue
@@ -316,6 +329,148 @@ export default function Settings() {
       if (!error && data) setAllUsers(data);
     } catch { /* table may not exist */ }
     setUsersLoading(false);
+  }
+
+  // ─── Admin broadcast: load subscriber cohort ────────────────
+  async function loadSubscribers() {
+    setSubsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('email_subscribers')
+        .select('id, email, name, source, subscribed_at, converted_at, user_profile_id, tags, last_email_sent_at, email_count')
+        .is('unsubscribed_at', null)
+        .order('subscribed_at', { ascending: false })
+        .limit(500);
+      if (!error && data) setSubscribers(data);
+    } catch {
+      // Table may not exist yet (migration pending) — render empty state.
+    }
+    setSubsLoading(false);
+  }
+
+  async function loadBroadcastHistory() {
+    try {
+      const { data, error } = await supabase
+        .from('email_broadcasts')
+        .select('id, subject, recipient_count, sent_count, queued_count, failed_count, status, created_at, completed_at')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (!error && data) setBroadcastHistory(data);
+    } catch { /* no-op */ }
+  }
+
+  // Computed broadcast recipients: union of email_subscribers + user_profiles
+  // (if includeRegistered), de-duped by email. Respects source filter.
+  function computeBroadcastRecipients() {
+    const seen = new Set();
+    const out = [];
+    // Subscribers
+    for (const s of subscribers) {
+      if (broadcastFilter.source !== 'all' && s.source !== broadcastFilter.source) continue;
+      if (!s.email) continue;
+      const k = s.email.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ email: s.email, name: s.name, source: s.source, id: s.id, kind: 'subscriber' });
+    }
+    // Registered users (user_profiles.email)
+    if (broadcastFilter.includeRegistered) {
+      for (const u of allUsers) {
+        if (!u.email) continue;
+        const k = u.email.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push({ email: u.email, name: u.full_name, source: 'user_profile', id: u.id, kind: 'user' });
+      }
+    }
+    return out;
+  }
+
+  async function sendBroadcast() {
+    setBroadcastMsg('');
+    if (!broadcast.subject.trim()) return setBroadcastMsg('Error: Subject required');
+    if (!broadcast.html.trim() && !broadcast.text.trim()) return setBroadcastMsg('Error: Either HTML or text body required');
+
+    const recipients = computeBroadcastRecipients();
+    if (recipients.length === 0) return setBroadcastMsg('Error: No recipients match the current filter');
+
+    if (!confirm(`Send "${broadcast.subject}" to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'}?`)) return;
+
+    setBroadcastSending(true);
+    try {
+      // Log the broadcast first (pending status) — captures intent even
+      // if email-send fails per-recipient.
+      const { data: broadcastRow, error: logErr } = await supabase
+        .from('email_broadcasts')
+        .insert({
+          sent_by: authProfile?.id,
+          subject: broadcast.subject,
+          html: broadcast.html || null,
+          text: broadcast.text || null,
+          cohort_filter: broadcastFilter,
+          recipient_count: recipients.length,
+          status: 'sending',
+          started_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+      if (logErr) throw logErr;
+
+      // Call email-send edge function with bulk array
+      const emails = recipients.map(r => r.email);
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          type: 'custom',
+          to: emails,
+          subject: broadcast.subject,
+          html: broadcast.html,
+          text: broadcast.text,
+          context: { broadcast_id: broadcastRow.id },
+        }),
+      });
+
+      const result = await res.json().catch(() => ({}));
+
+      // Stamp completion
+      await supabase
+        .from('email_broadcasts')
+        .update({
+          status: result?.success ? 'completed' : 'failed',
+          sent_count: result?.sent || 0,
+          queued_count: result?.queued || (result?.success && !result?.sent ? recipients.length : 0),
+          failed_count: result?.failed || 0,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', broadcastRow.id);
+
+      // Update last_email_sent_at + email_count for subscriber recipients
+      const subIds = recipients.filter(r => r.kind === 'subscriber').map(r => r.id);
+      if (subIds.length > 0) {
+        await supabase.rpc('increment_subscriber_email_count', { subscriber_ids: subIds, sent_at: new Date().toISOString() })
+          .catch(() => {
+            // RPC may not exist — fall through to a batch update.
+            return supabase
+              .from('email_subscribers')
+              .update({ last_email_sent_at: new Date().toISOString() })
+              .in('id', subIds);
+          });
+      }
+
+      setBroadcastMsg(result?.success
+        ? `Broadcast sent to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'}${result.queued ? ` (queued — email provider offline)` : ''}`
+        : `Error: ${result?.error || 'Broadcast failed'}`);
+      setBroadcast({ subject: '', html: '', text: '' });
+      loadBroadcastHistory();
+    } catch (err) {
+      setBroadcastMsg('Error: ' + (err.message || 'Broadcast failed'));
+    } finally {
+      setBroadcastSending(false);
+    }
   }
 
   async function updateUserRole(userId, newRole) {
@@ -882,6 +1037,153 @@ export default function Settings() {
               <p className="text-center text-sm text-gray-600 py-4">No users found</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Admin: Email Broadcast — subscribers + registered users */}
+      {isAdmin && (
+        <div id="broadcast-panel" className="bg-gray-900/50 border border-blue-500/20 rounded-xl p-5 scroll-mt-20">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                Email Broadcast
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-normal">
+                  Admin
+                </span>
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Reach {subscribers.length} subscriber{subscribers.length === 1 ? '' : 's'} + {allUsers.length} registered user{allUsers.length === 1 ? '' : 's'}. V1 cohort import happens via SQL — see markedForLater.
+              </p>
+            </div>
+            <button
+              onClick={() => { loadSubscribers(); loadBroadcastHistory(); }}
+              disabled={subsLoading}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg text-xs transition-colors border border-gray-700"
+            >
+              {subsLoading ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+
+          {/* Cohort filters */}
+          <div className="bg-gray-950/50 border border-gray-800 rounded-lg p-4 mb-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs text-gray-500">Cohort:</span>
+              {[
+                { value: 'all', label: 'All subscribers' },
+                { value: 'v1_subscribers', label: 'V1 subscribers (email-only)' },
+                { value: 'v1_registered', label: 'V1 registered' },
+                { value: 'v2_signup', label: 'V2 signups' },
+                { value: 'footer_form', label: 'Footer form' },
+                { value: 'zyra_chat', label: 'Via Zyra' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setBroadcastFilter(f => ({ ...f, source: opt.value }))}
+                  className={`px-2.5 py-1 rounded text-[11px] transition-colors ${
+                    broadcastFilter.source === opt.value
+                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                      : 'bg-gray-800 text-gray-500 border border-gray-700 hover:text-gray-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <label className="flex items-center gap-2 ml-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={broadcastFilter.includeRegistered}
+                  onChange={e => setBroadcastFilter(f => ({ ...f, includeRegistered: e.target.checked }))}
+                  className="w-3.5 h-3.5 accent-blue-500"
+                />
+                <span className="text-[11px] text-gray-400">Include registered users ({allUsers.length})</span>
+              </label>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-800 flex items-center gap-2">
+              <span className="text-xs text-gray-500">Effective recipients:</span>
+              <span className="text-sm text-white font-semibold">
+                {computeBroadcastRecipients().length}
+              </span>
+              <span className="text-[10px] text-gray-600">(deduped by email)</span>
+            </div>
+          </div>
+
+          {/* Compose */}
+          <div className="grid grid-cols-1 gap-3">
+            <input
+              type="text"
+              value={broadcast.subject}
+              onChange={e => { setBroadcast(b => ({ ...b, subject: e.target.value })); setBroadcastMsg(''); }}
+              placeholder="Subject line"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50"
+            />
+            <textarea
+              value={broadcast.text}
+              onChange={e => { setBroadcast(b => ({ ...b, text: e.target.value })); setBroadcastMsg(''); }}
+              rows={5}
+              placeholder="Plain-text body (for clients that don't render HTML)"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 resize-y"
+            />
+            <details className="group">
+              <summary className="text-[11px] text-gray-500 cursor-pointer hover:text-gray-400 select-none">
+                + HTML body (optional — rich layout)
+              </summary>
+              <textarea
+                value={broadcast.html}
+                onChange={e => { setBroadcast(b => ({ ...b, html: e.target.value })); setBroadcastMsg(''); }}
+                rows={6}
+                placeholder="<p>Hi {{name}}, …</p>"
+                className="w-full mt-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 font-mono resize-y"
+              />
+            </details>
+            <div className="flex items-center justify-between">
+              <div className="text-xs">
+                {broadcastMsg && (
+                  <span className={broadcastMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}>
+                    {broadcastMsg}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={sendBroadcast}
+                disabled={broadcastSending || !broadcast.subject.trim()}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+              >
+                {broadcastSending
+                  ? 'Sending…'
+                  : `Send to ${computeBroadcastRecipients().length}`}
+              </button>
+            </div>
+          </div>
+
+          {/* Broadcast history */}
+          {broadcastHistory.length > 0 && (
+            <div className="mt-5 pt-4 border-t border-gray-800">
+              <h3 className="text-xs text-gray-500 uppercase mb-2 tracking-wide">Recent broadcasts</h3>
+              <div className="space-y-1.5">
+                {broadcastHistory.slice(0, 5).map(b => (
+                  <div key={b.id} className="flex items-center justify-between bg-gray-800/30 border border-gray-800 rounded-lg px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-white truncate">{b.subject}</p>
+                      <p className="text-[10px] text-gray-600">
+                        {new Date(b.created_at).toLocaleString()} —
+                        {' '}{b.sent_count}/{b.recipient_count} sent
+                        {b.queued_count ? ` · ${b.queued_count} queued` : ''}
+                        {b.failed_count ? ` · ${b.failed_count} failed` : ''}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${
+                      b.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                      b.status === 'sending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                      b.status === 'failed' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                      'bg-gray-700/50 text-gray-400 border border-gray-700'
+                    }`}>
+                      {b.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
