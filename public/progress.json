@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T15:45:00Z",
-  "updatedBy": "Claude AI — ABC_SCRAPE_LIMIT env var exposed. User can trigger historical shipment+receipt backfill with one CLI arg (no code change). 4 markedForLater items now have concrete workarounds: email→intel@cropsintel.com+queue, zyra-multilingual→5 langs, dashboard-filters→3y/5y/All toggle, shipment-scraper→env var.",
+  "lastUpdated": "2026-04-24T16:00:00Z",
+  "updatedBy": "Claude AI — 6-commit turn. Applied workaround-not-wait rule. 2 latent bugs killed that would've silently crashed the V2 upgrade blast: (1) CRM bulk-invite called /functions/v1/send-email but function is named email-send, (2) notifications.js had a hardcoded Supabase URL + missing auth header. V2 upgrade flow now actually reaches the edge functions.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 94,
   "launchFindings": [
