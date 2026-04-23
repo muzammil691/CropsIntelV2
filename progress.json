@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T10:45:00Z",
-  "updatedBy": "Claude AI — monitor-log.json seeded with tonight's walkthrough (14/14 routes OK, 3 low-medium findings, 9 fixes shipped)",
+  "lastUpdated": "2026-04-24T11:15:00Z",
+  "updatedBy": "Claude AI — L5 F1b email-send edge function CODE READY (Resend + 3 templates) + docs/F1b_EMAIL_DEPLOY.md walkthrough for morning deploy",
   "sessionStatus": "autonomous-night-shift-launch-focus",
   "overallPercent": 92,
   "launchFindings": [
@@ -48,7 +48,7 @@
       { "id": "L2", "name": "Align Welcome/sidebar/hero promises with reality — fix any stale claims", "status": "queued" },
       { "id": "L3", "name": "Zyra interface polish — align with 'senior trader' promise on Welcome", "status": "queued" },
       { "id": "L4", "name": "CRM: reconcile invited→joined when recipient registers", "status": "queued" },
-      { "id": "L5", "name": "F1b SMTP edge function (unlocks bulk-invite email + V2 upgrade email)", "status": "queued" },
+      { "id": "L5", "name": "F1b SMTP edge function (unlocks bulk-invite email + V2 upgrade email)", "status": "code_ready_needs_deploy" },
       { "id": "L6", "name": "V1 login live verification — test the popup end-to-end on cropsintel.com", "status": "queued" },
       { "id": "L7", "name": "Launch gate review: 95%+ target, Welcome promises true, data accurate", "status": "queued" }
     ]
