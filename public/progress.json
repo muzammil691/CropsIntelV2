@@ -15,6 +15,8 @@
     "v1_linked_to_v2_profile_by_whatsapp": 60,
     "user_profiles_migrated_from_v1": 63,
     "duplicate_v2_profiles_discovered": 3,
+    "duplicate_v2_profiles_resolved": 3,
+    "dedupe_details": "2026-04-24 05:40Z: 3 stale team_*@almondoracle.internal rows deleted (Saqib/Hammad/Qousi). email_subscribers FKs reassigned to canonical @maxonsnuts.com rows. Team members can now log in via WhatsApp with unambiguous profile resolution.",
     "unlinked_v1_users_awaiting_v2_signup": 1
   },
   "ciState": {
