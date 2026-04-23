@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T10:15:00Z",
-  "updatedBy": "Claude AI — /map Overview tab now renders: Night-Shift Plan + Launch Findings + Monitor Bot panels (so user sees live progress from phone)",
+  "lastUpdated": "2026-04-24T10:30:00Z",
+  "updatedBy": "Claude AI — LAUNCH L4 shipped: CRM invited→joined auto-reconcile on user register/login (useAuth loadProfile hook)",
   "sessionStatus": "autonomous-night-shift-launch-focus",
   "overallPercent": 92,
   "launchFindings": [
@@ -427,7 +427,7 @@
         { "name": "Users tab: tier filter chips work + counts per tier + V1-migrated badge (C5a)", "status": "done" },
         { "name": "Users tab: Verify action for admin/team — sets access_tier='verified' + metadata (C5d)", "status": "done" },
         { "name": "Dual-channel bulk invite: WhatsApp + Email (email queued, SMTP F1b pending)", "status": "done" },
-        { "name": "Reconcile invited → joined when recipient registers (C5b-followup)", "status": "todo" },
+        { "name": "Reconcile invited → joined when recipient registers (C5b-followup)", "status": "done" },
         { "name": "Per-team-member user-level insights for profitability targeting (C5c)", "status": "todo" },
         { "name": "Widget filters + compare (stage vs stage, period vs period)", "status": "todo" }
       ]
