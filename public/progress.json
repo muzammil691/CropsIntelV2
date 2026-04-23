@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T18:45:00Z",
-  "updatedBy": "Claude AI \u2014 Wave 3 Zyra unification (shared prompts lib, kill keyword-routing)",
+  "lastUpdated": "2026-04-24T19:10:00Z",
+  "updatedBy": "Claude AI \u2014 Wave 4 Reports coverage panel (per-crop-year gap visualization)",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 62,
   "launchReadinessPercent": 85,
@@ -329,10 +329,17 @@
         "rank": 4,
         "task": "Reports \u2014 not completely uploaded",
         "scope": "Audit abc_position_reports row counts per crop year. Backfill missing months. Verify reports PDFs are all in abc_position_reports.file_url + mirrored to Google Drive once user activates gdrive deps.",
-        "status": "queued",
-        "blockers": [
-          "depends on scraper verification"
-        ]
+        "status": "partial",
+        "shippedDate": "2026-04-24",
+        "shipped": {
+          "coveragePanel": "/reports now renders a Data Coverage section (src/pages/Reports.jsx:coverageStats memo + collapsible JSX panel) that per-crop-year shows a Sep\u2013Jul month grid: green = report present, red-dashed = report missing, gray = not due yet. Pill at top shows overall X/132 months (X%). Click any square to filter the table to that crop_year + month.",
+          "audit": "Coverage computed client-side from whatever supabase returns \u2014 no service-role key needed. User can now SEE gaps instead of having to guess. If gaps found by inspection, user can trigger `ABC_SCRAPE_LIMIT=200 node src/scrapers/abc-scraper.js` to backfill."
+        },
+        "remaining": [
+          "Actually backfill any missing months (needs service-role key + ABC source PDFs on almonds.org; user-hand or auto-scrape workflow dispatch)",
+          "Mirror abc_position_reports.file_url PDFs to Google Drive (blocked on user `npm install googleapis` + Drive folder share)"
+        ],
+        "blockers": []
       },
       {
         "rank": 5,
@@ -655,7 +662,13 @@
   ],
   "recentCommits": [
     {
-      "sha": "pending-wave3",
+      "sha": "pending-wave4",
+      "date": "2026-04-24",
+      "subject": "reports: per-crop-year Data Coverage panel \u2014 month grid w/ gap visualization (Wave 4)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "2b8f0ab",
       "date": "2026-04-24",
       "subject": "zyra: unify prompt builder across bubble + /intelligence; kill keyword-routing fallback (Wave 3)",
       "author": "Claude AI"
@@ -2570,6 +2583,7 @@
     "data-scrapers-verified": 35,
     "destinations-display": 55,
     "reports-data-completeness": 40,
+    "reports-coverage-visibility": 100,
     "map-honesty": 100,
     "widget-library": 15,
     "widget-workshop": 5,

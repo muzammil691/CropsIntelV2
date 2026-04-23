@@ -4,6 +4,12 @@ import { toNum } from '../lib/utils';
 import FilterBar, { CROP_YEAR_COLORS } from '../components/FilterBar';
 
 const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// ABC crop year runs Aug (month 8) through July (month 7) of the next calendar year.
+// We use this to render a 12-dot coverage grid per crop year so gaps are visible.
+const CROP_YEAR_MONTH_SEQUENCE = [8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7];
+// The ABC typically skips publishing in August (marketing-year-start padding);
+// count it as "expected absent" so a crop year with 11/12 from Sep-Jul is "complete".
+const CROP_YEAR_EXPECTED_MONTHS = 11;
 
 const COLUMNS = [
   { key: 'period', label: 'Period', align: 'left', sortKey: r => r.report_year * 100 + r.report_month },
@@ -152,6 +158,68 @@ export default function Reports() {
     return { latest, totalSupply, totalShipped, totalCommitted, avgSold, count: filtered.length };
   }, [filtered]);
 
+  // Wave 4 (2026-04-24): per-crop-year coverage. Which months are present /
+  // missing for each crop year, so the Reports page surfaces gaps instead
+  // of hiding them behind a row-count-per-filter-click.
+  const coverageStats = useMemo(() => {
+    if (!reports.length) return { perYear: [], totalPresent: 0, totalExpected: 0 };
+    const nowCropYear = (() => {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      return m >= 8 ? `${y}/${String((y + 1) % 100).padStart(2, '0')}`
+                    : `${y - 1}/${String(y % 100).padStart(2, '0')}`;
+    })();
+    const nowYear = new Date().getFullYear();
+    const nowMonth = new Date().getMonth() + 1;
+
+    const perYear = cropYears.map(cy => {
+      const rows = reports.filter(r => r.crop_year === cy);
+      // Build Set of report_month present for this crop year
+      const presentMonths = new Set(rows.map(r => r.report_month));
+
+      // Which months are "due" depends on whether this is a past year or live year.
+      // Past crop year: all 11 months from Sep (9) through Jul (7) should be present.
+      // Live crop year: months from Sep up to current calendar month only.
+      const isLive = cy === nowCropYear;
+
+      const dueMonths = CROP_YEAR_MONTH_SEQUENCE.filter(m => m !== 8).filter(m => {
+        if (!isLive) return true;
+        // For live year, figure out if we've reached this crop-year-month
+        // Crop year XXXX/YY has months 8-12 in year XXXX, 1-7 in year XXXX+1
+        const cropStartYear = Number(cy.split('/')[0]);
+        const calendarYear = m >= 8 ? cropStartYear : cropStartYear + 1;
+        if (calendarYear < nowYear) return true;
+        if (calendarYear > nowYear) return false;
+        return m <= nowMonth;
+      });
+
+      const dueMonthsSet = new Set(dueMonths);
+      const presentCount = dueMonths.filter(m => presentMonths.has(m)).length;
+      const missingMonths = dueMonths.filter(m => !presentMonths.has(m));
+      const coveragePct = dueMonths.length === 0 ? 100 : (presentCount / dueMonths.length) * 100;
+
+      return {
+        cropYear: cy,
+        isLive,
+        dueCount: dueMonths.length,
+        dueMonths: dueMonthsSet,
+        presentCount,
+        presentMonths,
+        missingMonths,
+        coveragePct,
+        isComplete: missingMonths.length === 0,
+      };
+    });
+
+    const totalPresent = perYear.reduce((s, y) => s + y.presentCount, 0);
+    const totalExpected = perYear.reduce((s, y) => s + y.dueCount, 0);
+    const overallPct = totalExpected === 0 ? 0 : (totalPresent / totalExpected) * 100;
+    return { perYear, totalPresent, totalExpected, overallPct };
+  }, [reports, cropYears]);
+
+  const [coverageOpen, setCoverageOpen] = useState(true);
+
   // Phase C7: per-year totals used when compare mode is on
   const compareStats = useMemo(() => {
     if (!compareYears.length) return [];
@@ -268,6 +336,114 @@ export default function Reports() {
           Use crop year and month filters to drill into specific periods. Export CSV for your own analysis.
         </p>
       </div>
+
+      {/* Wave 4: Data Coverage panel — exposes per-crop-year gaps at a glance.
+          Addresses user feedback 'reports are not completely uploaded'. */}
+      {coverageStats.perYear.length > 0 && (
+        <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-semibold text-white">Data Coverage</h3>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                coverageStats.overallPct >= 95 ? 'bg-green-500/15 text-green-400' :
+                coverageStats.overallPct >= 80 ? 'bg-blue-500/15 text-blue-400' :
+                coverageStats.overallPct >= 60 ? 'bg-amber-500/15 text-amber-400' :
+                'bg-red-500/15 text-red-400'
+              }`}>
+                {coverageStats.overallPct.toFixed(0)}% &middot; {coverageStats.totalPresent}/{coverageStats.totalExpected} months
+              </span>
+            </div>
+            <button
+              onClick={() => setCoverageOpen(!coverageOpen)}
+              className="text-[11px] px-3 py-1 rounded-lg border border-gray-700 text-gray-400 hover:text-white transition-colors"
+            >
+              {coverageOpen ? 'Collapse' : 'Expand'}
+            </button>
+          </div>
+          {!coverageOpen && (
+            <p className="text-[11px] text-gray-500">
+              {coverageStats.perYear.filter(y => !y.isComplete && !y.isLive).length} past crop years have gaps;
+              click Expand to see which months are missing.
+            </p>
+          )}
+          {coverageOpen && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {coverageStats.perYear.map(yr => (
+                  <div
+                    key={yr.cropYear}
+                    className={`rounded-lg p-3 border ${
+                      yr.isLive
+                        ? 'border-blue-500/30 bg-blue-500/5'
+                        : yr.isComplete
+                          ? 'border-gray-800 bg-gray-900/30'
+                          : 'border-amber-500/30 bg-amber-500/5'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-white">{yr.cropYear}</span>
+                        {yr.isLive && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 uppercase tracking-wider">Live</span>
+                        )}
+                        {yr.isComplete && !yr.isLive && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-300 uppercase tracking-wider">Complete</span>
+                        )}
+                        {!yr.isComplete && !yr.isLive && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 uppercase tracking-wider">Gaps</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-500">
+                        {yr.presentCount}/{yr.dueCount}
+                      </span>
+                    </div>
+                    <div className="flex gap-1 flex-wrap">
+                      {CROP_YEAR_MONTH_SEQUENCE.filter(m => m !== 8).map(m => {
+                        const present = yr.presentMonths.has(m);
+                        const due = yr.dueMonths.has(m);
+                        const tooltip = present
+                          ? `${MONTH_NAMES[m]} ${yr.cropYear} \u2014 present`
+                          : due
+                            ? `${MONTH_NAMES[m]} ${yr.cropYear} \u2014 MISSING`
+                            : `${MONTH_NAMES[m]} ${yr.cropYear} \u2014 not due yet`;
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCrop(yr.cropYear);
+                              setSelectedMonth(String(m));
+                            }}
+                            title={tooltip}
+                            className={`w-6 h-6 rounded text-[9px] font-medium transition-all hover:scale-110 ${
+                              present
+                                ? 'bg-green-500/30 text-green-300 border border-green-500/40'
+                                : !due
+                                  ? 'bg-gray-800/40 text-gray-600 border border-gray-800'
+                                  : 'bg-red-500/10 text-red-400 border border-red-500/30 border-dashed'
+                            }`}
+                          >
+                            {MONTH_NAMES[m][0]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {!yr.isComplete && yr.missingMonths.length > 0 && (
+                      <p className="text-[10px] text-amber-400/80 mt-2">
+                        Missing: {yr.missingMonths.map(m => MONTH_NAMES[m]).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-600 mt-3">
+                Green = report present in DB &middot; Red dashed = report missing &middot; Click a month to filter.
+                ABC skips August; Sep&ndash;Jul (11 months) is a complete crop year.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Summary Cards */}
       {summary && (
