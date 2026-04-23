@@ -10,6 +10,11 @@
     "scrape": "node src/scrapers/abc-scraper.js",
     "process": "node src/processors/data-processor.js",
     "auto": "node src/autonomous/runner.js",
+    "email:flush": "node src/autonomous/email-flusher.js",
+    "email:watch": "node src/autonomous/email-flusher.js --watch",
+    "gdrive:ping": "node src/autonomous/gdrive-uploader.js ping",
+    "gdrive:archive": "node src/autonomous/gdrive-uploader.js archive",
+    "gdrive:backup": "node src/autonomous/gdrive-uploader.js backup",
     "setup-db": "node scripts/setup-database.js"
   },
   "dependencies": {
@@ -18,6 +23,7 @@
     "imapflow": "^1.0.167",
     "mailparser": "^3.7.2",
     "lucide-react": "^0.460.0",
+    "googleapis": "^144.0.0",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.15",
     "pdf-parse": "^1.1.1",
