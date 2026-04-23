@@ -28,6 +28,7 @@ const Intelligence = lazy(() => import('./pages/Intelligence'));
 const Trading = lazy(() => import('./pages/Trading'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ProjectMap = lazy(() => import('./pages/ProjectMap'));
+const Brokers = lazy(() => import('./pages/Brokers'));
 
 function PageLoader() {
   return (
@@ -46,6 +47,7 @@ const NAV_ITEMS = [
   { path: '/news', label: 'News & Intel', icon: '📰' },
   { path: '/analysis', label: 'Analysis', icon: '📈' },
   { path: '/crm', label: 'CRM & Deals', icon: '🤝', requireTeam: true },
+  { path: '/brokers', label: 'Brokers (BRM)', icon: '🗺️', requireTeam: true },
   { path: '/intelligence', label: 'AI Intelligence', icon: '🧠' },
   { path: '/trading', label: 'Trading Portal', icon: '💼', requireTeam: true },
   { path: '/reports', label: 'Reports', icon: '📋' },
@@ -342,6 +344,7 @@ const PAGE_TITLES = {
   '/reset-password': 'Reset Password',
   '/set-password': 'Set Password',
   '/map': 'Project Map',
+  '/brokers': 'Brokers (BRM)',
 };
 
 function usePageTitle() {
@@ -400,6 +403,7 @@ export default function App() {
               <Route path="/news" element={<News />} />
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/crm" element={<TeamRoute><CRM /></TeamRoute>} />
+              <Route path="/brokers" element={<TeamRoute><Brokers /></TeamRoute>} />
               <Route path="/intelligence" element={<Intelligence />} />
               <Route path="/trading" element={<TeamRoute><Trading /></TeamRoute>} />
               <Route path="/reports" element={<Reports />} />
