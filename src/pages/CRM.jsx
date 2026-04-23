@@ -5,6 +5,7 @@ import { seedCRM } from '../lib/seed-crm';
 import { sendWhatsAppMessage } from '../lib/whatsapp';
 import { getV2UpgradeWhatsAppMessage, getV2UpgradeEmailHTML } from '../lib/notifications';
 import CRMBulkInvite from '../components/CRMBulkInvite';
+import FilterBar, { SingleSelectBar } from '../components/FilterBar';
 
 const DEAL_STAGES = ['inquiry', 'quoted', 'negotiation', 'agreed', 'contracted', 'shipped', 'completed', 'lost'];
 const STAGE_COLORS = {
@@ -96,6 +97,9 @@ export default function CRM() {
   // Phase C5a: tier filter for Users tab + verify action state
   const [userTierFilter, setUserTierFilter] = useState('all');
   const [verifying, setVerifying] = useState({}); // { userId: 'pending'|'done'|'error' }
+  // Phase C6: Pipeline stage-compare + period-compare filters
+  const [stageFilter, setStageFilter] = useState(DEAL_STAGES.filter(s => s !== 'lost' && s !== 'completed')); // active stages by default
+  const [periodFilter, setPeriodFilter] = useState('all');
 
   // Admin or team can verify users (raise their access_tier to 'verified')
   const canVerify = profile && ['admin', 'maxons_team'].includes(profile.access_tier)
@@ -369,14 +373,46 @@ export default function CRM() {
     : 0;
   const weightedValue = activeDeals.reduce((s, d) => s + (d.total_value_usd || 0) * (d.ai_win_probability || 0), 0);
 
-  // Stage pipeline counts
+  // Phase C6: Period filter — clamp deals by updated_at to a rolling window
+  const periodCutoffMs = (() => {
+    const now = Date.now();
+    if (periodFilter === '7d')  return now - 7  * 24 * 60 * 60 * 1000;
+    if (periodFilter === '30d') return now - 30 * 24 * 60 * 60 * 1000;
+    if (periodFilter === '90d') return now - 90 * 24 * 60 * 60 * 1000;
+    if (periodFilter === 'ytd') return new Date(new Date().getFullYear(), 0, 1).getTime();
+    return 0; // 'all'
+  })();
+  const withinPeriod = (d) => {
+    if (periodFilter === 'all') return true;
+    const ts = d.updated_at ? new Date(d.updated_at).getTime() : 0;
+    return ts >= periodCutoffMs;
+  };
+
+  // Stage pipeline counts — respects both stage and period filter
   const stageCounts = {};
   const stageValues = {};
   DEAL_STAGES.forEach(s => { stageCounts[s] = 0; stageValues[s] = 0; });
-  deals.forEach(d => {
+  deals.filter(withinPeriod).forEach(d => {
     stageCounts[d.stage] = (stageCounts[d.stage] || 0) + 1;
     stageValues[d.stage] = (stageValues[d.stage] || 0) + (d.total_value_usd || 0);
   });
+
+  // Previous period for compare (same duration, offset backward)
+  const prevStageCounts = {};
+  const prevStageValues = {};
+  DEAL_STAGES.forEach(s => { prevStageCounts[s] = 0; prevStageValues[s] = 0; });
+  if (periodFilter !== 'all' && periodCutoffMs > 0) {
+    const windowMs = Date.now() - periodCutoffMs;
+    const prevStart = periodCutoffMs - windowMs;
+    const prevEnd = periodCutoffMs;
+    deals.forEach(d => {
+      const ts = d.updated_at ? new Date(d.updated_at).getTime() : 0;
+      if (ts >= prevStart && ts < prevEnd) {
+        prevStageCounts[d.stage] = (prevStageCounts[d.stage] || 0) + 1;
+        prevStageValues[d.stage] = (prevStageValues[d.stage] || 0) + (d.total_value_usd || 0);
+      }
+    });
+  }
 
   // Contact type breakdown
   const typeCounts = {};
@@ -469,25 +505,89 @@ export default function CRM() {
       {/* Pipeline View */}
       {activeTab === 'pipeline' && (
         <div className="space-y-4">
-          {/* Stage funnel */}
+          {/* Phase C6: filter bar — stage multi-select + period single-select */}
+          <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-white">Deal Pipeline</h3>
+              <div className="text-[10px] text-gray-500">
+                {deals.filter(withinPeriod).filter(d => stageFilter.includes(d.stage)).length} of {deals.length} deals match current filters
+              </div>
+            </div>
+            <SingleSelectBar
+              label="Period"
+              options={[
+                { value: 'all', label: 'All time',   color: '#6b7280' },
+                { value: 'ytd', label: 'Year to date', color: '#3b82f6' },
+                { value: '90d', label: 'Last 90 days', color: '#06b6d4' },
+                { value: '30d', label: 'Last 30 days', color: '#22c55e' },
+                { value: '7d',  label: 'Last 7 days',  color: '#f59e0b' },
+              ]}
+              value={periodFilter}
+              onChange={setPeriodFilter}
+            />
+            <FilterBar
+              label="Stages shown"
+              options={DEAL_STAGES.map(s => ({
+                value: s,
+                label: s + (stageCounts[s] > 0 ? ` (${stageCounts[s]})` : ''),
+                color: s === 'lost' ? '#ef4444'
+                     : s === 'completed' ? '#6b7280'
+                     : s === 'shipped' ? '#06b6d4'
+                     : s === 'contracted' ? '#10b981'
+                     : s === 'agreed' ? '#22c55e'
+                     : s === 'negotiation' ? '#f59e0b'
+                     : s === 'quoted' ? '#a855f7'
+                     : '#3b82f6',
+              }))}
+              selected={stageFilter}
+              onToggle={(v) => setStageFilter(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v])}
+              quickActions={[
+                { label: 'Active only',   action: () => setStageFilter(DEAL_STAGES.filter(s => s !== 'lost' && s !== 'completed')) },
+                { label: 'All stages',    action: () => setStageFilter([...DEAL_STAGES]) },
+                { label: 'Closed only',   action: () => setStageFilter(['completed', 'lost']) },
+                { label: 'At-risk',       action: () => setStageFilter(['negotiation', 'quoted']) },
+              ]}
+              emptyHint="Select at least one stage"
+            />
+          </div>
+
+          {/* Stage funnel with period compare */}
           <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-white mb-3">Deal Pipeline</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white">Funnel</h3>
+              {periodFilter !== 'all' && (
+                <span className="text-[10px] text-gray-500">
+                  Current vs prior {periodFilter === 'ytd' ? 'year' : periodFilter} — delta shown below each stage
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-4 lg:grid-cols-8 gap-2">
-              {DEAL_STAGES.map(stage => (
-                <div key={stage} className="text-center">
-                  <div className={`rounded-lg p-2 border ${STAGE_COLORS[stage]}`}>
-                    <p className="text-lg font-bold">{stageCounts[stage]}</p>
+              {DEAL_STAGES.filter(s => stageFilter.includes(s)).map(stage => {
+                const curr = stageCounts[stage] || 0;
+                const prev = prevStageCounts[stage] || 0;
+                const delta = curr - prev;
+                const deltaColor = delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-500';
+                return (
+                  <div key={stage} className="text-center">
+                    <div className={`rounded-lg p-2 border ${STAGE_COLORS[stage]}`}>
+                      <p className="text-lg font-bold">{curr}</p>
+                    </div>
+                    <p className="text-[9px] text-gray-500 mt-1 capitalize">{stage}</p>
+                    <p className="text-[9px] text-gray-600">{fmtUSD(stageValues[stage])}</p>
+                    {periodFilter !== 'all' && (
+                      <p className={`text-[9px] mt-0.5 ${deltaColor}`}>
+                        {delta > 0 ? '▲' : delta < 0 ? '▼' : '—'} {Math.abs(delta)} vs prior
+                      </p>
+                    )}
                   </div>
-                  <p className="text-[9px] text-gray-500 mt-1 capitalize">{stage}</p>
-                  <p className="text-[9px] text-gray-600">{fmtUSD(stageValues[stage])}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Deal list */}
+          {/* Deal list — honors both stage + period filter */}
           <div className="space-y-2">
-            {deals.filter(d => d.stage !== 'completed' && d.stage !== 'lost').map(deal => {
+            {deals.filter(withinPeriod).filter(d => stageFilter.includes(d.stage)).map(deal => {
               const contact = contactMap[deal.contact_id];
               return (
                 <div key={deal.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors cursor-pointer" onClick={() => contact && setSelectedContact(contact)}>
@@ -526,6 +626,12 @@ export default function CRM() {
                 </div>
               );
             })}
+            {deals.filter(withinPeriod).filter(d => stageFilter.includes(d.stage)).length === 0 && (
+              <div className="text-center py-12 text-sm text-gray-500 bg-gray-900/30 border border-gray-800/50 rounded-xl">
+                No deals match your current filters.
+                <div className="text-[11px] text-gray-600 mt-1">Try widening the period or adding more stages.</div>
+              </div>
+            )}
           </div>
         </div>
       )}
