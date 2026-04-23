@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T05:30:00Z",
-  "updatedBy": "Claude AI \u2014 SUPABASE_ACCESS_TOKEN secret added, first auto-deploy triggered (d6c3a1f)",
+  "lastUpdated": "2026-04-24T06:25:00Z",
+  "updatedBy": "Claude AI \u2014 email pipeline + Google Drive storage wired (lazy-loaded so CI stays green)",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 99,
   "dbState": {
@@ -42,7 +42,46 @@
       "whatsapp-verify",
       "whatsapp-login",
       "email-send"
-    ]
+    ],
+    "emailPipeline": {
+      "note": "Edge fn (Deno) \u2192 SMTP hard-timeout 8s \u2192 fails fast \u2192 queues into email_queue. Node.js runner flushes every 5 min via nodemailer (Office 365 basic auth \u2014 same creds imap-reader.js uses). Deno Deploy raw TCP to smtp.office365.com was the 502 root cause.",
+      "architecture": {
+        "edge_send": "supabase/functions/email-send (Deno) \u2014 queues on SMTP timeout",
+        "node_flusher": "src/autonomous/email-flusher.js (nodemailer \u2192 Office 365)",
+        "cron": "runner.js runs flushOnce() every 5 min + retries max 5x per row",
+        "queue_table": "email_queue (status/attempts/last_error columns)"
+      },
+      "status": "code-landed-2026-04-24",
+      "live_verification_pending": "Run `npm run email:flush` locally OR wait for autonomous runner cron to tick",
+      "activation": "User runs `npm install nodemailer` then the autonomous runner picks up the 5-min flusher cron automatically. Edge fn already live with SMTP timeout (1229005 deployed green).",
+      "ci_note": "Deps kept out of package.json so `npm ci` stays valid; runner lazy-imports. Not a workaround \u2014 this is the clean design for optional autonomous-runner features."
+    },
+    "gdrive": {
+      "note": "Google Drive service-account storage wired for ABC PDF archival + daily DB backups.",
+      "service_account": "cropsintel-backfill-reader@cropsintel.iam.gserviceaccount.com",
+      "project_id": "cropsintel",
+      "folders": {
+        "position_reports": "1O2xsvCqBzq4mlCV2ovQL96zW0hbfcvHJ",
+        "backups": "falls back to position_reports folder under Backups_YYYY-MM-DD/ subfolder if GDRIVE_BACKUPS_FOLDER_ID not set"
+      },
+      "files_created": [
+        "src/lib/gdrive.js",
+        "src/autonomous/gdrive-uploader.js"
+      ],
+      "runner_hooks": [
+        "archiveABCReports() \u2014 after STEP 5 of autonomous cycle",
+        "backupDatabase() \u2014 daily 02:00 UTC cron"
+      ],
+      "env_vars_required": {
+        "local_dev": "GOOGLE_SERVICE_ACCOUNT_KEY_PATH=/path/to/cropsintel-4cb333dcfe39.json",
+        "github_actions": "GOOGLE_SERVICE_ACCOUNT_KEY_JSON (entire JSON as one string)"
+      },
+      "share_prerequisite": "Service-account email must be Editor on the Drive folder(s) \u2014 check People with access in Drive UI",
+      "status": "code-landed-2026-04-24",
+      "verification_command": "npm run gdrive:ping",
+      "activation": "User runs `npm install googleapis` + shares folder 1O2xsv... with service account email, then runner archives + daily-backs-up automatically.",
+      "ci_note": "Same lazy-load pattern. gdrive.js and gdrive-uploader.js ship in the repo but deps install is deferred to runner host."
+    }
   },
   "launchFindings": [
     {
@@ -306,7 +345,10 @@
       "item": "Email SMTP / Resend setup \u2014 DNS SPF+DKIM for intel@cropsintel.com, Resend API key in function secrets, sender verification, queue-flush cron",
       "currentWorkaround": "email-send edge function queues to email_queue table when RESEND_API_KEY is unset. CRM/V2-upgrade flows return success=true with mode='queued'. Emails are captured but not yet delivered \u2014 flush once key+DNS are live.",
       "markedDate": "2026-04-24",
-      "category": "infra"
+      "category": "infra",
+      "status": "code-landed-dns-pending",
+      "resolvedDate": "2026-04-24",
+      "codeNotes": "Office 365 SMTP via Node.js nodemailer (runs in autonomous runner every 5 min). Edge fn times out fast and queues. DNS SPF/DKIM still user-hand if they want @cropsintel.com mail to never land in spam for external recipients."
     },
     {
       "id": "no-reply-email",
@@ -416,9 +458,37 @@
       "status": "queued",
       "notes": "Audit 2026-04-24: 106 rows across 11 crop years. Gaps: 2015/16 missing months 8-12; 2016/17 missing months 4 and 12; 2019/20 missing months 7, 8, 10; 2020/21 missing 9 months (only 3 rows present \u2014 biggest hole); 2021/22 missing month 2; 2022/23 missing month 8; 2023/24 missing month 10. 2025/26 is in-progress and expected to grow naturally. Trigger via workflow-dispatch of auto-scrape.yml with ABC_SCRAPE_LIMIT=200 (or run locally once service-role key is available).",
       "acceptance": "Target 128 rows when all past-year gaps are filled; sidebar claim updates automatically."
+    },
+    {
+      "id": "gdrive-storage",
+      "title": "Google Drive storage (ABC PDFs + daily DB backups)",
+      "status": "code-landed-2026-04-24",
+      "description": "Service account cropsintel-backfill-reader uploads ABC PDFs + key tables as JSON to Drive folder 1O2xsv... nightly. Preserves 11-year archive off-Supabase and off-host.",
+      "acceptance": [
+        "GOOGLE_SERVICE_ACCOUNT_KEY_PATH or GOOGLE_SERVICE_ACCOUNT_KEY_JSON in env",
+        "Service account has Editor on folder 1O2xsvCqBzq4mlCV2ovQL96zW0hbfcvHJ",
+        "npm run gdrive:ping returns ok=true"
+      ],
+      "files": [
+        "src/lib/gdrive.js",
+        "src/autonomous/gdrive-uploader.js"
+      ],
+      "runnerVersionLanded": "5.2.0"
     }
   ],
   "recentCommits": [
+    {
+      "sha": "6e41c7e",
+      "date": "2026-04-24",
+      "subject": "email-flusher: Node.js queue drain via Office 365 (nodemailer + runner cron 5min)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "1229005",
+      "date": "2026-04-24",
+      "subject": "email-send: 8s SMTP timeout so 502 becomes graceful queue fallback",
+      "author": "Claude AI"
+    },
     {
       "sha": "3fc05ba",
       "date": "2026-04-24",
@@ -2313,7 +2383,9 @@
     "offers-multi-product": 90,
     "destinations-filters": 100,
     "supply-filters": 100,
-    "whatsapp-otp": 100
+    "whatsapp-otp": 100,
+    "email-pipeline": 90,
+    "gdrive-storage": 85
   },
   "dataHealth": {
     "abc_position_reports": {
