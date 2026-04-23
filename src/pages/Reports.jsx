@@ -232,6 +232,13 @@ export default function Reports() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
+      {loadError && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+          <p className="text-sm text-red-300 font-medium mb-1">Failed to load position reports</p>
+          <p className="text-xs text-red-400/80">{loadError}</p>
+          <p className="text-xs text-gray-500 mt-2">Check Supabase status or reload the page. If this persists, the ABC scraper may have changed the schema.</p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
