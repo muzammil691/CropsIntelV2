@@ -1,12 +1,13 @@
 {
-  "lastUpdated": "2026-04-24T08:30:00Z",
-  "updatedBy": "Claude AI — LAUNCH L1 critical find+fix: Welcome blank-page bug (FadeIn observer) + Crop Years 9→11 stat",
+  "lastUpdated": "2026-04-24T08:45:00Z",
+  "updatedBy": "Claude AI — LAUNCH L1 F4 fix: PersonaBanner now handles admin/maxons_team/sales/seller (was defaulting to generic Welcome persona)",
   "sessionStatus": "autonomous-night-shift-launch-focus",
   "overallPercent": 92,
   "launchFindings": [
-    { "id": "F1", "severity": "critical", "found_at": "/welcome", "issue": "7 FadeIn sections stuck at opacity-0 — content below hero invisible for real visitors", "status": "fixed", "fixCommit": "pending" },
-    { "id": "F2", "severity": "medium",   "found_at": "/welcome", "issue": "Crop Years stat hardcoded to 9; actual data covers 11 crop years (2015/16-2025/26)", "status": "fixed", "fixCommit": "pending" },
-    { "id": "F3", "severity": "low",      "found_at": "/welcome", "issue": "'45+ Countries Tracked' is scraper target; only ~20 countries modeled in Destinations. Label may mislead.", "status": "open", "note": "keeping 45 for now as market-scope claim; add a disclaimer instead" }
+    { "id": "F1", "severity": "critical", "found_at": "/welcome",   "issue": "7 FadeIn sections stuck at opacity-0 — content below hero invisible for real visitors", "status": "fixed", "fixCommit": "067fa6f" },
+    { "id": "F2", "severity": "medium",   "found_at": "/welcome",   "issue": "Crop Years stat hardcoded to 9; actual data covers 11 crop years (2015/16-2025/26)", "status": "fixed", "fixCommit": "067fa6f" },
+    { "id": "F3", "severity": "low",      "found_at": "/welcome",   "issue": "'45+ Countries Tracked' is scraper target; only ~20 countries modeled in Destinations. Label may mislead.", "status": "open", "note": "keeping 45 for now as market-scope claim; add a disclaimer instead" },
+    { "id": "F4", "severity": "medium",   "found_at": "/dashboard", "issue": "Admin (MAXONS team tier) saw the generic 'Welcome' persona banner — PersonaBanner map missing admin/maxons_team/sales/seller entries", "status": "fixed", "fixCommit": "pending" }
   ],
   "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
   "targetPercent": 95,
