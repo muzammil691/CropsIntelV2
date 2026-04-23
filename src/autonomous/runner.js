@@ -26,8 +26,9 @@ import { scrapeNews } from '../scrapers/news-scraper.js';
 import { pollInbox } from './imap-reader.js';
 import { runEmailIngestion } from './email-ingestor.js';
 import { flushOnce as flushEmailQueue } from './email-flusher.js';
+import { archiveABCReports, backupDatabase } from './gdrive-uploader.js';
 
-const RUNNER_VERSION = '5.1.0';
+const RUNNER_VERSION = '5.2.0';
 
 // ============================================================
 // Health check — log that the runner is alive
@@ -145,6 +146,16 @@ async function runAutonomousCycle() {
     const aiResult = await runAIAnalysis();
     steps.push({ step: 'ai_analysis', monthly_brief: aiResult.monthlyBrief ? 'generated' : 'skipped', yoy_insight: aiResult.yoyInsight ? 'generated' : 'skipped' });
 
+    // Step 6: Archive ABC PDFs to Google Drive (non-fatal — skip if creds missing)
+    console.log('\n--- STEP 6: Google Drive Archive ---');
+    try {
+      const archiveResult = await archiveABCReports();
+      steps.push({ step: 'gdrive_archive', found: archiveResult.found, uploaded: archiveResult.uploaded, skipped: archiveResult.skipped });
+    } catch (gdErr) {
+      console.warn('Google Drive archive failed (non-fatal — check GOOGLE_SERVICE_ACCOUNT_KEY_* env):', gdErr.message);
+      steps.push({ step: 'gdrive_archive', error: gdErr.message });
+    }
+
     const duration = Date.now() - startTime;
     console.log(`\nAUTONOMOUS CYCLE COMPLETE (${duration}ms)`);
 
@@ -243,6 +254,17 @@ function startRunner() {
     healthCheck();
   }, { timezone: 'UTC' });
 
+  // Daily: Google Drive DB backup at 02:00 UTC (after health check, before
+  // the busy EU morning). Dumps key tables → Backups_YYYY-MM-DD/ subfolder.
+  cron.schedule('0 2 * * *', async () => {
+    console.log('Scheduled trigger: Google Drive DB backup');
+    try {
+      await backupDatabase();
+    } catch (err) {
+      console.warn('Scheduled DB backup failed:', err.message);
+    }
+  }, { timezone: 'UTC' });
+
   // Weekly: Data reprocess on Mondays at 6 AM UTC
   cron.schedule('0 6 * * 1', () => {
     console.log('Scheduled trigger: Weekly data reprocess');
@@ -250,11 +272,12 @@ function startRunner() {
   }, { timezone: 'UTC' });
 
   console.log('Scheduled jobs:');
-  console.log('  - Email inbox poll:  Every 15 minutes');
-  console.log('  - Email queue flush: Every 5 minutes');
-  console.log('  - Full scrape cycle: 15th of each month, 8 AM UTC');
-  console.log('  - Data reprocess:    Every Monday, 6 AM UTC');
-  console.log('  - Health check:      Daily at midnight UTC');
+  console.log('  - Email inbox poll:   Every 15 minutes');
+  console.log('  - Email queue flush:  Every 5 minutes');
+  console.log('  - Full scrape cycle:  15th of each month, 8 AM UTC');
+  console.log('  - Data reprocess:     Every Monday, 6 AM UTC');
+  console.log('  - Health check:       Daily at midnight UTC');
+  console.log('  - GDrive DB backup:   Daily at 02:00 UTC');
   console.log('\nRunner is live. Waiting for scheduled triggers...');
   console.log('Press Ctrl+C to stop.\n');
 
