@@ -329,12 +329,12 @@ export default function Destinations() {
       {/* Modeled data disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-4">
         <div className="flex items-start gap-3">
-          <div className="text-amber-400 text-lg leading-none mt-0.5">\u26a0\ufe0f</div>
+          <div className="text-amber-400 text-lg leading-none mt-0.5">&#x26A0;&#xFE0F;</div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-amber-400 mb-1">Modeled Destination Data</h3>
             <p className="text-xs text-amber-200/80 leading-relaxed">
               Country splits below are <strong>generated</strong> from real ABC position-report export totals using standard distribution shares (Spain ~12%, India ~11%, China/HK ~9%, Germany ~7%, UAE ~6%, etc.). Totals are accurate; the per-country split is a model, not an ABC Shipment Report PDF parse.
-              Real per-country PDF scraping across all 11 crop years \u00d7 45 destinations is Phase B2 of the current sprint \u2014 live tracking at cropsintel.com/map.
+              Real per-country PDF scraping across all 11 crop years &times; 45 destinations is Phase B2 of the current sprint &mdash; live tracking at cropsintel.com/map.
             </p>
           </div>
         </div>
