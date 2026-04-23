@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T04:15:00Z",
-  "updatedBy": "Claude AI \u2014 4 migrations applied to prod + V1 seed linked by whatsapp",
+  "lastUpdated": "2026-04-24T05:00:00Z",
+  "updatedBy": "Claude AI \u2014 edge-functions deploy workflow committed (needs SUPABASE_ACCESS_TOKEN secret)",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 99,
   "dbState": {
@@ -16,6 +16,25 @@
     "user_profiles_migrated_from_v1": 63,
     "duplicate_v2_profiles_discovered": 3,
     "unlinked_v1_users_awaiting_v2_signup": 1
+  },
+  "ciState": {
+    "note": "2026-04-24 05:00Z: deploy-edge-functions.yml landed on main via GitHub web UI (commit ae20532). First run will fail until SUPABASE_ACCESS_TOKEN secret is added.",
+    "workflow_file": ".github/workflows/deploy-edge-functions.yml",
+    "commit_sha": "ae20532",
+    "secret_status": {
+      "ANTHROPIC_API_KEY": "present",
+      "SUPABASE_SERVICE_ROLE_KEY": "present",
+      "VITE_SUPABASE_ANON_KEY": "present",
+      "VITE_SUPABASE_URL": "present",
+      "SUPABASE_ACCESS_TOKEN": "MISSING \u2014 required by workflow. Get from https://supabase.com/dashboard/account/tokens"
+    },
+    "auto_deploys_when_ready": [
+      "whatsapp-webhook",
+      "whatsapp-send",
+      "whatsapp-verify",
+      "whatsapp-login",
+      "email-send"
+    ]
   },
   "launchFindings": [
     {
