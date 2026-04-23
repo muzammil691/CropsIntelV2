@@ -1,32 +1,43 @@
 {
-  "lastUpdated": "2026-04-24T07:30:00Z",
-  "updatedBy": "Claude AI — Night shift Block 5: /suppliers SRM portal with county analysis tool shipped",
-  "sessionStatus": "autonomous-night-shift-active",
-  "overallPercent": 91,
+  "lastUpdated": "2026-04-24T08:00:00Z",
+  "updatedBy": "Claude AI — PIVOT to launch focus + Block 6 ADELA router shipped (vision scaffolds parked, Phase 6 completion next)",
+  "sessionStatus": "autonomous-night-shift-launch-focus",
+  "overallPercent": 92,
   "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "7 (night shift)",
-    "step": "Vision alignment + Phase 7 kickoff — user is asleep, watching /map for autonomous progress",
-    "description": "User shared the April-16 Vision Handoff (MAXONS trading platform end-state) and asked for intelligent alignment + non-stop work overnight. New first-class systems added to /map: BRM (Broker Relationship Management), SRM (Supplier Relationship Management), Information Walls, Commodity-Agnostic Schema, Multi-Portal Frontend, Trade Lifecycle, ADELA Orchestrator, ATLAS Self-Developing Brain, Verified Social Network. Plan: align, scaffold commodity-agnostic foundation, scaffold BRM/SRM portals, wire info-wall helpers + audit logging, then full app walkthrough via Chrome MCP, fix issues found, iterate on UI polish + logic checks until morning. Pushes land every ~30–60 min so /map stays fresh.",
-    "phaseProgress": 5,
-    "startedAt": "2026-04-24T05:00:00Z",
-    "claudeSession": "overnight-autonomous"
+    "phase": "6 (launch focus)",
+    "step": "Pivot — launch-first focus per user 2026-04-24 night. Phase 7 vision scaffolds parked.",
+    "description": "User paused vision expansion: 'stick to current launch plan now and fix before we go to massive plan... complete CRM + AI/Zyra + data correctness.' Blocks 1-5 of night shift (vision alignment + commodity-agnostic + info walls + BRM + SRM scaffolds) stay in place on /map as roadmap/architecture markers, but active work reverts to Phase-6 launch completion: data-correctness walkthrough, Welcome/promise alignment, Zyra interface polish, CRM reconcile invited→joined, F1b SMTP edge function, V2 upgrade email to 65, V1 login live verification.",
+    "phaseProgress": 95,
+    "startedAt": "2026-04-24T08:00:00Z",
+    "claudeSession": "launch-focus"
   },
   "nightShiftPlan": {
+    "note": "PIVOT 2026-04-24 night — user redirected to launch-first. Phase-7 vision blocks 6-10 parked; active work now follows launchFocusPlan below.",
     "blocks": [
-      { "id": 1, "name": "Vision alignment + /map refresh", "status": "in_progress", "eta_min": 30 },
-      { "id": 2, "name": "Commodity-agnostic foundation (product_catalog, remove hardcoded almond)", "status": "done", "eta_min": 90 },
-      { "id": 3, "name": "Info walls scaffolding (audit_log table + helper + RLS policy doc)", "status": "done", "eta_min": 90 },
-      { "id": 4, "name": "BRM portal skeleton /brokers", "status": "done", "eta_min": 60 },
-      { "id": 5, "name": "SRM portal skeleton /suppliers (county analysis stub)", "status": "done", "eta_min": 60 },
-      { "id": 6, "name": "ADELA AI-model router abstraction", "status": "queued", "eta_min": 45 },
-      { "id": 7, "name": "Full app walkthrough via Chrome MCP", "status": "queued", "eta_min": 60 },
-      { "id": 8, "name": "Fix issues found", "status": "queued", "eta_min": 90 },
-      { "id": 9, "name": "Trade lifecycle skeleton (offer states + margin engine stub)", "status": "queued", "eta_min": 60 },
-      { "id": 10, "name": "Verified social network MVP (feed + post, gated on access_tier='verified')", "status": "queued", "eta_min": 90 }
+      { "id": 1, "name": "Vision alignment + /map refresh", "status": "done", "eta_min": 30 },
+      { "id": 2, "name": "Commodity-agnostic foundation (product_catalog)", "status": "done", "eta_min": 90 },
+      { "id": 3, "name": "Info walls scaffolding (audit_log + permissions)", "status": "done", "eta_min": 90 },
+      { "id": 4, "name": "BRM portal /brokers scaffold", "status": "done", "eta_min": 60 },
+      { "id": 5, "name": "SRM portal /suppliers scaffold", "status": "done", "eta_min": 60 },
+      { "id": 6, "name": "ADELA AI-router (src/lib/adela.js)", "status": "done", "eta_min": 45 },
+      { "id": 7, "name": "Trade lifecycle skeleton — PARKED until launch done", "status": "parked", "eta_min": 60 },
+      { "id": 8, "name": "Verified social network MVP — PARKED until launch done", "status": "parked", "eta_min": 90 }
+    ]
+  },
+  "launchFocusPlan": {
+    "note": "Active night-shift work after user pivot 2026-04-24. Target: Phase 6 launch completion.",
+    "items": [
+      { "id": "L1", "name": "Full app walkthrough via Chrome MCP — flag every data/UI/logic issue", "status": "queued" },
+      { "id": "L2", "name": "Align Welcome/sidebar/hero promises with reality — fix any stale claims", "status": "queued" },
+      { "id": "L3", "name": "Zyra interface polish — align with 'senior trader' promise on Welcome", "status": "queued" },
+      { "id": "L4", "name": "CRM: reconcile invited→joined when recipient registers", "status": "queued" },
+      { "id": "L5", "name": "F1b SMTP edge function (unlocks bulk-invite email + V2 upgrade email)", "status": "queued" },
+      { "id": "L6", "name": "V1 login live verification — test the popup end-to-end on cropsintel.com", "status": "queued" },
+      { "id": "L7", "name": "Launch gate review: 95%+ target, Welcome promises true, data accurate", "status": "queued" }
     ]
   },
   "blockers": [],
@@ -527,15 +538,20 @@
       "id": "adela",
       "name": "ADELA — Nervous System / AI Orchestrator",
       "category": "ai",
-      "percent": 20,
+      "percent": 45,
       "icon": "🧠",
-      "description": "Runtime orchestrator: routes jobs to the right AI provider (Claude, GPT, Gemini), enforces info walls in real time, coordinates intelligence pipeline. Currently 4 edge functions exist; ADELA is the router abstraction that sits above them.",
+      "description": "Runtime orchestrator shipped as src/lib/adela.js. Router abstraction routes each job-type to Claude/GPT/Gemini/Council per JOB_ROUTES table. Info-wall filter on every AI response. Audit log on every call. Phase 8 wires OpenAI + Gemini edge functions.",
       "features": [
         { "name": "4 edge functions live (whatsapp-login/send/verify/webhook)", "status": "done" },
         { "name": "Zyra chat uses Claude for all conversations", "status": "done" },
-        { "name": "ADELA router abstraction (src/lib/ai-router.js) — swap provider per task", "status": "todo" },
-        { "name": "Multi-model debate pattern (brain-ai style: Claude + GPT + Gemini)", "status": "todo" },
-        { "name": "Info-wall enforcement hook in every AI response filter", "status": "todo" }
+        { "name": "src/lib/adela.js router: routeAIJob(), askZyra(), analyzeMarket(), monthlyBrief(), atlasDebate()", "status": "done" },
+        { "name": "JOB_ROUTES table: zyra_chat→claude, multilingual→openai, multimodal→gemini, atlas_debate→council", "status": "done" },
+        { "name": "Info-wall filter on AI response (family-aware redaction)", "status": "done" },
+        { "name": "Audit log on every AI call", "status": "done" },
+        { "name": "OpenAI edge function (zyra-openai) — Phase 8", "status": "todo" },
+        { "name": "Gemini edge function (zyra-gemini) — Phase 8", "status": "todo" },
+        { "name": "Multi-model council edge function (brain-ai) — Phase 10", "status": "todo" },
+        { "name": "Existing Zyra callers migrate to routeAIJob()", "status": "todo" }
       ]
     },
     {
@@ -686,13 +702,12 @@
     { "id": "maxons", "name": "MAXONS Team", "status": "built", "description": "CRM + Trading gated, admin panel built" }
   ],
   "nextPriorities": [
-    { "id": 1, "title": "Commodity-agnostic foundation", "color": "#22c55e", "description": "products table + migration plan. Vision non-negotiable: never hardcode 'almonds'. Pistachio/pineapple come next." },
-    { "id": 2, "title": "Information walls (DB RLS + API filter + audit log)", "color": "#ef4444", "description": "THE business model per vision. Customer never sees supplier source; broker never sees customer pricing; supplier never sees MAXONS margin." },
-    { "id": 3, "title": "BRM + SRM portal skeletons", "color": "#f59e0b", "description": "Third and fourth relationship graphs: brokers (market intel) and suppliers (county analysis). Portal-scoped views." },
-    { "id": 4, "title": "Trade lifecycle margin engine + source-hiding", "color": "#3b82f6", "description": "Margin rules apply before customer-facing display. Source data stripped per info walls." },
-    { "id": 5, "title": "ADELA AI-router abstraction", "color": "#8b5cf6", "description": "Swap provider per task (Claude/GPT/Gemini) — multi-model resilience + right-tool-for-right-job." },
-    { "id": 6, "title": "Full persona pages (beyond banner MVP)", "color": "#a855f7", "description": "Grower/Packer/Trader/Buyer each gets a dedicated page, not just a banner on Dashboard." },
-    { "id": 7, "title": "Verified social network MVP", "color": "#06b6d4", "description": "'Twitter for verified' — feed + post + react. Gated on access_tier='verified'." },
-    { "id": 8, "title": "Human-like Zyra (multilingual + natural voice) + V2 email launch", "color": "#10b981", "description": "F2-F4 from prior plan. Queues behind vision foundations." }
+    { "id": 1, "title": "LAUNCH: data correctness walkthrough", "color": "#ef4444", "description": "Navigate every page, verify numbers match data, fix wrong counts/formulas/labels. First launch-blocker per user pivot 2026-04-24." },
+    { "id": 2, "title": "LAUNCH: Welcome promises ↔ reality alignment", "color": "#f59e0b", "description": "Every claim on Welcome + sidebar + /map must be true on live site. Fix or soften any stale boast." },
+    { "id": 3, "title": "LAUNCH: Zyra interface polish", "color": "#8b5cf6", "description": "Align Zyra with the 'AI that speaks, thinks, advises like a senior trader' Welcome promise. Prompts, responses, prescriptions." },
+    { "id": 4, "title": "LAUNCH: CRM reconcile invited→joined", "color": "#22c55e", "description": "When a bulk-invited recipient registers, auto-upgrade their crm_contacts.metadata.invite_status to 'joined'." },
+    { "id": 5, "title": "LAUNCH: F1b SMTP edge function", "color": "#3b82f6", "description": "Unlocks bulk-invite email leg + V2 upgrade email to 65 users." },
+    { "id": 6, "title": "LAUNCH: V1 login live verification", "color": "#10b981", "description": "Test the V1 returning-user popup end-to-end on live cropsintel.com with a real V1 account." },
+    { "id": 7, "title": "DEFERRED (Phase 7 vision): BRM offers / SRM shipments / commodity migration / trade lifecycle / social network / Atlas autonomous", "color": "#6b7280", "description": "Scaffolds shipped 2026-04-24 night (routes + libs + docs on /map) but NOT launch-critical. Post-launch work." }
   ]
 }
