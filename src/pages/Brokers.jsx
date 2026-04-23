@@ -78,30 +78,33 @@ export default function Brokers() {
     })();
   }, [profile]);
 
-  // Signal per market: latest YoY vs prior year in same crop year slice.
-  // Focus if demand climbing, avoid if overheated (huge +YoY suggests
-  // speculative), neutral otherwise.
+  // Signal per market: latest crop year vs the *single* prior crop year
+  // (not summed across all prior years — that was a logic bug producing
+  // bogus -87% YoYs). Focus 8-30% growth, avoid >30% (overheated) or
+  // below -8% (contracting), neutral otherwise.
   const marketSignals = useMemo(() => {
     if (!shipments.length) return [];
-    const latest = shipments[0];
-    const latestYear = latest?.crop_year;
+    // All crop years present in the data, newest first
+    const years = [...new Set(shipments.map(s => s.crop_year))].filter(Boolean).sort().reverse();
+    if (years.length === 0) return [];
+    const latestYear = years[0];
+    const priorYear  = years[1] || null;
     const byCountry = {};
     for (const s of shipments) {
       const c = s.destination_country;
       if (!c || c === 'Total Export') continue;
       if (!byCountry[c]) byCountry[c] = { current: 0, prior: 0 };
-      if (s.crop_year === latestYear) byCountry[c].current += toNum(s.monthly_lbs);
-      else byCountry[c].prior += toNum(s.monthly_lbs);
+      if (s.crop_year === latestYear)        byCountry[c].current += toNum(s.monthly_lbs);
+      else if (priorYear && s.crop_year === priorYear) byCountry[c].prior += toNum(s.monthly_lbs);
     }
-    const rows = Object.entries(byCountry).map(([name, v]) => {
-      const yoy = v.prior > 0 ? (v.current - v.prior) / v.prior * 100 : 0;
+    return Object.entries(byCountry).map(([name, v]) => {
+      const yoy = v.prior > 0 ? (v.current - v.prior) / v.prior * 100 : (v.current > 0 ? 0 : 0);
       let signal = 'neutral';
       if (yoy > 8 && yoy < 30) signal = 'focus';
       else if (yoy >= 30) signal = 'avoid'; // overheated → will weaken
       else if (yoy < -8) signal = 'avoid';
-      return { name, volume: v.current, yoy, signal };
-    }).sort((a, b) => b.volume - a.volume);
-    return rows;
+      return { name, volume: v.current, yoy, signal, latestYear, priorYear };
+    }).filter(r => r.volume > 0).sort((a, b) => b.volume - a.volume);
   }, [shipments]);
 
   const visibleMarkets = useMemo(() => {
