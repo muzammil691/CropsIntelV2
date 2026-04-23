@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-23T19:45:00Z",
-  "updatedBy": "Claude AI + user \u2014 WhatsApp OTP revived via CLI redeploy",
+  "lastUpdated": "2026-04-24T02:00:00Z",
+  "updatedBy": "Claude AI \u2014 V2 Welcome UX + Team sidebar link",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 97,
   "launchFindings": [
@@ -222,6 +222,31 @@
   "blockers": [],
   "markedForLater": [
     {
+      "id": "abc-full-8-page-scrape",
+      "item": "ABC Position Report full 8-page scrape (pages 2/3 country shipments w/ container math \u00f7 0.7 + \u00f745000/44000, page 5 variety share, page 6 historical mln-lb, page 7 county\u00d7variety matrix, page 8 region rollup)",
+      "currentWorkaround": "Scraper reads page 1 summary + partial page 2. County + variety stored as separate rows (not cross-tab). User flagged 2026-04-24: 'data isn\\'t complete'. See memory/project_abc_position_report_scope.md for full spec.",
+      "markedDate": "2026-04-24",
+      "category": "data",
+      "priority": "post-launch-high",
+      "spec_doc": "memory/project_abc_position_report_scope.md"
+    },
+    {
+      "id": "rich-signup-wizard",
+      "item": "Multi-step onboarding wizard: volumes, varieties, ports, grades, sizes, products, references (AI invites people)",
+      "currentWorkaround": "SetPassword.jsx V2 Welcome now nudges user to Settings for rich profile; profile form has volumes/ports/products/grades fields but not structured chip-selectors. Step 3 of welcome is a visual placeholder linking to Settings.",
+      "markedDate": "2026-04-24",
+      "category": "feature",
+      "priority": "post-launch-medium"
+    },
+    {
+      "id": "v1-subscribers-broadcast",
+      "item": "V1 subscribers (email-only, never registered) + V1 registered users \u2014 both visible in user mgmt with broadcast UI to re-engage",
+      "currentWorkaround": "V1 registered users migrated (see markedForLater v1-login-live-verify). V1 subscribers cohort (email-only) not yet imported. Broadcast UI not built.",
+      "markedDate": "2026-04-24",
+      "category": "feature",
+      "priority": "post-launch-high"
+    },
+    {
       "id": "email-smtp-setup",
       "item": "Email SMTP / Resend setup \u2014 DNS SPF+DKIM for intel@cropsintel.com, Resend API key in function secrets, sender verification, queue-flush cron",
       "currentWorkaround": "email-send edge function queues to email_queue table when RESEND_API_KEY is unset. CRM/V2-upgrade flows return success=true with mode='queued'. Emails are captured but not yet delivered \u2014 flush once key+DNS are live.",
@@ -237,13 +262,14 @@
     },
     {
       "id": "v1-login-live-verify",
-      "item": "End-to-end V1 login test with one real migrated user (WhatsApp OTP \u2192 V1 popup \u2192 password set \u2192 logged in)",
-      "currentWorkaround": "Flow code is complete + unit-tested; unverified against a live migrated account",
+      "item": "End-to-end V1 login test with one real migrated user (WhatsApp OTP \u2192 V2 Welcome \u2192 password set + email verify \u2192 dashboard)",
+      "currentWorkaround": "Flow code is complete + tested on user's phone 2026-04-24. OTP login works. V2 Welcome now auto-shows for V1 migrated users on first login (via Login.jsx profile check on v2_welcome_completed_at). Still need real V1 migrated account test through full new welcome.",
       "markedDate": "2026-04-24",
       "category": "manual-qa",
-      "status": "ready-for-user-test",
+      "status": "welcome-flow-updated-re-test",
       "edge_fns_deployed": "2026-04-23T19:44Z",
-      "next_step": "User tests OTP with real V1 migrated phone on cropsintel.com/login"
+      "welcome_flow_shipped": "2026-04-24",
+      "next_step": "User re-tests OTP login with a V1 migrated phone; expects V2 Welcome page on first login with password + email verify + profile nudge"
     },
     {
       "id": "abc-shipment-scraper",
