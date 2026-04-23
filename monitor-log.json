@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-04-24T09:30:00Z",
+  "generated_by": "monitor-agent.js (seeded — first real run after workflow wiring)",
+  "base_url": "https://cropsintel.com",
+  "note": "This file is the Monitor Bot's output. It runs as `node scripts/monitor-agent.js` and overwrites this file. The /map page reads it and renders the findings. Until the workflow step is wired (requires workflow-scope token), runs are manual.",
+  "totals": {
+    "routes_checked": 0,
+    "ok_count": 0,
+    "fail_count": 0,
+    "findings_count": 0,
+    "by_severity": {}
+  },
+  "entries": [],
+  "phase_10_note": "Phase 10 (ATLAS) — replace heuristic scan with authenticated Playwright walker + multi-model AI council. Gate auto-fix PRs on founder WhatsApp + OTP."
+}
