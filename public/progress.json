@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T12:15:00Z",
-  "updatedBy": "Claude AI — F3 + F7 closed (Welcome label softened to 'Export Markets'; Destinations monthly chart now shows sparse-data notice). All 11 findings now fixed or resolved.",
+  "lastUpdated": "2026-04-24T13:00:00Z",
+  "updatedBy": "Claude AI — launch-polish: C6 CRM filters + C7 Reports compare + Zyra Trainer loop live. Thumbs + correction capture on every Zyra reply; corrections auto-feed into next system prompt.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 92,
   "launchFindings": [
@@ -332,15 +332,17 @@
       "id": "zyra-trainer",
       "name": "Zyra — Trainer & Learning Loop",
       "category": "ai",
-      "percent": 15,
+      "percent": 55,
       "icon": "🎓",
       "priority": true,
       "description": "Train Zyra with domain corrections, approved facts, and stakeholder-specific knowledge. Every correction feeds back so Zyra gets smarter over time.",
       "features": [
         { "name": "zyra_memory table schema (user-scoped learning)", "status": "done" },
-        { "name": "Trainer UI: thumb-up / thumb-down on any Zyra reply", "status": "todo" },
-        { "name": "Correction input: 'actually the answer is X because Y'", "status": "todo" },
-        { "name": "Corrections feed future-prompt context automatically", "status": "todo" },
+        { "name": "Trainer UI: thumb-up / thumb-down on any Zyra reply", "status": "done" },
+        { "name": "Correction input: 'actually the answer is X because Y'", "status": "done" },
+        { "name": "Feedback persisted locally + best-effort to zyra_feedback table", "status": "done" },
+        { "name": "buildCorrectionContext() helper for future-prompt context injection", "status": "done" },
+        { "name": "Corrections auto-injected into Zyra system prompt on every reply", "status": "done" },
         { "name": "Admin-curated knowledge base (market facts, pricing rules, margins)", "status": "todo" },
         { "name": "Per-user knowledge (Zyra remembers what each user traded / asked)", "status": "todo" },
         { "name": "Escalation flow: Zyra says 'I don't know — routing to Muzammil' + WhatsApp ping", "status": "todo" }

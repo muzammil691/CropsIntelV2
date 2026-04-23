@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "_note": "Run these from your own terminal (`npm run dev`) — the Claude Code sandbox can't locate your node install.",
+  "configurations": [
+    {
+      "name": "Vite dev server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "Vite preview (built bundle)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview"],
+      "port": 4173
+    }
+  ]
+}

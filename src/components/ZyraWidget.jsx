@@ -13,6 +13,7 @@ import {
   generateSessionId, logConversation, logError, trackQuestionPattern,
   detectTopics, detectConversationSentiment, getFullLearningContext, categorizeQuery
 } from '../lib/zyra-memory';
+import { recordFeedback, getFeedbackStats, buildCorrectionContext } from '../lib/zyra-trainer';
 
 // ─── Quick-ask topics by user tier ──────────────────────────────────
 const QUICK_TOPICS = {
@@ -45,7 +46,7 @@ const QUICK_TOPICS = {
 };
 
 // ─── Zyra system prompt builder ─────────────────────────────────────
-function buildZyraSystemPrompt(userTier, profile, marketContext, learningContext = '') {
+function buildZyraSystemPrompt(userTier, profile, marketContext, learningContext = '', correctionContext = '') {
   const tierDescriptions = {
     guest: 'a guest visitor exploring CropsIntel. Give helpful but general information. Encourage them to register for deeper insights.',
     registered: 'a registered user with basic access. Provide good market insights but remind them that verified users get personalized prescriptions.',
@@ -76,12 +77,14 @@ RULES:
 - When discussing MAXONS pricing, the margin is 3% above Strata market prices
 - Reference specific ABC data points when available (shipments, commitments, uncommitted)
 - If you learned something from past conversations (shown below), apply it — don't repeat past mistakes
-${learningContext}`;
+${learningContext}
+${correctionContext ? `\nUSER CORRECTIONS (what users have taught Zyra — apply these rules above all else):\n${correctionContext}` : ''}`;
 }
 
 // ─── Message bubble component ───────────────────────────────────────
-function MessageBubble({ message, isTyping }) {
+function MessageBubble({ message, isTyping, onRate, trainable = false, rating = null, correctionOpen = false, onOpenCorrection = null, onSubmitCorrection = null }) {
   const isUser = message.role === 'user';
+  const [correctionInput, setCorrectionInput] = React.useState('');
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
@@ -119,6 +122,67 @@ function MessageBubble({ message, isTyping }) {
             )}
           </div>
         )}
+        {/* Trainer loop: thumbs up / down + correction capture on assistant replies only */}
+        {!isUser && trainable && !isTyping && (
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-700/50">
+            <button
+              onClick={() => onRate?.('up')}
+              title="Good answer — helps train Zyra"
+              className={`text-[11px] leading-none px-2 py-1 rounded-md transition-colors ${
+                rating === 'up'
+                  ? 'bg-green-500/20 text-green-300 border border-green-500/40'
+                  : 'text-gray-500 hover:text-green-400 border border-transparent hover:border-green-500/30'
+              }`}
+            >
+              👍
+            </button>
+            <button
+              onClick={() => onOpenCorrection?.()}
+              title="Needs correction — teach Zyra the right answer"
+              className={`text-[11px] leading-none px-2 py-1 rounded-md transition-colors ${
+                rating === 'down'
+                  ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+                  : 'text-gray-500 hover:text-red-400 border border-transparent hover:border-red-500/30'
+              }`}
+            >
+              👎
+            </button>
+            {rating === 'up' && <span className="text-[9px] text-green-400/70">Saved to training</span>}
+            {rating === 'down' && !correctionOpen && <span className="text-[9px] text-red-400/70">Correction saved</span>}
+          </div>
+        )}
+        {correctionOpen && (
+          <div className="mt-2 pt-2 border-t border-gray-700/50">
+            <textarea
+              value={correctionInput}
+              onChange={(e) => setCorrectionInput(e.target.value)}
+              rows={2}
+              autoFocus
+              placeholder="What should Zyra have said? (e.g., 'Nonpareil Supreme NPX 23/25 is the MAXONS standard grade, not Carmel')"
+              className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-400/50"
+            />
+            <div className="flex items-center justify-end gap-2 mt-1.5">
+              <button
+                onClick={() => { onSubmitCorrection?.(null); setCorrectionInput(''); }}
+                className="text-[10px] text-gray-500 hover:text-gray-300 px-2 py-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (correctionInput.trim()) {
+                    onSubmitCorrection?.(correctionInput.trim());
+                    setCorrectionInput('');
+                  }
+                }}
+                disabled={!correctionInput.trim()}
+                className="text-[10px] px-2 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 disabled:opacity-50"
+              >
+                Save correction
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -137,6 +201,9 @@ export default function ZyraWidget() {
   const [pulseAnimation, setPulseAnimation] = useState(true);
   const [learningContext, setLearningContext] = useState('');
   const [sessionId] = useState(() => generateSessionId());
+  // Trainer loop: feedback map keyed by message index → { rating, correction }
+  const [feedback, setFeedback] = useState({});
+  const [openCorrectionIdx, setOpenCorrectionIdx] = useState(null);
   const sessionStartRef = useRef(Date.now());
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -325,7 +392,8 @@ export default function ZyraWidget() {
     trackQuestionPattern(text, categorizeQuery(text));
 
     try {
-      const systemPrompt = buildZyraSystemPrompt(userTier, profile, marketContext, learningContext);
+      const correctionContext = buildCorrectionContext();
+      const systemPrompt = buildZyraSystemPrompt(userTier, profile, marketContext, learningContext, correctionContext);
 
       const result = await askClaude(text, {
         system: systemPrompt,
@@ -505,9 +573,54 @@ export default function ZyraWidget() {
 
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1 min-h-[200px] max-h-[350px]">
-            {messages.map((msg, i) => (
-              <MessageBubble key={i} message={msg} isTyping={false} />
-            ))}
+            {messages.map((msg, i) => {
+              // Previous user message is what this assistant reply answered
+              const prevUser = msg.role === 'assistant'
+                ? [...messages.slice(0, i)].reverse().find(m => m.role === 'user')
+                : null;
+              // Don't show thumbs on the welcome message (index 0, before any user turn)
+              const trainable = msg.role === 'assistant' && !!prevUser;
+              const fb = feedback[i];
+              return (
+                <MessageBubble
+                  key={i}
+                  message={msg}
+                  isTyping={false}
+                  trainable={trainable}
+                  rating={fb?.rating || null}
+                  correctionOpen={openCorrectionIdx === i}
+                  onRate={async (rating) => {
+                    if (fb?.rating) return; // one vote per message
+                    setFeedback(prev => ({ ...prev, [i]: { rating } }));
+                    await recordFeedback({
+                      sessionId,
+                      userId: user?.id || null,
+                      userQuery: prevUser?.content || '',
+                      assistantReply: msg.content || '',
+                      rating,
+                      pageContext: typeof window !== 'undefined' ? window.location?.pathname : null,
+                      userTier,
+                    });
+                  }}
+                  onOpenCorrection={() => setOpenCorrectionIdx(i)}
+                  onSubmitCorrection={async (correction) => {
+                    setOpenCorrectionIdx(null);
+                    if (!correction) return; // cancel
+                    setFeedback(prev => ({ ...prev, [i]: { rating: 'down', correction } }));
+                    await recordFeedback({
+                      sessionId,
+                      userId: user?.id || null,
+                      userQuery: prevUser?.content || '',
+                      assistantReply: msg.content || '',
+                      rating: 'down',
+                      correction,
+                      pageContext: typeof window !== 'undefined' ? window.location?.pathname : null,
+                      userTier,
+                    });
+                  }}
+                />
+              );
+            })}
             {isLoading && (
               <MessageBubble
                 message={{ role: 'assistant', content: '' }}
