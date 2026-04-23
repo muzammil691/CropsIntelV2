@@ -196,6 +196,77 @@
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
+  "overnightAutonomy": {
+    "userMessage": "by the way, now i need to sleep, so will u be able to carry out the build on your own? you should do only which you can do without me, if there is some blockage, keep it in a list for me ready.. i dont want you to get stuck and wait for me for anytrhing, if you can do something else without me, do it, and keep some input provision in the code and you can ask me in a llist and i can answer point by point to complete the incomplete.",
+    "mandate": "Ship autonomous waves through the priorityQueue. When hitting a user-only blocker (API key, DNS, workflow-scope PAT, Supabase service-role, Google Drive folder-share, real-device login test), record it in morningBlockers below, add a clearly-marked USER_INPUT_NEEDED placeholder in code (env var / null fallback / TODO-USER comment), and move to the next buildable task. Never idle waiting.",
+    "startedAt": "2026-04-24T13:30:00Z",
+    "morningBlockers": [
+      {
+        "id": "B1-workflow-scope",
+        "severity": "high",
+        "question": "Grant `workflow` scope to the GitHub PAT Claude uses, OR edit .github/workflows/auto-scrape.yml in the GitHub UI to: (a) ADD steps running bountiful-scraper, strata-scraper, news-scraper; (b) REMOVE `continue-on-error: true` from the ABC + backfill + processor steps so failures surface. Paste the diff or confirm done.",
+        "impact": "Until one of these is resolved, bountiful/strata/news scrapers only run via runner.js which isn't on CI cron \u2014 so no automatic price + news updates. And all scraper crashes are swallowed silently.",
+        "oneLineAnswer": ""
+      },
+      {
+        "id": "B2-npm-deps",
+        "severity": "high",
+        "question": "Run `cd /Users/muzammilakhtar/Documents/Claude/Projects/CropsIntelV2 && npm install nodemailer googleapis` on your machine, then confirm. This activates email pipeline flusher + Google Drive archive/backup. Until then they're lazy-loaded fallbacks (code runs but skips those jobs).",
+        "impact": "email_queue rows stay queued. ABC PDFs + DB backups not archived to Drive.",
+        "oneLineAnswer": ""
+      },
+      {
+        "id": "B3-gdrive-share",
+        "severity": "medium",
+        "question": "In Google Drive, share folder 1O2xsvCqBzq4mlCV2ovQL96zW0hbfcvHJ with `cropsintel-backfill-reader@cropsintel.iam.gserviceaccount.com` as Editor. Confirm done.",
+        "impact": "Even after B2, uploads 403 until the service account has Editor on the folder.",
+        "oneLineAnswer": ""
+      },
+      {
+        "id": "B4-service-role-local",
+        "severity": "medium",
+        "question": "Paste the SUPABASE_SERVICE_ROLE_KEY value so I can add it to my local .env and run `ABC_SCRAPE_LIMIT=200 node src/scrapers/abc-scraper.js` to backfill the 10-year position-report gaps. (Or: trigger GitHub Actions workflow_dispatch for auto-scrape.yml with ABC_SCRAPE_LIMIT=200.)",
+        "impact": "Without it, I can't locally re-run scrapers to fill gap crop years 2015/16, 2016/17, 2019/20\u20132023/24.",
+        "oneLineAnswer": ""
+      },
+      {
+        "id": "B5-resend-key",
+        "severity": "low",
+        "question": "Resend API key + DNS SPF/DKIM for intel@cropsintel.com \u2014 when ready, paste the key (or confirm it's in Supabase edge-fn secrets already). Until then Deno edge fn falls through to SMTP which node-flusher drains.",
+        "impact": "Current email path works (SMTP fallback); Resend is polish-later.",
+        "oneLineAnswer": ""
+      },
+      {
+        "id": "B6-v1-login-test",
+        "severity": "high",
+        "question": "Log in at https://cropsintel.com/login with one real V1-migrated phone number (WhatsApp OTP \u2192 V1 popup \u2192 password set \u2192 logged in). Report which step breaks if any.",
+        "impact": "Only you can run this \u2014 we have 60 migrated users. Until confirmed, launch-readiness holds at 85% not 100%.",
+        "oneLineAnswer": ""
+      },
+      {
+        "id": "B7-destinations-screenshot",
+        "severity": "medium",
+        "question": "Destinations page \u2014 describe or screenshot what specifically 'isn't shown properly'. Is it: (a) no countries visible; (b) charts empty; (c) filters not working; (d) specific country missing; (e) compare mode broken; (f) modeled-data banner wrong; (g) something else?",
+        "impact": "I'm doing a blind pass on Destinations display \u2014 your answer will tell me if I'm targeting the right thing.",
+        "oneLineAnswer": ""
+      },
+      {
+        "id": "B8-reports-page-context",
+        "severity": "medium",
+        "question": "When you said 'reports are not completely uploaded' \u2014 do you mean (a) /reports page renders but data is missing; (b) abc_position_reports DB rows are missing crop years; (c) PDF file_url not set on existing rows; (d) something else?",
+        "impact": "Determines whether I fix the UI or re-run the scraper.",
+        "oneLineAnswer": ""
+      }
+    ],
+    "waves": [
+      {"id": 1, "name": "Destinations display fix", "status": "starting"},
+      {"id": 2, "name": "Offer builder rebuild (8 steps)", "status": "queued"},
+      {"id": 3, "name": "Zyra priority audit + fixes", "status": "queued"},
+      {"id": 4, "name": "Reports page gap audit", "status": "queued"},
+      {"id": 5, "name": "Widget Library foundation (migration + hook, no UI yet)", "status": "queued"},
+      {"id": 6, "name": "Premium Card retrofit on Dashboard + Destinations + Supply", "status": "queued"}
+    ]
+  },
   "priorityQueue": {
     "note": "User directive 2026-04-24 12:30Z: data scrapers FIRST with extensive verification, then Zyra priority, then page review especially Destinations + Reports completeness. No skipping.",
     "userMessage": "in the plan we need to put Zyra on priority but definately we need to review the pages all but specially destinations are not shown properly and the reports are not completely uploaded, the data scrapper should be fixed at very first and verified and verified properly no skipping and have to use extensive check and fix on data and display and result",
