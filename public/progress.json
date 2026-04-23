@@ -1,8 +1,22 @@
 {
-  "lastUpdated": "2026-04-24T03:00:00Z",
-  "updatedBy": "Claude AI \u2014 Rich signup: grades/sizes/references fields",
+  "lastUpdated": "2026-04-24T04:15:00Z",
+  "updatedBy": "Claude AI \u2014 4 migrations applied to prod + V1 seed linked by whatsapp",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 98,
+  "overallPercent": 99,
+  "dbState": {
+    "note": "Applied 2026-04-24 via pg8000 direct connection. All 4 migrations landed in production.",
+    "migrations_applied": [
+      "20260424_v2_welcome_tracking.sql",
+      "20260424_email_subscribers.sql",
+      "20260424_profile_grades_sizes_refs.sql",
+      "20260424_v1_seed_from_csv.sql"
+    ],
+    "email_subscribers_v1_registered": 61,
+    "v1_linked_to_v2_profile_by_whatsapp": 60,
+    "user_profiles_migrated_from_v1": 63,
+    "duplicate_v2_profiles_discovered": 3,
+    "unlinked_v1_users_awaiting_v2_signup": 1
+  },
   "launchFindings": [
     {
       "id": "F1",
