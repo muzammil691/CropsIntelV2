@@ -1,4 +1,6 @@
 // CropsIntelV2 — email-send edge function (Phase F1b)
+// Last deploy: 2026-04-24 — SMTP hard-timeout to prevent 502 when Office 365
+// rejects basic-auth SMTP. Node.js queue-flusher handles actual delivery.
 //
 // Unlocks the email leg of CRM Bulk Invite + V2 upgrade email to 65 users.
 //
@@ -144,29 +146,47 @@ function tradeAlertTemplate({ name, title, summary, urgency = 'medium' } = {}) {
 }
 
 // ─── Send via SMTP (Office 365 / GoDaddy) — primary path ─────────────
+// Deno Deploy may block raw TCP to smtp.office365.com OR Office 365 rejected
+// basic-auth SMTP (deprecated 2022 for tenants without App Passwords). Either
+// failure mode hangs STARTTLS negotiation → the whole edge function times out
+// and returns 502 instead of gracefully falling through to the queue.
+// Hard 8s timeout ensures we always return 200 with mode=queued on SMTP issues.
 async function sendViaSMTP({ to, subject, html, text }) {
-  const client = new SMTPClient({
-    connection: {
-      hostname: SMTP_HOST!,
-      port: SMTP_PORT,
-      tls: SMTP_PORT === 465,           // implicit TLS on 465, STARTTLS on 587
-      auth: { username: SMTP_USER!, password: SMTP_PASS! },
-    },
+  const TIMEOUT_MS = 8000;
+  const timeoutPromise = new Promise<{ success: false; error: string }>((resolve) => {
+    setTimeout(
+      () => resolve({ success: false, error: `SMTP timeout after ${TIMEOUT_MS}ms (Office 365 basic-auth likely disabled; queue flusher will retry via Node runner)` }),
+      TIMEOUT_MS,
+    );
   });
-  try {
-    await client.send({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      content: text || '',
-      html,
+
+  const sendPromise = (async () => {
+    const client = new SMTPClient({
+      connection: {
+        hostname: SMTP_HOST!,
+        port: SMTP_PORT,
+        tls: SMTP_PORT === 465,           // implicit TLS on 465, STARTTLS on 587
+        auth: { username: SMTP_USER!, password: SMTP_PASS! },
+      },
     });
-    return { success: true, id: `smtp-${Date.now()}` };
-  } catch (err) {
-    return { success: false, error: err?.message || String(err) };
-  } finally {
-    try { await client.close(); } catch (_) { /* ignore */ }
-  }
+    try {
+      await client.send({
+        from: FROM_EMAIL,
+        to,
+        subject,
+        content: text || '',
+        html,
+      });
+      return { success: true, id: `smtp-${Date.now()}` };
+    } catch (err) {
+      return { success: false, error: err?.message || String(err) };
+    } finally {
+      // Don't await — close() itself can hang if STARTTLS never completed.
+      client.close().catch(() => { /* ignore */ });
+    }
+  })();
+
+  return Promise.race([sendPromise, timeoutPromise]);
 }
 
 // ─── Send via Resend (fallback) ─────────────────────────────────────
