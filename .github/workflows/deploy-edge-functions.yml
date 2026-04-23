@@ -1,0 +1,50 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy whatsapp-webhook
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy whatsapp-webhook --project-ref eywsfmixzrdfcywmdaaw --no-verify-jwt
+
+      - name: Deploy whatsapp-send
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy whatsapp-send --project-ref eywsfmixzrdfcywmdaaw --no-verify-jwt
+
+      - name: Deploy whatsapp-verify
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy whatsapp-verify --project-ref eywsfmixzrdfcywmdaaw --no-verify-jwt
+
+      - name: Deploy whatsapp-login
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy whatsapp-login --project-ref eywsfmixzrdfcywmdaaw --no-verify-jwt
+
+      - name: Deploy email-send
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy email-send --project-ref eywsfmixzrdfcywmdaaw --no-verify-jwt
