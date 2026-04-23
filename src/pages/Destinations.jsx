@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { toNum } from '../lib/utils';
+import { toNum, normalizeCropYear } from '../lib/utils';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -66,10 +66,13 @@ export default function Destinations() {
         .order('report_year', { ascending: true })
         .order('report_month', { ascending: true });
       if (data) {
-        setShipments(data);
-        const crops = [...new Set(data.map(r => r.crop_year))].sort();
+        // Launch L1 F6 fix: collapse mixed crop_year formats (the DB had
+        // both "2016/17" and "2016/2017" from different writers). Normalize
+        // every row at read-time so chips + filters see one format only.
+        const normalized = data.map(r => ({ ...r, crop_year: normalizeCropYear(r.crop_year) }));
+        setShipments(normalized);
+        const crops = [...new Set(normalized.map(r => r.crop_year))].sort();
         setSelectedCropYear(crops[crops.length - 1]);
-        // Default compare: last 3 crop years
         setComparedYears(crops.slice(-3));
       }
       setLoading(false);
