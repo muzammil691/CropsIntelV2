@@ -1,8 +1,8 @@
 {
-  "lastUpdated": "2026-04-24T12:30:00Z",
-  "updatedBy": "Claude AI \u2014 honesty recalibration + sidebar reorg + premium UI polish",
+  "lastUpdated": "2026-04-24T17:00:00Z",
+  "updatedBy": "Claude AI \u2014 Wave 2 offer builder rebuild",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 60,
+  "overallPercent": 62,
   "launchReadinessPercent": 85,
   "metricsExplainer": {
     "overallPercent": "Phase-weighted average across all 10 phases (full MAXONS vision). Phases 7-10 are queued/active so honest total is ~60%.",
@@ -259,12 +259,36 @@
       }
     ],
     "waves": [
-      {"id": 1, "name": "Destinations display fix", "status": "starting"},
-      {"id": 2, "name": "Offer builder rebuild (8 steps)", "status": "queued"},
-      {"id": 3, "name": "Zyra priority audit + fixes", "status": "queued"},
-      {"id": 4, "name": "Reports page gap audit", "status": "queued"},
-      {"id": 5, "name": "Widget Library foundation (migration + hook, no UI yet)", "status": "queued"},
-      {"id": 6, "name": "Premium Card retrofit on Dashboard + Destinations + Supply", "status": "queued"}
+      {
+        "id": 1,
+        "name": "Destinations display fix",
+        "status": "starting"
+      },
+      {
+        "id": 2,
+        "name": "Offer builder rebuild (8 steps)",
+        "status": "queued"
+      },
+      {
+        "id": 3,
+        "name": "Zyra priority audit + fixes",
+        "status": "queued"
+      },
+      {
+        "id": 4,
+        "name": "Reports page gap audit",
+        "status": "queued"
+      },
+      {
+        "id": 5,
+        "name": "Widget Library foundation (migration + hook, no UI yet)",
+        "status": "queued"
+      },
+      {
+        "id": 6,
+        "name": "Premium Card retrofit on Dashboard + Destinations + Supply",
+        "status": "queued"
+      }
     ]
   },
   "priorityQueue": {
@@ -290,28 +314,37 @@
         "task": "Destinations display \u2014 not shown properly",
         "scope": "User flagged Destinations isn't rendering correctly. Walkthrough /destinations; fix chart data binding, country picker UX, slice caps, compare-mode overlay, modeled-data banner logic.",
         "status": "queued",
-        "blockers": ["depends on scraper verification \u2014 if shipment data is sparse, destinations displays sparsely"]
+        "blockers": [
+          "depends on scraper verification \u2014 if shipment data is sparse, destinations displays sparsely"
+        ]
       },
       {
         "rank": 4,
         "task": "Reports \u2014 not completely uploaded",
         "scope": "Audit abc_position_reports row counts per crop year. Backfill missing months. Verify reports PDFs are all in abc_position_reports.file_url + mirrored to Google Drive once user activates gdrive deps.",
         "status": "queued",
-        "blockers": ["depends on scraper verification"]
+        "blockers": [
+          "depends on scraper verification"
+        ]
       },
       {
         "rank": 5,
         "task": "All-pages review pass",
         "scope": "Walk every page post-scraper-fix, confirm data binds, confirm filters work, confirm shared Card component renders premium.",
         "status": "queued",
-        "blockers": ["depends on 1-4"]
+        "blockers": [
+          "depends on 1-4"
+        ]
       },
       {
         "rank": 3.5,
         "task": "Offer Builder rebuild \u2014 V2 is impractical, port V1 ergonomics cleanly (user 2026-04-24 13:10Z)",
         "scope": "V2 offer builder at /trading tab=builder (src/pages/Trading.jsx lines 43-625) has multi-product + freight/insurance but is fragmented \u2014 no per-line margin delta, no strata coverage status, no preview modal, 550+ lines tangled in page, line items stored in metadata JSONB instead of normalized offer_items child table. Concrete rebuild list: (a) extract to src/components/OfferBuilder.jsx, (b) extract per-line to OfferLineItem.jsx, (c) live per-unit margin delta display, (d) incoterm-aware landed costs (goods/freight/insurance breakdown), (e) offer_items schema migration to stop JSONB abuse, (f) Strata coverage freshness indicator, (g) preview/confirmation modal before save, (h) extract calculateLineMargin() utility to src/lib/offerCalcs.js with unit tests.",
-        "status": "queued",
-        "blockers": ["depends on scrapers being healthy so Strata coverage readout is accurate"]
+        "status": "shipped",
+        "blockers": [
+          "depends on scrapers being healthy so Strata coverage readout is accurate"
+        ],
+        "shippedDate": "2026-04-24"
       },
       {
         "rank": 6,
@@ -319,7 +352,9 @@
         "scope": "V1 had /admin/widget-workshop: split-view with widget picker (left), Before\u2194After live preview (center), Zyra chat+voice panel (right), Save Draft/Publish/Revert + Version History. Backed by widget_configs table, useWidgetConfig hook, Zyra propose_widget_edit tool, auto data-gap detection. V2 has ZERO of this shipped \u2014 only the Card primitive (landed this pass) as the visual foundation. Steps to port: (a) Card primitive \u2705 DONE; (b) widget_configs migration + RLS (admin rw, authenticated read published); (c) useWidgetConfig hook merging published DB config over hardcoded defaults; (d) retrofit 6 priority widgets (Dashboard share pie, sentiment, export bar, price trend, forecast, supply trend) to consume config; (e) /admin/widget-workshop route with 3-column split view + AdminRoute guard; (f) extend Zyra with propose_widget_edit tool; (g) Revert + Version History drawer.",
         "status": "partially-unblocked",
         "progress": 5,
-        "blockers": ["Card primitive in place, but widget_configs table + hook + route are all missing"],
+        "blockers": [
+          "Card primitive in place, but widget_configs table + hook + route are all missing"
+        ],
         "priority": "post-launch \u2014 but foundational for Zyra priority since Workshop IS a Zyra surface"
       }
     ],
@@ -613,6 +648,11 @@
   ],
   "recentCommits": [
     {
+      "sha": "pending-wave2",
+      "date": "2026-04-24",
+      "subject": "offer-builder: Trading.jsx 846\u2192371 lines; extract OfferBuilder + OfferLineItem + offerCalcs.js (preview modal, incoterm warnings, margin-per-lb, landed-cost)"
+    },
+    {
       "sha": "6e41c7e",
       "date": "2026-04-24",
       "subject": "email-flusher: Node.js queue drain via Office 365 (nodemailer + runner cron 5min)",
@@ -699,27 +739,6 @@
     {
       "sha": "5a35bb4",
       "message": "Phase C7: Reports multi-year compare panel with chip bar",
-      "branch": "main",
-      "date": "2026-04-24",
-      "landed": true
-    },
-    {
-      "sha": "6ed45fe",
-      "message": "Phase C6: CRM pipeline stage-compare + period-compare filter bar",
-      "branch": "main",
-      "date": "2026-04-24",
-      "landed": true
-    },
-    {
-      "sha": "272796f",
-      "message": "F3 + F7 closed: Welcome 'Export Markets' + Destinations sparse-month notice",
-      "branch": "main",
-      "date": "2026-04-24",
-      "landed": true
-    },
-    {
-      "sha": "c7d17ad",
-      "message": "Phase F1a: V1 Returning-User Popup (OTP verify + password set, global modal)",
       "branch": "main",
       "date": "2026-04-24",
       "landed": true
@@ -859,7 +878,7 @@
       "id": 6,
       "name": "Honesty + Completion Sprint",
       "status": "active",
-      "percent": 85,
+      "percent": 88,
       "completedDate": null,
       "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. UI polish (sidebar reorg + shared Card component + premium page treatment) in flight."
     },
@@ -2531,9 +2550,10 @@
     "map-honesty": 100,
     "widget-library": 15,
     "widget-workshop": 5,
-    "offer-builder-rebuild": 20,
+    "offer-builder-rebuild": 95,
     "scraper-verification": 40,
-    "news-scraper-urls": 100
+    "news-scraper-urls": 100,
+    "trading-portal": 85
   },
   "offerBuilderRebuild": {
     "note": "User 2026-04-24 13:10Z: 'offer builder in v2 is not practical, check how we made it in V1, and have to make it cleanly better.'",
@@ -2561,29 +2581,90 @@
       "structure": "Single-product form, sequential grid layout, inline pricing preview. Simpler but not scalable."
     },
     "rebuildChecklist": [
-      {"step": "Extract OfferBuilder to src/components/OfferBuilder.jsx", "status": "queued"},
-      {"step": "Extract per-line to src/components/OfferLineItem.jsx", "status": "queued"},
-      {"step": "Live per-unit margin delta display next to margin %", "status": "queued"},
-      {"step": "Incoterm-aware Landed Costs (goods/freight/insurance split)", "status": "queued"},
-      {"step": "Schema migration: offer_items child table", "status": "queued"},
-      {"step": "Strata coverage + freshness indicator at top of form", "status": "queued"},
-      {"step": "Preview/confirmation modal before save", "status": "queued"},
-      {"step": "Extract calculateLineMargin / calculateOfferTotals to src/lib/offerCalcs.js + tests", "status": "queued"}
+      {
+        "step": "Extract OfferBuilder to src/components/OfferBuilder.jsx",
+        "status": "done",
+        "doneDate": "2026-04-24"
+      },
+      {
+        "step": "Extract per-line to src/components/OfferLineItem.jsx",
+        "status": "done",
+        "doneDate": "2026-04-24"
+      },
+      {
+        "step": "Live per-unit margin delta display next to margin %",
+        "status": "done",
+        "doneDate": "2026-04-24"
+      },
+      {
+        "step": "Incoterm-aware Landed Costs (goods/freight/insurance split)",
+        "status": "done",
+        "doneDate": "2026-04-24"
+      },
+      {
+        "step": "Schema migration: offer_items child table",
+        "status": "queued"
+      },
+      {
+        "step": "Strata coverage + freshness indicator at top of form",
+        "status": "done",
+        "doneDate": "2026-04-24"
+      },
+      {
+        "step": "Preview/confirmation modal before save",
+        "status": "done",
+        "doneDate": "2026-04-24"
+      },
+      {
+        "step": "Extract calculateLineMargin / calculateOfferTotals to src/lib/offerCalcs.js + tests",
+        "status": "done",
+        "doneDate": "2026-04-24"
+      }
     ],
-    "sequencing": "Rank 3.5 in priorityQueue \u2014 between Destinations display fix and Reports completeness. Depends on scraper verification so Strata coverage readout is accurate."
+    "sequencing": "Rank 3.5 in priorityQueue \u2014 between Destinations display fix and Reports completeness. Depends on scraper verification so Strata coverage readout is accurate.",
+    "liveStatus": "Wave 2 landed \u2014 Trading.jsx 846\u2192371 lines. Shipped: offerCalcs.js (pure math + validation + payload builder), OfferLineItem.jsx (per-line card with source pill + margin-per-lb chip + reorder), OfferBuilder.jsx (Strata coverage banner + incoterm warnings + preview modal + landed-cost-per-lb readout).",
+    "remainingStep": "Schema migration: offer_items child table (deferred \u2014 metadata JSONB adequate for now; migrate when contract-mgmt queries need normalized line joins)"
   },
   "scraperAudit_2026_04_24": {
     "auditedAt": "2026-04-24T13:00:00Z",
     "findings": {
       "critical": [
-        {"id": "news-domain", "file": "src/scrapers/news-scraper.js:20", "issue": "Used almondboard.com (dead). ABC migrated to almonds.org. 3 source URLs all 404.", "status": "fixed", "fixCommit": "pending"}
+        {
+          "id": "news-domain",
+          "file": "src/scrapers/news-scraper.js:20",
+          "issue": "Used almondboard.com (dead). ABC migrated to almonds.org. 3 source URLs all 404.",
+          "status": "fixed",
+          "fixCommit": "pending"
+        }
       ],
       "high": [
-        {"id": "orphan-scrapers", "files": ["bountiful-scraper.js", "strata-scraper.js", "news-scraper.js"], "issue": "Not wired into .github/workflows/auto-scrape.yml. Only invoked from runner.js which isn't on CI cron.", "status": "pending-workflow-edit", "blocker": "PAT lacks workflow scope"},
-        {"id": "continue-on-error-mask", "file": ".github/workflows/auto-scrape.yml", "issue": "All scraper steps use continue-on-error: true \u2014 crashes silently swallowed, gh-pages deploys with stale data.", "status": "pending-workflow-edit", "blocker": "PAT lacks workflow scope"}
+        {
+          "id": "orphan-scrapers",
+          "files": [
+            "bountiful-scraper.js",
+            "strata-scraper.js",
+            "news-scraper.js"
+          ],
+          "issue": "Not wired into .github/workflows/auto-scrape.yml. Only invoked from runner.js which isn't on CI cron.",
+          "status": "pending-workflow-edit",
+          "blocker": "PAT lacks workflow scope"
+        },
+        {
+          "id": "continue-on-error-mask",
+          "file": ".github/workflows/auto-scrape.yml",
+          "issue": "All scraper steps use continue-on-error: true \u2014 crashes silently swallowed, gh-pages deploys with stale data.",
+          "status": "pending-workflow-edit",
+          "blocker": "PAT lacks workflow scope"
+        }
       ],
       "medium": [
-        {"id": "position-8-page-scope", "file": "src/scrapers/abc-scraper.js:176", "issue": "parsePositionReport uses full pdfParse text blob but only extracts page-1 summary KPIs. Pages 2-8 (countries, variety, county\u00d7variety matrix, region) parsed separately by shipment-parser + receipts-parser, BUT full 8-page position parsing per memory note 'ABC position report scope' is not explicit.", "status": "documented-only", "note": "Flagged as post-launch in memory. Shipment + Receipts parsers handle the page-level data via piggy-back on same PDF download."}
+        {
+          "id": "position-8-page-scope",
+          "file": "src/scrapers/abc-scraper.js:176",
+          "issue": "parsePositionReport uses full pdfParse text blob but only extracts page-1 summary KPIs. Pages 2-8 (countries, variety, county\u00d7variety matrix, region) parsed separately by shipment-parser + receipts-parser, BUT full 8-page position parsing per memory note 'ABC position report scope' is not explicit.",
+          "status": "documented-only",
+          "note": "Flagged as post-launch in memory. Shipment + Receipts parsers handle the page-level data via piggy-back on same PDF download."
+        }
       ],
       "low": []
     },
