@@ -291,7 +291,9 @@ export default function Intelligence() {
               <div>
                 <h3 className="text-sm font-semibold text-white">Zyra</h3>
                 <p className="text-[10px] text-gray-500">
-                  {aiStatus?.council?.connected ? `${aiStatus.council.modelsActive} AI Models Active` : 'AI Trading Intelligence'}
+                  {aiStatus?.council?.connected
+                    ? `${aiStatus.council.modelsActive} AI Models Active`
+                    : '1 AI Model Active (Claude) · GPT + Gemini council on roadmap'}
                 </p>
               </div>
               <div className="ml-auto flex items-center gap-2">
@@ -515,42 +517,48 @@ export default function Intelligence() {
         </div>
       </div>
 
-      {/* Multi-AI Architecture Info */}
+      {/* AI Architecture — honest status */}
       <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-white mb-3">4 AI Systems Working Together</h3>
+        <h3 className="text-sm font-semibold text-white mb-3">AI Stack — live vs on roadmap</h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-gray-800/50 rounded-lg p-3">
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-green-500/30">
             <div className="flex items-center gap-2 mb-1.5">
               <div className="w-5 h-5 rounded bg-orange-500/20 flex items-center justify-center text-[10px]">C</div>
               <span className="text-xs font-medium text-white">Claude</span>
+              <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">LIVE</span>
             </div>
-            <p className="text-[10px] text-gray-500">Primary brain. Deep reasoning, document analysis, trade synthesis.</p>
+            <p className="text-[10px] text-gray-500">Primary brain. Deep reasoning, document analysis, trade synthesis, Monthly Brief.</p>
           </div>
-          <div className="bg-gray-800/50 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-5 h-5 rounded bg-green-500/20 flex items-center justify-center text-[10px]">G</div>
-              <span className="text-xs font-medium text-white">GPT</span>
-            </div>
-            <p className="text-[10px] text-gray-500">Fast factual checks, alternative market perspectives.</p>
-          </div>
-          <div className="bg-gray-800/50 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center text-[10px]">Ge</div>
-              <span className="text-xs font-medium text-white">Gemini</span>
-            </div>
-            <p className="text-[10px] text-gray-500">Third perspective for consensus, creative analysis.</p>
-          </div>
-          <div className="bg-gray-800/50 rounded-lg p-3">
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-green-500/30">
             <div className="flex items-center gap-2 mb-1.5">
               <div className="w-5 h-5 rounded bg-purple-500/20 flex items-center justify-center text-[10px]">11</div>
               <span className="text-xs font-medium text-white">ElevenLabs</span>
+              <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">LIVE</span>
             </div>
             <p className="text-[10px] text-gray-500">Voice synthesis for Zyra. Speak any insight aloud.</p>
           </div>
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-amber-500/20">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-5 h-5 rounded bg-green-500/20 flex items-center justify-center text-[10px]">G</div>
+              <span className="text-xs font-medium text-white">GPT</span>
+              <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400">ROADMAP</span>
+            </div>
+            <p className="text-[10px] text-gray-500">ADELA router ready (src/lib/adela.js) — zyra-openai edge fn = Phase 8.</p>
+          </div>
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-amber-500/20">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center text-[10px]">Ge</div>
+              <span className="text-xs font-medium text-white">Gemini</span>
+              <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400">ROADMAP</span>
+            </div>
+            <p className="text-[10px] text-gray-500">Multimodal + council debate — zyra-gemini edge fn = Phase 8.</p>
+          </div>
         </div>
         <p className="text-[10px] text-gray-500 mt-3 leading-relaxed">
-          Fast Mode: Claude handles standard queries with GPT/Gemini fallback. Council Mode: all 3 LLMs analyze high-stakes
-          trade decisions independently, then Claude synthesizes a consensus with confidence scoring.
+          <strong className="text-gray-400">Today:</strong> Claude handles every query (chat, brief, analysis). ElevenLabs
+          speaks Zyra's replies aloud.
+          <strong className="text-gray-400"> Next (Phase 8):</strong> ADELA router auto-picks the right provider per task —
+          multilingual → GPT, multimodal → Gemini, high-stakes decisions → 3-model council debate.
         </p>
       </div>
     </div>
