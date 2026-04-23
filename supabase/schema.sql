@@ -677,3 +677,29 @@ ALTER TABLE whatsapp_otps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_messages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role full access" ON whatsapp_otps FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Service role full access" ON whatsapp_messages FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- Email Queue (Phase F1b workaround — queues outbound email when
+-- Resend API key is not set, so CRM/V2-upgrade flows don't block
+-- on infra. Flush manually or via cron once SMTP is live.)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS email_queue (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  to_address TEXT NOT NULL,
+  from_address TEXT NOT NULL DEFAULT 'CropsIntel <intel@cropsintel.com>',
+  subject TEXT,
+  html_body TEXT,
+  text_body TEXT,
+  email_type TEXT,
+  status TEXT DEFAULT 'queued',  -- queued | sent | failed
+  provider_id TEXT,
+  last_error TEXT,
+  attempts INT DEFAULT 0,
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_queue_status ON email_queue(status, created_at);
+
+ALTER TABLE email_queue ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON email_queue FOR ALL USING (true) WITH CHECK (true);
