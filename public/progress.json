@@ -234,6 +234,15 @@
         "scope": "Walk every page post-scraper-fix, confirm data binds, confirm filters work, confirm shared Card component renders premium.",
         "status": "queued",
         "blockers": ["depends on 1-4"]
+      },
+      {
+        "rank": 6,
+        "task": "Widget Library + Workshop (user re-flagged 2026-04-24 12:45Z)",
+        "scope": "V1 had /admin/widget-workshop: split-view with widget picker (left), Before\u2194After live preview (center), Zyra chat+voice panel (right), Save Draft/Publish/Revert + Version History. Backed by widget_configs table, useWidgetConfig hook, Zyra propose_widget_edit tool, auto data-gap detection. V2 has ZERO of this shipped \u2014 only the Card primitive (landed this pass) as the visual foundation. Steps to port: (a) Card primitive \u2705 DONE; (b) widget_configs migration + RLS (admin rw, authenticated read published); (c) useWidgetConfig hook merging published DB config over hardcoded defaults; (d) retrofit 6 priority widgets (Dashboard share pie, sentiment, export bar, price trend, forecast, supply trend) to consume config; (e) /admin/widget-workshop route with 3-column split view + AdminRoute guard; (f) extend Zyra with propose_widget_edit tool; (g) Revert + Version History drawer.",
+        "status": "partially-unblocked",
+        "progress": 5,
+        "blockers": ["Card primitive in place, but widget_configs table + hook + route are all missing"],
+        "priority": "post-launch \u2014 but foundational for Zyra priority since Workshop IS a Zyra surface"
       }
     ],
     "executionRule": "No skipping. Verify each task via SQL count + UI screenshot + curl before marking complete. Record each verification in currentWork.description."
@@ -2441,7 +2450,35 @@
     "data-scrapers-verified": 35,
     "destinations-display": 55,
     "reports-data-completeness": 40,
-    "map-honesty": 100
+    "map-honesty": 100,
+    "widget-library": 15,
+    "widget-workshop": 5
+  },
+  "widgetWorkshop": {
+    "note": "User re-flagged 2026-04-24 12:45Z: 'we were designing the app to have the clean widget library and workshop.. do we still have that in plan??' Honest answer: YES in plan, NO shipped yet. V1 had full spec + working impl (docs in ../Cropsintel/feature5_widget_workshop_prompt.md + widget_workshop_fix_prompt.md). V2 has only the Card primitive (shipped this pass) as the visual foundation.",
+    "v1Spec": {
+      "route": "/admin/widget-workshop",
+      "layout": "3-column: widget picker | Before\u2194After preview | Zyra chat+voice",
+      "actions": "Revert, Save Draft, Publish, Version History",
+      "dataModel": "widget_configs table (widget_key, version, config jsonb, status draft/published, parent_version_id for branching)",
+      "hook": "useWidgetConfig(widgetKey) merges published config over hardcoded defaults",
+      "zyraTool": "propose_widget_edit tool-use: {operation, field, value, reason}",
+      "dataGapDetection": "Unknown field \u2192 auto-insert into data_gaps table + non-blocking toast",
+      "atlasReingest": "On publish, call atlas-reingest-widget edge fn"
+    },
+    "v2Status": {
+      "cardPrimitive": "\u2705 landed 2026-04-24 (commit 453128a) \u2014 foundation for premium widget look",
+      "widgetConfigsTable": "\u274c not created",
+      "useWidgetConfigHook": "\u274c not created",
+      "workshopRoute": "\u274c not created",
+      "zyraProposeEditTool": "\u274c not wired",
+      "versionHistory": "\u274c not built",
+      "dataGapAutoDetect": "\u274c not wired",
+      "widgetsRetrofittedToConsumeConfig": 0
+    },
+    "sequencing": "Post-launch feature. Pre-launch we ship the Card primitive (done) + sidebar reorg (done) + premium polish on core pages (in flight). Post-launch: widget_configs migration \u2192 useWidgetConfig hook \u2192 /admin/widget-workshop route + split view \u2192 Zyra tool-use extension \u2192 progressive widget retrofit (dashboard first, then destinations/supply/pricing).",
+    "priority": "high post-launch \u2014 makes every future widget change self-serve for the user via Zyra voice/chat instead of requiring a code push",
+    "rescopedAs": "Listed in priorityQueue as rank 6, blocked on launch-focus items 1-5 above"
   },
   "dataHealth": {
     "abc_position_reports": {
