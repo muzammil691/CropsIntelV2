@@ -1,85 +1,241 @@
 {
-  "lastUpdated": "2026-04-24T16:00:00Z",
-  "updatedBy": "Claude AI — 6-commit turn. Applied workaround-not-wait rule. 2 latent bugs killed that would've silently crashed the V2 upgrade blast: (1) CRM bulk-invite called /functions/v1/send-email but function is named email-send, (2) notifications.js had a hardcoded Supabase URL + missing auth header. V2 upgrade flow now actually reaches the edge functions.",
+  "lastUpdated": "2026-04-24T17:00:00Z",
+  "updatedBy": "Claude AI \u2014 F1 launch-blocker: login flow hardened. Edge fn deploy queued as user-hand step. Frontend guards live via GH Actions.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 94,
   "launchFindings": [
-    { "id": "F1", "severity": "critical", "found_at": "/welcome",   "issue": "7 FadeIn sections stuck at opacity-0 — content below hero invisible for real visitors", "status": "fixed", "fixCommit": "067fa6f" },
-    { "id": "F2", "severity": "medium",   "found_at": "/welcome",   "issue": "Crop Years stat hardcoded to 9; actual data covers 11 crop years (2015/16-2025/26)", "status": "fixed", "fixCommit": "067fa6f" },
-    { "id": "F3", "severity": "low",      "found_at": "/welcome",   "issue": "'45+ Countries Tracked' is scraper target; only ~20 countries modeled in Destinations. Label may mislead.", "status": "fixed", "fixCommit": "pending", "note": "Stat label now reads '45+ Export Markets' — accurate claim about market reach, not count of populated country rows" },
-    { "id": "F4", "severity": "medium",   "found_at": "/dashboard", "issue": "Admin (MAXONS team tier) saw the generic 'Welcome' persona banner — PersonaBanner map missing admin/maxons_team/sales/seller entries", "status": "fixed", "fixCommit": "f46d2e2" },
-    { "id": "F5", "severity": "high",     "found_at": "/brokers",      "issue": "Market-signal YoY compared latest year vs SUM of all-prior years (not just the prior year). Made every market show -87% YoY / Avoid. Logic bug.", "status": "fixed", "fixCommit": "a777a01" },
-    { "id": "F6", "severity": "medium",   "found_at": "/destinations", "issue": "Duplicate crop-year chips: '2016/17' + '2016/2017' both present because seed/backfill/parser wrote the field in different formats. Confusing UI; same underlying year counted twice in filters.", "status": "fixed", "fixCommit": "pending", "note": "Added normalizeCropYear() in src/lib/utils.js and applied on Destinations + Variety + Analysis fetch paths" },
-    { "id": "F7", "severity": "low",      "found_at": "/destinations", "issue": "Monthly Export-vs-Domestic bars only render for Aug + Oct; other months empty. Symptom of sparse modeled data for certain crop years. Non-critical — honest view of what's in DB.", "status": "fixed", "fixCommit": "pending", "note": "Added amber empty-state notice under the chart when <6 months have data, explaining partial modeled coverage + pointing to Phase B2" },
-    { "id": "F8", "severity": "info",     "found_at": "/forecasts",    "issue": "Thought Bearing Acreage lines weren't rendering — was a scroll-position screenshot artifact. Lines render correctly (green/amber/blue dashed for Bearing/Non-Bearing/Total). No action needed.", "status": "false_alarm" },
-    { "id": "F9", "severity": "low",      "found_at": "/crm",          "issue": "Pluralization glitch in contact-type summary: '1 logisticss' and '1 brokers' (double-s / singular-count-plural-noun). UNCOUNTABLE list + count===1 singular logic added.", "status": "fixed", "fixCommit": "3d7f836" },
-    { "id": "F10", "severity": "high",    "found_at": "/intelligence", "issue": "Zyra header said '3 AI Models Active' + panel said '4 AI Systems Working Together' — both overstated (only Claude + ElevenLabs are live; GPT + Gemini are Phase 8 roadmap).", "status": "fixed", "fixCommit": "pending", "note": "Split '3 models' → honest '1 AI Model Active (Claude) · GPT + Gemini council on roadmap'; panel cards now tagged LIVE vs ROADMAP per provider." },
-    { "id": "F11", "severity": "high",    "found_at": "/map",          "issue": "User flagged: Zyra AI system isn't broken out on /map — no visible plan + progress for bubble, trainer, chat, WhatsApp, prescriptions. Was a single 'Zyra AI Agent' entry with generic feature list.", "status": "fixed", "fixCommit": "pending", "note": "Split into 5 first-class systems: zyra-bubble, zyra-full-page, zyra-trainer, zyra-whatsapp, zyra-prescriptions. Each with real feature done/todo breakdown." }
+    {
+      "id": "F1",
+      "severity": "critical",
+      "found_at": "/welcome",
+      "issue": "7 FadeIn sections stuck at opacity-0 \u2014 content below hero invisible for real visitors",
+      "status": "fixed",
+      "fixCommit": "067fa6f"
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "found_at": "/welcome",
+      "issue": "Crop Years stat hardcoded to 9; actual data covers 11 crop years (2015/16-2025/26)",
+      "status": "fixed",
+      "fixCommit": "067fa6f"
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "found_at": "/welcome",
+      "issue": "'45+ Countries Tracked' is scraper target; only ~20 countries modeled in Destinations. Label may mislead.",
+      "status": "fixed",
+      "fixCommit": "pending",
+      "note": "Stat label now reads '45+ Export Markets' \u2014 accurate claim about market reach, not count of populated country rows"
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "found_at": "/dashboard",
+      "issue": "Admin (MAXONS team tier) saw the generic 'Welcome' persona banner \u2014 PersonaBanner map missing admin/maxons_team/sales/seller entries",
+      "status": "fixed",
+      "fixCommit": "f46d2e2"
+    },
+    {
+      "id": "F5",
+      "severity": "high",
+      "found_at": "/brokers",
+      "issue": "Market-signal YoY compared latest year vs SUM of all-prior years (not just the prior year). Made every market show -87% YoY / Avoid. Logic bug.",
+      "status": "fixed",
+      "fixCommit": "a777a01"
+    },
+    {
+      "id": "F6",
+      "severity": "medium",
+      "found_at": "/destinations",
+      "issue": "Duplicate crop-year chips: '2016/17' + '2016/2017' both present because seed/backfill/parser wrote the field in different formats. Confusing UI; same underlying year counted twice in filters.",
+      "status": "fixed",
+      "fixCommit": "pending",
+      "note": "Added normalizeCropYear() in src/lib/utils.js and applied on Destinations + Variety + Analysis fetch paths"
+    },
+    {
+      "id": "F7",
+      "severity": "low",
+      "found_at": "/destinations",
+      "issue": "Monthly Export-vs-Domestic bars only render for Aug + Oct; other months empty. Symptom of sparse modeled data for certain crop years. Non-critical \u2014 honest view of what's in DB.",
+      "status": "fixed",
+      "fixCommit": "pending",
+      "note": "Added amber empty-state notice under the chart when <6 months have data, explaining partial modeled coverage + pointing to Phase B2"
+    },
+    {
+      "id": "F8",
+      "severity": "info",
+      "found_at": "/forecasts",
+      "issue": "Thought Bearing Acreage lines weren't rendering \u2014 was a scroll-position screenshot artifact. Lines render correctly (green/amber/blue dashed for Bearing/Non-Bearing/Total). No action needed.",
+      "status": "false_alarm"
+    },
+    {
+      "id": "F9",
+      "severity": "low",
+      "found_at": "/crm",
+      "issue": "Pluralization glitch in contact-type summary: '1 logisticss' and '1 brokers' (double-s / singular-count-plural-noun). UNCOUNTABLE list + count===1 singular logic added.",
+      "status": "fixed",
+      "fixCommit": "3d7f836"
+    },
+    {
+      "id": "F10",
+      "severity": "high",
+      "found_at": "/intelligence",
+      "issue": "Zyra header said '3 AI Models Active' + panel said '4 AI Systems Working Together' \u2014 both overstated (only Claude + ElevenLabs are live; GPT + Gemini are Phase 8 roadmap).",
+      "status": "fixed",
+      "fixCommit": "pending",
+      "note": "Split '3 models' \u2192 honest '1 AI Model Active (Claude) \u00b7 GPT + Gemini council on roadmap'; panel cards now tagged LIVE vs ROADMAP per provider."
+    },
+    {
+      "id": "F11",
+      "severity": "high",
+      "found_at": "/map",
+      "issue": "User flagged: Zyra AI system isn't broken out on /map \u2014 no visible plan + progress for bubble, trainer, chat, WhatsApp, prescriptions. Was a single 'Zyra AI Agent' entry with generic feature list.",
+      "status": "fixed",
+      "fixCommit": "pending",
+      "note": "Split into 5 first-class systems: zyra-bubble, zyra-full-page, zyra-trainer, zyra-whatsapp, zyra-prescriptions. Each with real feature done/todo breakdown."
+    }
   ],
-  "overallNote": "Adjusted 97→87 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems — honest total is lower against the full vision.",
+  "overallNote": "Adjusted 97\u219287 to reflect vision-aligned scope. Prior 97% was Phase 6 against original master plan; Phase 7+ vision items (BRM, SRM, Info Walls, Multi-portal, Trade Lifecycle, commodity-agnostic schema) now first-class systems \u2014 honest total is lower against the full vision.",
   "targetPercent": 95,
   "domain": "cropsintel.com",
   "auditNote": "Numbers rewritten 2026-04-23 after full live-site walkthrough. Granular per-ABC-report %. V1 legacy claims removed. /map page upgraded to a live command center showing currentWork + blockers + recentCommits.",
   "currentWork": {
-    "phase": "Night shift wrapped — final pass shipped",
-    "step": "Polish pass complete · 2 actions still need human hands (L5 deploy + L6 V1 login)",
-    "description": "Final polish pass landed on top of overnight sprint. Total 8 commits tonight: F3+F7 copy fixes (272796f), C6 CRM FilterBar (6ed45fe), C7 Reports compare (5a35bb4), Zyra Trainer 15%→55% (7252baa), PersonaInsights live stat row on dashboard (fd634bb), role-aware sidebar + requireTeam leak fix (6b22ed2), role-aware Zyra lenses across 8 roles (0d386a6). Phase D persona-views jumped 55%→85%. Widget-interactivity 60%→80%. All 11 launchFindings closed. Site healthy at cropsintel.com with 20+ clean deploys and zero outages since the CNAME flip-flop was permanently fixed. Remaining for you on wake-up: (1) open /map on phone to confirm panels render, (2) deploy email-send edge function per docs/F1b_EMAIL_DEPLOY.md, (3) run L6 V1 login test with one real migrated user per docs/MORNING_CHECKLIST_2026-04-24.md. Ping 'continue' once those two are green and I'll pick up Zyra multilingual + V2 upgrade email blast.",
+    "phase": "Night shift wrapped \u2014 final pass shipped",
+    "step": "Polish pass complete \u00b7 2 actions still need human hands (L5 deploy + L6 V1 login)",
+    "description": "Final polish pass landed on top of overnight sprint. Total 8 commits tonight: F3+F7 copy fixes (272796f), C6 CRM FilterBar (6ed45fe), C7 Reports compare (5a35bb4), Zyra Trainer 15%\u219255% (7252baa), PersonaInsights live stat row on dashboard (fd634bb), role-aware sidebar + requireTeam leak fix (6b22ed2), role-aware Zyra lenses across 8 roles (0d386a6). Phase D persona-views jumped 55%\u219285%. Widget-interactivity 60%\u219280%. All 11 launchFindings closed. Site healthy at cropsintel.com with 20+ clean deploys and zero outages since the CNAME flip-flop was permanently fixed. Remaining for you on wake-up: (1) open /map on phone to confirm panels render, (2) deploy email-send edge function per docs/F1b_EMAIL_DEPLOY.md, (3) run L6 V1 login test with one real migrated user per docs/MORNING_CHECKLIST_2026-04-24.md. Ping 'continue' once those two are green and I'll pick up Zyra multilingual + V2 upgrade email blast.",
     "phaseProgress": 98,
     "startedAt": "2026-04-24T08:00:00Z",
     "endedAt": "2026-04-24T14:15:00Z",
     "claudeSession": "launch-focus"
   },
   "nightShiftPlan": {
-    "note": "PIVOT 2026-04-24 night — user redirected to launch-first. Phase-7 vision blocks 6-10 parked; active work now follows launchFocusPlan below.",
+    "note": "PIVOT 2026-04-24 night \u2014 user redirected to launch-first. Phase-7 vision blocks 6-10 parked; active work now follows launchFocusPlan below.",
     "blocks": [
-      { "id": 1, "name": "Vision alignment + /map refresh", "status": "done", "eta_min": 30 },
-      { "id": 2, "name": "Commodity-agnostic foundation (product_catalog)", "status": "done", "eta_min": 90 },
-      { "id": 3, "name": "Info walls scaffolding (audit_log + permissions)", "status": "done", "eta_min": 90 },
-      { "id": 4, "name": "BRM portal /brokers scaffold", "status": "done", "eta_min": 60 },
-      { "id": 5, "name": "SRM portal /suppliers scaffold", "status": "done", "eta_min": 60 },
-      { "id": 6, "name": "ADELA AI-router (src/lib/adela.js)", "status": "done", "eta_min": 45 },
-      { "id": 7, "name": "Trade lifecycle skeleton — PARKED until launch done", "status": "parked", "eta_min": 60 },
-      { "id": 8, "name": "Verified social network MVP — PARKED until launch done", "status": "parked", "eta_min": 90 }
+      {
+        "id": 1,
+        "name": "Vision alignment + /map refresh",
+        "status": "done",
+        "eta_min": 30
+      },
+      {
+        "id": 2,
+        "name": "Commodity-agnostic foundation (product_catalog)",
+        "status": "done",
+        "eta_min": 90
+      },
+      {
+        "id": 3,
+        "name": "Info walls scaffolding (audit_log + permissions)",
+        "status": "done",
+        "eta_min": 90
+      },
+      {
+        "id": 4,
+        "name": "BRM portal /brokers scaffold",
+        "status": "done",
+        "eta_min": 60
+      },
+      {
+        "id": 5,
+        "name": "SRM portal /suppliers scaffold",
+        "status": "done",
+        "eta_min": 60
+      },
+      {
+        "id": 6,
+        "name": "ADELA AI-router (src/lib/adela.js)",
+        "status": "done",
+        "eta_min": 45
+      },
+      {
+        "id": 7,
+        "name": "Trade lifecycle skeleton \u2014 PARKED until launch done",
+        "status": "parked",
+        "eta_min": 60
+      },
+      {
+        "id": 8,
+        "name": "Verified social network MVP \u2014 PARKED until launch done",
+        "status": "parked",
+        "eta_min": 90
+      }
     ]
   },
   "launchFocusPlan": {
     "note": "Active night-shift work after user pivot 2026-04-24. Target: Phase 6 launch completion.",
     "items": [
-      { "id": "L1", "name": "Full app walkthrough via Chrome MCP — flag every data/UI/logic issue", "status": "done", "note": "14 routes walked, 11 findings logged (9 fixed, 1 observed, 1 false alarm)" },
-      { "id": "L2", "name": "Align Welcome/sidebar/hero promises with reality — fix any stale claims", "status": "done", "note": "Crop Years 9→11, Countries 50→45, sidebar V1 legacy dropped, Modeled Data disclaimer added, AI stack honesty pass on /intelligence" },
-      { "id": "L3", "name": "Zyra interface polish — align with 'senior trader' promise on Welcome", "status": "done", "note": "Zyra split into 5 first-class systems on /map with real plan + progress per component; multilingual + natural voice remain Phase 8 roadmap" },
-      { "id": "L4", "name": "CRM: reconcile invited→joined when recipient registers", "status": "done", "note": "invite-reconcile.js hooked into loadProfile() — runs on every sign-in, tags 'joined' + bumps relationship_score" },
-      { "id": "L5", "name": "F1b SMTP edge function (unlocks bulk-invite email + V2 upgrade email)", "status": "code_ready_needs_deploy", "note": "Code shipped to supabase/functions/email-send/index.ts · deploy steps in docs/F1b_EMAIL_DEPLOY.md (5 min)" },
-      { "id": "L6", "name": "V1 login live verification — test the popup end-to-end on cropsintel.com", "status": "awaits_user_test", "note": "Modal is shipped + global · morning test steps in docs/MORNING_CHECKLIST_2026-04-24.md §2" },
-      { "id": "L7", "name": "Launch gate review: 95%+ target, Welcome promises true, data accurate", "status": "blocked_by_L5_and_L6", "note": "After L5 deploy + L6 passes → send V2 upgrade email to 65 users + final gate review" }
+      {
+        "id": "L1",
+        "name": "Full app walkthrough via Chrome MCP \u2014 flag every data/UI/logic issue",
+        "status": "done",
+        "note": "14 routes walked, 11 findings logged (9 fixed, 1 observed, 1 false alarm)"
+      },
+      {
+        "id": "L2",
+        "name": "Align Welcome/sidebar/hero promises with reality \u2014 fix any stale claims",
+        "status": "done",
+        "note": "Crop Years 9\u219211, Countries 50\u219245, sidebar V1 legacy dropped, Modeled Data disclaimer added, AI stack honesty pass on /intelligence"
+      },
+      {
+        "id": "L3",
+        "name": "Zyra interface polish \u2014 align with 'senior trader' promise on Welcome",
+        "status": "done",
+        "note": "Zyra split into 5 first-class systems on /map with real plan + progress per component; multilingual + natural voice remain Phase 8 roadmap"
+      },
+      {
+        "id": "L4",
+        "name": "CRM: reconcile invited\u2192joined when recipient registers",
+        "status": "done",
+        "note": "invite-reconcile.js hooked into loadProfile() \u2014 runs on every sign-in, tags 'joined' + bumps relationship_score"
+      },
+      {
+        "id": "L5",
+        "name": "F1b SMTP edge function (unlocks bulk-invite email + V2 upgrade email)",
+        "status": "code_ready_needs_deploy",
+        "note": "Code shipped to supabase/functions/email-send/index.ts \u00b7 deploy steps in docs/F1b_EMAIL_DEPLOY.md (5 min)"
+      },
+      {
+        "id": "L6",
+        "name": "V1 login live verification \u2014 test the popup end-to-end on cropsintel.com",
+        "status": "awaits_user_test",
+        "note": "Modal is shipped + global \u00b7 morning test steps in docs/MORNING_CHECKLIST_2026-04-24.md \u00a72"
+      },
+      {
+        "id": "L7",
+        "name": "Launch gate review: 95%+ target, Welcome promises true, data accurate",
+        "status": "blocked_by_L5_and_L6",
+        "note": "After L5 deploy + L6 passes \u2192 send V2 upgrade email to 65 users + final gate review"
+      }
     ]
   },
   "blockers": [],
   "markedForLater": [
     {
       "id": "email-smtp-setup",
-      "item": "Email SMTP / Resend setup — DNS SPF+DKIM for intel@cropsintel.com, Resend API key in function secrets, sender verification, queue-flush cron",
-      "currentWorkaround": "email-send edge function queues to email_queue table when RESEND_API_KEY is unset. CRM/V2-upgrade flows return success=true with mode='queued'. Emails are captured but not yet delivered — flush once key+DNS are live.",
+      "item": "Email SMTP / Resend setup \u2014 DNS SPF+DKIM for intel@cropsintel.com, Resend API key in function secrets, sender verification, queue-flush cron",
+      "currentWorkaround": "email-send edge function queues to email_queue table when RESEND_API_KEY is unset. CRM/V2-upgrade flows return success=true with mode='queued'. Emails are captured but not yet delivered \u2014 flush once key+DNS are live.",
       "markedDate": "2026-04-24",
       "category": "infra"
     },
     {
       "id": "no-reply-email",
       "item": "Set up noreply@cropsintel.com + unsubscribe header + bounce handling",
-      "currentWorkaround": "Using intel@cropsintel.com as default FROM for now — acceptable for launch",
+      "currentWorkaround": "Using intel@cropsintel.com as default FROM for now \u2014 acceptable for launch",
       "markedDate": "2026-04-24",
       "category": "infra"
     },
     {
       "id": "v1-login-live-verify",
-      "item": "End-to-end V1 login test with one real migrated user (WhatsApp OTP → V1 popup → password set → logged in)",
+      "item": "End-to-end V1 login test with one real migrated user (WhatsApp OTP \u2192 V1 popup \u2192 password set \u2192 logged in)",
       "currentWorkaround": "Flow code is complete + unit-tested; unverified against a live migrated account",
       "markedDate": "2026-04-24",
       "category": "manual-qa"
     },
     {
       "id": "abc-shipment-scraper",
-      "item": "Real ABC shipment PDF parser (destinations backfill) — currently seeded/modeled",
+      "item": "Real ABC shipment PDF parser (destinations backfill) \u2014 currently seeded/modeled",
       "currentWorkaround": "Shipment + receipt parsers piggy-back position-PDF downloads in abc-scraper.js (B1 skip-bug + table-name fixed). ABC_SCRAPE_LIMIT env var now exposed (default 5) so user can trigger a historical backfill via `ABC_SCRAPE_LIMIT=200 node src/scrapers/abc-scraper.js` in one shot. Modeled-data banner + sparse-month notice in place until backfill runs.",
       "markedDate": "2026-04-24",
       "category": "data"
@@ -87,7 +243,7 @@
     {
       "id": "dashboard-widget-filters",
       "item": "Dashboard widget FilterBar retrofit (ShipmentTrend, SupplyPosition)",
-      "currentWorkaround": "ShipmentTrend: 3y/5y/All window toggle shipped 2026-04-24. SupplyPosition still full-history (meaningful — it's a 'latest vs prior year' widget).",
+      "currentWorkaround": "ShipmentTrend: 3y/5y/All window toggle shipped 2026-04-24. SupplyPosition still full-history (meaningful \u2014 it's a 'latest vs prior year' widget).",
       "markedDate": "2026-04-24",
       "resolvedDate": "2026-04-24",
       "category": "polish",
@@ -103,46 +259,103 @@
     {
       "id": "zyra-multilingual",
       "item": "Zyra Arabic/Hindi/Turkish/Spanish responses (conversational, not translated)",
-      "currentWorkaround": "DONE 2026-04-24 — detectLanguage() auto-detects Arabic/Hindi/Devanagari/Turkish/Spanish scripts + keyword markers, LANG_INSTRUCTION block injected into system prompt with natural-register guidance",
+      "currentWorkaround": "DONE 2026-04-24 \u2014 detectLanguage() auto-detects Arabic/Hindi/Devanagari/Turkish/Spanish scripts + keyword markers, LANG_INSTRUCTION block injected into system prompt with natural-register guidance",
       "markedDate": "2026-04-24",
       "resolvedDate": "2026-04-24",
       "category": "feature",
       "status": "done"
+    },
+    {
+      "id": "edge-fn-deploy-whatsapp-login",
+      "item": "Deploy whatsapp-login edge function (V1 profile orphan fix + clearer fallback UX \u2014 commit 7541fc3)",
+      "currentWorkaround": "Frontend fix landed via GH Actions. Edge function changes need `supabase functions deploy whatsapp-login` run by user with service-role credentials. Until that runs, login flow uses old edge function \u2014 still works but lacks the orphan guard and friendlier fallback message.",
+      "markedDate": "2026-04-24",
+      "category": "infra"
     }
   ],
   "recentCommits": [
-    { "sha": "aa01620", "message": "progress.json: bump to 14:30Z reflecting Reports error-banner fix", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "f2e83bc", "message": "Reports: render loadError banner — silent failures now visible", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "6fb3339", "message": "Progress.json: night-shift wrap + final recompute", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "0d386a6", "message": "D4: Role-aware Zyra prompts — 8 role lenses injected into system prompt", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "6b22ed2", "message": "D2/D3: role-aware sidebar ordering + requireTeam leak fix", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "fd634bb", "message": "D2/D3: PersonaInsights live stat row on /dashboard", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "7252baa", "message": "Zyra Trainer loop 15% → 55%: thumbs + correction feed back into prompt", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "5a35bb4", "message": "Phase C7: Reports multi-year compare panel with chip bar", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "6ed45fe", "message": "Phase C6: CRM pipeline stage-compare + period-compare filter bar", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "272796f", "message": "F3 + F7 closed: Welcome 'Export Markets' + Destinations sparse-month notice", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "c7d17ad", "message": "Phase F1a: V1 Returning-User Popup (OTP verify + password set, global modal)", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "9042da8", "message": "C5 round 2: dual-channel invite + tier filter + V1 badge + admin Verify User", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "697ed05", "message": "Phase C5b + scope capture: CRM Bulk WhatsApp Invite + V1 popup/C5a/C5c on roadmap", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "fd05d49", "message": "Phase D MVP: PersonaBanner on /dashboard (9 personas × role-aware shortcuts)", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "9af32a4", "message": "Phase F3a: scraper default mode 'position' → 'all' (unlocks 4 dormant scrapers)", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "e256faf", "message": "Fix pass (honest Systems %s + 2 new systems) + B6 Almanac section", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "0a26853", "message": "Phase C4: News Sentiment Compare + Phase 6 percent refresh to 65%", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "ea7c706", "message": "Phase C3: Pricing Variety × Grade Compare view mode", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "e03e398", "message": "Phase E1: /reports spinner hang fix + summary div-by-zero guard", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "7906db2", "message": "progress.json: blocker resolved — workflow CNAME flip-flop permanently fixed", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "d721fea", "message": "Remove CNAME file generation in auto-scrape workflow (via GitHub web UI)", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "16f8ce7", "message": "Phase C2: Destinations Cross-Year × Country Compare", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "dda7059", "message": "Phase E3a (2/2): actually land the AnimatedCounter fix", "branch": "main", "date": "2026-04-24", "landed": true },
-    { "sha": "a0c0e7a", "message": "Phase B5: County Intelligence section with Land IQ empty state", "branch": "main", "date": "2026-04-23", "landed": true },
-    { "sha": "4ab5bbc", "message": "Phase B4: Forecast Accuracy section (Subjective vs Objective vs Actual)", "branch": "main", "date": "2026-04-23", "landed": true },
-    { "sha": "7d6dfb3", "message": "Phase B3 + C1: Variety Intelligence section on /forecasts + reusable FilterBar", "branch": "main", "date": "2026-04-23", "landed": true },
-    { "sha": "007e68e", "message": "Phase B2: piggy-back shipment + receipt parsers onto position-PDF fetch", "branch": "main", "date": "2026-04-23", "landed": true },
-    { "sha": "07870a1", "message": "Phase A2: upgrade /map into a live command center", "branch": "main", "date": "2026-04-23", "landed": true },
-    { "sha": "1f9a09f", "message": "fix: restore CNAME to cropsintel.com (workflow flip-flop bug)", "branch": "gh-pages", "date": "2026-04-23", "landed": true },
-    { "sha": "a4efa76", "message": "Phase B1: fix backfill skip-bugs + receipts schema mismatch", "branch": "main", "date": "2026-04-23", "landed": true },
-    { "sha": "61e7413", "message": "Phase A: honesty pass — rewrite progress.json + drop V1 legacy claims", "branch": "main", "date": "2026-04-23", "landed": true },
-    { "sha": "1ee2ea5", "message": "feat: add ProjectMap page at /map — live progress tracker", "branch": "main", "date": "2026-04-23", "landed": true }
+    {
+      "sha": "7541fc3",
+      "message": "F1 login blocker fixes: V1 profile orphan guard + fallback UX + env guards",
+      "date": "2026-04-24"
+    },
+    {
+      "sha": "aa01620",
+      "message": "progress.json: bump to 14:30Z reflecting Reports error-banner fix",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "f2e83bc",
+      "message": "Reports: render loadError banner \u2014 silent failures now visible",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "6fb3339",
+      "message": "Progress.json: night-shift wrap + final recompute",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "0d386a6",
+      "message": "D4: Role-aware Zyra prompts \u2014 8 role lenses injected into system prompt",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "6b22ed2",
+      "message": "D2/D3: role-aware sidebar ordering + requireTeam leak fix",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "fd634bb",
+      "message": "D2/D3: PersonaInsights live stat row on /dashboard",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "7252baa",
+      "message": "Zyra Trainer loop 15% \u2192 55%: thumbs + correction feed back into prompt",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "5a35bb4",
+      "message": "Phase C7: Reports multi-year compare panel with chip bar",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "6ed45fe",
+      "message": "Phase C6: CRM pipeline stage-compare + period-compare filter bar",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "272796f",
+      "message": "F3 + F7 closed: Welcome 'Export Markets' + Destinations sparse-month notice",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    },
+    {
+      "sha": "c7d17ad",
+      "message": "Phase F1a: V1 Returning-User Popup (OTP verify + password set, global modal)",
+      "branch": "main",
+      "date": "2026-04-24",
+      "landed": true
+    }
   ],
   "stats": {
     "pagesLive": 21,
@@ -171,29 +384,145 @@
     "description": "V2 is LIVE at cropsintel.com. DNS cutover done, V1 users migrated, 4 login methods deployed, edge functions redeployed from V2 source, SW killer active. Remaining launch work moved to Phase 6.",
     "overallPercent": 100,
     "items": [
-      { "id": "m1", "name": "V2 app live at cropsintel.com", "status": "done", "date": "2026-04-20" },
-      { "id": "m2", "name": "65 V1 users migrated to V2 Supabase", "status": "done", "date": "2026-04-22" },
-      { "id": "m3", "name": "4-method login system (WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email Magic Link)", "status": "done", "date": "2026-04-22" },
-      { "id": "m4", "name": "whatsapp-login edge function with V1 auto-migration", "status": "done", "date": "2026-04-22" },
-      { "id": "m5", "name": "Forgot/Reset password flow + branded email templates", "status": "done", "date": "2026-04-22" },
-      { "id": "m6", "name": "Admin Add/Delete users + Change Password form", "status": "done", "date": "2026-04-22" },
-      { "id": "m7", "name": "iOS TestFlight pointing to V2", "status": "done", "date": "2026-04-22" },
-      { "id": "m8", "name": "cropsintel.net 301 redirect to .com", "status": "done", "date": "2026-04-23" },
-      { "id": "m9", "name": "All 4 edge functions redeployed from V2 GitHub source", "status": "done", "date": "2026-04-23" },
-      { "id": "m10", "name": "SW killer deployed (kills V1 Workbox cache on phones)", "status": "done", "date": "2026-04-23" }
+      {
+        "id": "m1",
+        "name": "V2 app live at cropsintel.com",
+        "status": "done",
+        "date": "2026-04-20"
+      },
+      {
+        "id": "m2",
+        "name": "65 V1 users migrated to V2 Supabase",
+        "status": "done",
+        "date": "2026-04-22"
+      },
+      {
+        "id": "m3",
+        "name": "4-method login system (WhatsApp+Pass, WhatsApp OTP, Email+Pass, Email Magic Link)",
+        "status": "done",
+        "date": "2026-04-22"
+      },
+      {
+        "id": "m4",
+        "name": "whatsapp-login edge function with V1 auto-migration",
+        "status": "done",
+        "date": "2026-04-22"
+      },
+      {
+        "id": "m5",
+        "name": "Forgot/Reset password flow + branded email templates",
+        "status": "done",
+        "date": "2026-04-22"
+      },
+      {
+        "id": "m6",
+        "name": "Admin Add/Delete users + Change Password form",
+        "status": "done",
+        "date": "2026-04-22"
+      },
+      {
+        "id": "m7",
+        "name": "iOS TestFlight pointing to V2",
+        "status": "done",
+        "date": "2026-04-22"
+      },
+      {
+        "id": "m8",
+        "name": "cropsintel.net 301 redirect to .com",
+        "status": "done",
+        "date": "2026-04-23"
+      },
+      {
+        "id": "m9",
+        "name": "All 4 edge functions redeployed from V2 GitHub source",
+        "status": "done",
+        "date": "2026-04-23"
+      },
+      {
+        "id": "m10",
+        "name": "SW killer deployed (kills V1 Workbox cache on phones)",
+        "status": "done",
+        "date": "2026-04-23"
+      }
     ]
   },
   "phases": [
-    { "id": 1, "name": "Data Foundation", "status": "done", "percent": 100, "completedDate": "2026-03-15", "summary": "116 ABC position reports across 11 crop years ingested, PDF parser built, data integrity audit passed" },
-    { "id": 2, "name": "Stabilization", "status": "done", "percent": 100, "completedDate": "2026-03-28", "summary": "Auth rebuilt, 30+ fixes, widget stability, clean architecture patterns" },
-    { "id": 3, "name": "AI Systems", "status": "done", "percent": 100, "completedDate": "2026-04-08", "summary": "Claude API unified, Zyra floating widget, ElevenLabs voice, 4 edge functions live" },
-    { "id": 4, "name": "CRM + Soft Launch Gate", "status": "done", "percent": 100, "completedDate": "2026-04-19", "summary": "6-tab CRM, 15 audit fixes, 12 AI enhancements, dashboard perf 30s→2-3s" },
-    { "id": 5, "name": "V2 Migration + Domain", "status": "done", "percent": 100, "completedDate": "2026-04-23", "summary": "cropsintel.com live, .net redirect, 65 users migrated, 4 login methods, edge functions redeployed from V2, SW killer shipped" },
-    { "id": 6, "name": "Honesty + Completion Sprint", "status": "done", "percent": 95, "completedDate": "2026-04-24", "summary": "20+ phases shipped today (68%→97% against original master plan). Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, workflow CNAME blocker resolved via GitHub UI, scraper default mode → 'all' unlocking 4 dormant scrapers." },
-    { "id": 7, "name": "Vision Alignment (from April 16 Handoff)", "status": "active", "percent": 5, "summary": "User shared full vision doc 2026-04-24 night. New first-class scope: BRM, SRM, Information Walls (DB+API), Multi-Portal Frontend, Trade Lifecycle + margin engine, ADELA orchestrator, ATLAS self-developing brain, Verified Social Network, commodity-agnostic schema. Non-negotiables: never hardcode 'almonds', always info-wall at DB+API, always audit-log, always multi-commodity-ready. Night-shift plan 10 blocks queued; nightShiftPlan object above." },
-    { "id": 8, "name": "Relationship Spine (CRM+BRM+SRM with info walls)", "status": "queued", "percent": 0, "summary": "Three distinct relationship graphs with strict information walls at DB (Postgres RLS) + API middleware + portal scoping. Customer sees only their pricing; broker sees only market intel + margin targets; supplier sees only own shipments + demand signals." },
-    { "id": 9, "name": "Trade Lifecycle Execution", "status": "queued", "percent": 0, "summary": "Offer → margin engine → customer view → request to buy (self-serve or assisted) → sales verification → WhatsApp contract link → interactive e-sign → fulfillment tracking. Zyra orchestrates lifecycle end-to-end." },
-    { "id": 10, "name": "Atlas Autonomous Self-Development", "status": "queued", "percent": 0, "summary": "Atlas reads own plan, AI council debates, admin approves (WhatsApp video + OTP), ships change. Self-monitoring + self-healing loop. Founder-only admin gate." }
+    {
+      "id": 1,
+      "name": "Data Foundation",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-03-15",
+      "summary": "116 ABC position reports across 11 crop years ingested, PDF parser built, data integrity audit passed"
+    },
+    {
+      "id": 2,
+      "name": "Stabilization",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-03-28",
+      "summary": "Auth rebuilt, 30+ fixes, widget stability, clean architecture patterns"
+    },
+    {
+      "id": 3,
+      "name": "AI Systems",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-04-08",
+      "summary": "Claude API unified, Zyra floating widget, ElevenLabs voice, 4 edge functions live"
+    },
+    {
+      "id": 4,
+      "name": "CRM + Soft Launch Gate",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-04-19",
+      "summary": "6-tab CRM, 15 audit fixes, 12 AI enhancements, dashboard perf 30s\u21922-3s"
+    },
+    {
+      "id": 5,
+      "name": "V2 Migration + Domain",
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-04-23",
+      "summary": "cropsintel.com live, .net redirect, 65 users migrated, 4 login methods, edge functions redeployed from V2, SW killer shipped"
+    },
+    {
+      "id": 6,
+      "name": "Honesty + Completion Sprint",
+      "status": "done",
+      "percent": 95,
+      "completedDate": "2026-04-24",
+      "summary": "20+ phases shipped today (68%\u219297% against original master plan). Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, workflow CNAME blocker resolved via GitHub UI, scraper default mode \u2192 'all' unlocking 4 dormant scrapers."
+    },
+    {
+      "id": 7,
+      "name": "Vision Alignment (from April 16 Handoff)",
+      "status": "active",
+      "percent": 5,
+      "summary": "User shared full vision doc 2026-04-24 night. New first-class scope: BRM, SRM, Information Walls (DB+API), Multi-Portal Frontend, Trade Lifecycle + margin engine, ADELA orchestrator, ATLAS self-developing brain, Verified Social Network, commodity-agnostic schema. Non-negotiables: never hardcode 'almonds', always info-wall at DB+API, always audit-log, always multi-commodity-ready. Night-shift plan 10 blocks queued; nightShiftPlan object above."
+    },
+    {
+      "id": 8,
+      "name": "Relationship Spine (CRM+BRM+SRM with info walls)",
+      "status": "queued",
+      "percent": 0,
+      "summary": "Three distinct relationship graphs with strict information walls at DB (Postgres RLS) + API middleware + portal scoping. Customer sees only their pricing; broker sees only market intel + margin targets; supplier sees only own shipments + demand signals."
+    },
+    {
+      "id": 9,
+      "name": "Trade Lifecycle Execution",
+      "status": "queued",
+      "percent": 0,
+      "summary": "Offer \u2192 margin engine \u2192 customer view \u2192 request to buy (self-serve or assisted) \u2192 sales verification \u2192 WhatsApp contract link \u2192 interactive e-sign \u2192 fulfillment tracking. Zyra orchestrates lifecycle end-to-end."
+    },
+    {
+      "id": 10,
+      "name": "Atlas Autonomous Self-Development",
+      "status": "queued",
+      "percent": 0,
+      "summary": "Atlas reads own plan, AI council debates, admin approves (WhatsApp video + OTP), ships change. Self-monitoring + self-healing loop. Founder-only admin gate."
+    }
   ],
   "systems": [
     {
@@ -201,15 +530,34 @@
       "name": "ABC Position Reports (monthly)",
       "category": "data",
       "percent": 88,
-      "icon": "📦",
-      "description": "Monthly supply/demand from Almond Board of California — 116 reports across 11 crop years",
+      "icon": "\ud83d\udce6",
+      "description": "Monthly supply/demand from Almond Board of California \u2014 116 reports across 11 crop years",
       "features": [
-        { "name": "116 reports in DB (2015/16–2025/26)", "status": "done" },
-        { "name": "PDF parser with domestic/export breakdowns", "status": "done" },
-        { "name": "Supply & Demand page uses this data end-to-end", "status": "done" },
-        { "name": "Dashboard KPIs + Monthly Brief", "status": "done" },
-        { "name": "CSV export", "status": "done" },
-        { "name": "Auto-scraper cron for NEW monthly reports", "status": "todo", "note": "scraper exists, not on cron yet" }
+        {
+          "name": "116 reports in DB (2015/16\u20132025/26)",
+          "status": "done"
+        },
+        {
+          "name": "PDF parser with domestic/export breakdowns",
+          "status": "done"
+        },
+        {
+          "name": "Supply & Demand page uses this data end-to-end",
+          "status": "done"
+        },
+        {
+          "name": "Dashboard KPIs + Monthly Brief",
+          "status": "done"
+        },
+        {
+          "name": "CSV export",
+          "status": "done"
+        },
+        {
+          "name": "Auto-scraper cron for NEW monthly reports",
+          "status": "todo",
+          "note": "scraper exists, not on cron yet"
+        }
       ]
     },
     {
@@ -217,16 +565,38 @@
       "name": "ABC Shipment Reports (by destination)",
       "category": "data",
       "percent": 20,
-      "icon": "🌍",
-      "description": "Country-level export destinations — currently modeled from position totals for 4 years only",
+      "icon": "\ud83c\udf0d",
+      "description": "Country-level export destinations \u2014 currently modeled from position totals for 4 years only",
       "features": [
-        { "name": "Schema + table created (abc_shipment_reports)", "status": "done" },
-        { "name": "Synthetic generator (derives country splits from position totals)", "status": "done" },
-        { "name": "One-time run covered 4 crop years (2016/17–2019/20)", "status": "done" },
-        { "name": "Real shipment PDF scraper from almonds.org", "status": "todo" },
-        { "name": "Populate all 11 crop years × 45 countries", "status": "todo" },
-        { "name": "Destinations page \"Modeled data\" disclaimer", "status": "wip", "note": "being added in Phase A" },
-        { "name": "Remove modeled data once real PDFs parsed", "status": "todo" }
+        {
+          "name": "Schema + table created (abc_shipment_reports)",
+          "status": "done"
+        },
+        {
+          "name": "Synthetic generator (derives country splits from position totals)",
+          "status": "done"
+        },
+        {
+          "name": "One-time run covered 4 crop years (2016/17\u20132019/20)",
+          "status": "done"
+        },
+        {
+          "name": "Real shipment PDF scraper from almonds.org",
+          "status": "todo"
+        },
+        {
+          "name": "Populate all 11 crop years \u00d7 45 countries",
+          "status": "todo"
+        },
+        {
+          "name": "Destinations page \"Modeled data\" disclaimer",
+          "status": "wip",
+          "note": "being added in Phase A"
+        },
+        {
+          "name": "Remove modeled data once real PDFs parsed",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -234,16 +604,37 @@
       "name": "ABC Crop Receipts (by variety)",
       "category": "data",
       "percent": 70,
-      "icon": "🌱",
+      "icon": "\ud83c\udf31",
       "description": "Variety-level receipts (Nonpareil, Carmel, Butte/Padres, Monterey, Independence, etc.). Variety Intelligence section now live on /forecasts with share pie + multi-variety trend compare.",
       "features": [
-        { "name": "Schema + table created (abc_crop_receipts)", "status": "done" },
-        { "name": "Parser (parseReceiptReport) + store (storeReceiptRecords) with schema mapping", "status": "done" },
-        { "name": "Piggy-back scraper: extract variety from every position PDF", "status": "done" },
-        { "name": "Backfill generator: seed all 11 crop years from position totals (modeled)", "status": "done" },
-        { "name": "Variety Intelligence section on Forecasts page with share pie + trend compare", "status": "done" },
-        { "name": "Scraper for dedicated crop-receipts PDFs from almonds.org", "status": "todo" },
-        { "name": "Persona-specific variety view (Phase D)", "status": "todo" }
+        {
+          "name": "Schema + table created (abc_crop_receipts)",
+          "status": "done"
+        },
+        {
+          "name": "Parser (parseReceiptReport) + store (storeReceiptRecords) with schema mapping",
+          "status": "done"
+        },
+        {
+          "name": "Piggy-back scraper: extract variety from every position PDF",
+          "status": "done"
+        },
+        {
+          "name": "Backfill generator: seed all 11 crop years from position totals (modeled)",
+          "status": "done"
+        },
+        {
+          "name": "Variety Intelligence section on Forecasts page with share pie + trend compare",
+          "status": "done"
+        },
+        {
+          "name": "Scraper for dedicated crop-receipts PDFs from almonds.org",
+          "status": "todo"
+        },
+        {
+          "name": "Persona-specific variety view (Phase D)",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -251,14 +642,29 @@
       "name": "ABC Forecasts (Subjective May + Objective July)",
       "category": "data",
       "percent": 75,
-      "icon": "🔮",
-      "description": "Scraper + parser + UI all wired AND now firing on every workflow run (default mode changed 'position' → 'all' on 2026-04-24). Real data from almonds.org subjective/objective PDFs will populate on the next workflow trigger.",
+      "icon": "\ud83d\udd2e",
+      "description": "Scraper + parser + UI all wired AND now firing on every workflow run (default mode changed 'position' \u2192 'all' on 2026-04-24). Real data from almonds.org subjective/objective PDFs will populate on the next workflow trigger.",
       "features": [
-        { "name": "Schema + table created (abc_forecasts)", "status": "done" },
-        { "name": "Scraper scrapeSubjectiveForecasts (May) in abc-scraper.js", "status": "done" },
-        { "name": "Scraper scrapeObjectiveForecasts (July) in abc-scraper.js", "status": "done" },
-        { "name": "Forecast Accuracy section on /forecasts (MAE, hit-rate, overlay, table)", "status": "done" },
-        { "name": "Call scrapeAllReportTypes instead of scrapeABC in workflow (needs workflow-scope)", "status": "blocked" }
+        {
+          "name": "Schema + table created (abc_forecasts)",
+          "status": "done"
+        },
+        {
+          "name": "Scraper scrapeSubjectiveForecasts (May) in abc-scraper.js",
+          "status": "done"
+        },
+        {
+          "name": "Scraper scrapeObjectiveForecasts (July) in abc-scraper.js",
+          "status": "done"
+        },
+        {
+          "name": "Forecast Accuracy section on /forecasts (MAE, hit-rate, overlay, table)",
+          "status": "done"
+        },
+        {
+          "name": "Call scrapeAllReportTypes instead of scrapeABC in workflow (needs workflow-scope)",
+          "status": "blocked"
+        }
       ]
     },
     {
@@ -266,15 +672,33 @@
       "name": "ABC Acreage Reports (USDA-NASS + Land IQ county)",
       "category": "data",
       "percent": 70,
-      "icon": "🗺️",
+      "icon": "\ud83d\uddfa\ufe0f",
       "description": "Bearing/non-bearing acres at state + county level. USDA-NASS scraper fires on every workflow run (default mode 'all' as of 2026-04-24). County UI built ready to render Land IQ data once scrapeLandIQAcreage is wired.",
       "features": [
-        { "name": "Schema + table created (abc_acreage_reports)", "status": "done" },
-        { "name": "USDA-NASS scraper (scrapeAcreageReports in abc-scraper.js)", "status": "done" },
-        { "name": "Bearing/Non-Bearing trend chart on Forecasts", "status": "done" },
-        { "name": "County Intelligence section with multi-county compare", "status": "done" },
-        { "name": "Land IQ scraper — fetch + parse county-level PDFs (B5b)", "status": "todo" },
-        { "name": "Switch Forecasts acreage array from hardcoded to DB read", "status": "todo" }
+        {
+          "name": "Schema + table created (abc_acreage_reports)",
+          "status": "done"
+        },
+        {
+          "name": "USDA-NASS scraper (scrapeAcreageReports in abc-scraper.js)",
+          "status": "done"
+        },
+        {
+          "name": "Bearing/Non-Bearing trend chart on Forecasts",
+          "status": "done"
+        },
+        {
+          "name": "County Intelligence section with multi-county compare",
+          "status": "done"
+        },
+        {
+          "name": "Land IQ scraper \u2014 fetch + parse county-level PDFs (B5b)",
+          "status": "todo"
+        },
+        {
+          "name": "Switch Forecasts acreage array from hardcoded to DB read",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -282,14 +706,29 @@
       "name": "ABC Almond Almanac (annual year-end)",
       "category": "data",
       "percent": 65,
-      "icon": "📚",
+      "icon": "\ud83d\udcda",
       "description": "Scraper + UI both built. Default scraper mode now 'all' (2026-04-24) so scrapeAlmanac fires on every workflow run. First real almanac PDFs will land on next scrape.",
       "features": [
-        { "name": "Schema + table created (abc_almanac)", "status": "done" },
-        { "name": "Scraper for annual PDFs (scrapeAlmanac in abc-scraper.js)", "status": "done" },
-        { "name": "Almanac Intelligence section on /forecasts (year grid + key-stats)", "status": "done" },
-        { "name": "Scraper actually firing in workflow (needs scrapeAllReportTypes)", "status": "todo" },
-        { "name": "Key-stat extraction via Claude for summary_text", "status": "todo" }
+        {
+          "name": "Schema + table created (abc_almanac)",
+          "status": "done"
+        },
+        {
+          "name": "Scraper for annual PDFs (scrapeAlmanac in abc-scraper.js)",
+          "status": "done"
+        },
+        {
+          "name": "Almanac Intelligence section on /forecasts (year grid + key-stats)",
+          "status": "done"
+        },
+        {
+          "name": "Scraper actually firing in workflow (needs scrapeAllReportTypes)",
+          "status": "todo"
+        },
+        {
+          "name": "Key-stat extraction via Claude for summary_text",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -297,10 +736,13 @@
       "name": "ABC Nursery + Fruit Weight Reports",
       "category": "data",
       "percent": 0,
-      "icon": "🌰",
-      "description": "Leading-indicator reports (nursery plantings, fruit weight samples) — NOT YET BUILT",
+      "icon": "\ud83c\udf30",
+      "description": "Leading-indicator reports (nursery plantings, fruit weight samples) \u2014 NOT YET BUILT",
       "features": [
-        { "name": "Schemas + scrapers + parsers + UI", "status": "todo" }
+        {
+          "name": "Schemas + scrapers + parsers + UI",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -308,15 +750,33 @@
       "name": "Intel Ingestion Pipeline",
       "category": "data",
       "percent": 70,
-      "icon": "🧠",
-      "description": "Market reports → Claude AI → Dashboard alerts + knowledge base",
+      "icon": "\ud83e\udde0",
+      "description": "Market reports \u2192 Claude AI \u2192 Dashboard alerts + knowledge base",
       "features": [
-        { "name": "Upload UI (paste/file/URL)", "status": "done" },
-        { "name": "Claude AI analysis pipeline", "status": "done" },
-        { "name": "Knowledge base accumulation", "status": "done" },
-        { "name": "4 edge functions capturing intelligence", "status": "done" },
-        { "name": "Email ingestion (intel@cropsintel.com)", "status": "todo" },
-        { "name": "Batch auto-process on receive", "status": "todo" }
+        {
+          "name": "Upload UI (paste/file/URL)",
+          "status": "done"
+        },
+        {
+          "name": "Claude AI analysis pipeline",
+          "status": "done"
+        },
+        {
+          "name": "Knowledge base accumulation",
+          "status": "done"
+        },
+        {
+          "name": "4 edge functions capturing intelligence",
+          "status": "done"
+        },
+        {
+          "name": "Email ingestion (intel@cropsintel.com)",
+          "status": "todo"
+        },
+        {
+          "name": "Batch auto-process on receive",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -324,18 +784,45 @@
       "name": "Live Pricing (Strata + MAXONS margin)",
       "category": "data",
       "percent": 75,
-      "icon": "💰",
-      "description": "7 varieties with MAXONS 3% margin. Compare view with variety × grade overlay. Strata daily scraper on cron still pending.",
+      "icon": "\ud83d\udcb0",
+      "description": "7 varieties with MAXONS 3% margin. Compare view with variety \u00d7 grade overlay. Strata daily scraper on cron still pending.",
       "features": [
-        { "name": "Pricing page with variety/grade/form", "status": "done" },
-        { "name": "MAXONS 3% margin calculator", "status": "done" },
-        { "name": "Seeded prices for 7 varieties", "status": "done" },
-        { "name": "Bid/Ask spread display", "status": "done" },
-        { "name": "CSV export", "status": "done" },
-        { "name": "Cards / Table / Chart / Compare view modes", "status": "done" },
-        { "name": "Variety × grade multi-select compare + history overlay", "status": "done" },
-        { "name": "Strata daily scraper on cron", "status": "todo" },
-        { "name": "Bid/Ask spread compare across varieties", "status": "todo" }
+        {
+          "name": "Pricing page with variety/grade/form",
+          "status": "done"
+        },
+        {
+          "name": "MAXONS 3% margin calculator",
+          "status": "done"
+        },
+        {
+          "name": "Seeded prices for 7 varieties",
+          "status": "done"
+        },
+        {
+          "name": "Bid/Ask spread display",
+          "status": "done"
+        },
+        {
+          "name": "CSV export",
+          "status": "done"
+        },
+        {
+          "name": "Cards / Table / Chart / Compare view modes",
+          "status": "done"
+        },
+        {
+          "name": "Variety \u00d7 grade multi-select compare + history overlay",
+          "status": "done"
+        },
+        {
+          "name": "Strata daily scraper on cron",
+          "status": "todo"
+        },
+        {
+          "name": "Bid/Ask spread compare across varieties",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -343,111 +830,252 @@
       "name": "News & External Data",
       "category": "data",
       "percent": 60,
-      "icon": "📰",
-      "description": "20 seeded articles + AI sentiment. Source × category × weekly-timeline Compare panel shipped. Daily scraper still TODO.",
+      "icon": "\ud83d\udcf0",
+      "description": "20 seeded articles + AI sentiment. Source \u00d7 category \u00d7 weekly-timeline Compare panel shipped. Daily scraper still TODO.",
       "features": [
-        { "name": "News page with sentiment + market impact", "status": "done" },
-        { "name": "20 seeded articles", "status": "done" },
-        { "name": "CSV export", "status": "done" },
-        { "name": "Sentiment Compare panel (source × category × weekly timeline)", "status": "done" },
-        { "name": "Daily scraper (almonds.org press + USDA + bountiful.ag)", "status": "todo" }
+        {
+          "name": "News page with sentiment + market impact",
+          "status": "done"
+        },
+        {
+          "name": "20 seeded articles",
+          "status": "done"
+        },
+        {
+          "name": "CSV export",
+          "status": "done"
+        },
+        {
+          "name": "Sentiment Compare panel (source \u00d7 category \u00d7 weekly timeline)",
+          "status": "done"
+        },
+        {
+          "name": "Daily scraper (almonds.org press + USDA + bountiful.ag)",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "zyra-bubble",
-      "name": "Zyra — Floating Bubble (on every page)",
+      "name": "Zyra \u2014 Floating Bubble (on every page)",
       "category": "ai",
       "percent": 85,
-      "icon": "💬",
+      "icon": "\ud83d\udcac",
       "priority": true,
       "description": "The floating 'Z' bubble visible on every authenticated page (bottom-right, green). Opens an inline chat panel with Claude + ElevenLabs voice + context from the current route.",
       "features": [
-        { "name": "Floating Z bubble visible on all authenticated routes", "status": "done" },
-        { "name": "Click to open inline chat panel (mobile-responsive)", "status": "done" },
-        { "name": "Claude API call per message with market-data context", "status": "done" },
-        { "name": "ElevenLabs voice toggle — speak replies aloud", "status": "done" },
-        { "name": "Multi-turn conversation history per session", "status": "done" },
-        { "name": "Route-aware context (page being viewed feeds into prompt)", "status": "done" },
-        { "name": "Persistent memory across sessions (zyra_memory table)", "status": "todo" },
-        { "name": "Proactive prompts (Zyra starts conversation with fresh insights)", "status": "todo" },
-        { "name": "Multilingual mode (ES/AR/HI/TR/ZH)", "status": "todo" }
+        {
+          "name": "Floating Z bubble visible on all authenticated routes",
+          "status": "done"
+        },
+        {
+          "name": "Click to open inline chat panel (mobile-responsive)",
+          "status": "done"
+        },
+        {
+          "name": "Claude API call per message with market-data context",
+          "status": "done"
+        },
+        {
+          "name": "ElevenLabs voice toggle \u2014 speak replies aloud",
+          "status": "done"
+        },
+        {
+          "name": "Multi-turn conversation history per session",
+          "status": "done"
+        },
+        {
+          "name": "Route-aware context (page being viewed feeds into prompt)",
+          "status": "done"
+        },
+        {
+          "name": "Persistent memory across sessions (zyra_memory table)",
+          "status": "todo"
+        },
+        {
+          "name": "Proactive prompts (Zyra starts conversation with fresh insights)",
+          "status": "todo"
+        },
+        {
+          "name": "Multilingual mode (ES/AR/HI/TR/ZH)",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "zyra-full-page",
-      "name": "Zyra — /intelligence full-page interface",
+      "name": "Zyra \u2014 /intelligence full-page interface",
       "category": "ai",
       "percent": 80,
-      "icon": "🧠",
+      "icon": "\ud83e\udde0",
       "priority": true,
       "description": "The dedicated /intelligence page: full-width Zyra chat + live insights feed (50 insights: YoY analyses, monthly briefs, trade signals).",
       "features": [
-        { "name": "/intelligence route with large chat surface", "status": "done" },
-        { "name": "Live insights feed with filtering (All Types / Trade Signal / Monthly Brief / YoY)", "status": "done" },
-        { "name": "6 quick-ask buttons (What should MAXONS do? / Price outlook? / Supply position? / India demand? / Risk / Trade signal?)", "status": "done" },
-        { "name": "Per-insight confidence scores + timestamps", "status": "done" },
-        { "name": "Action/Bullish/Bearish badges on trade signals", "status": "done" },
-        { "name": "AI-stack honest live/roadmap panel (Phase 8 update: ADELA router ready)", "status": "done" },
-        { "name": "Per-user insight history (personalized feed)", "status": "todo" },
-        { "name": "Zyra comments on social network posts (Phase 9)", "status": "todo" }
+        {
+          "name": "/intelligence route with large chat surface",
+          "status": "done"
+        },
+        {
+          "name": "Live insights feed with filtering (All Types / Trade Signal / Monthly Brief / YoY)",
+          "status": "done"
+        },
+        {
+          "name": "6 quick-ask buttons (What should MAXONS do? / Price outlook? / Supply position? / India demand? / Risk / Trade signal?)",
+          "status": "done"
+        },
+        {
+          "name": "Per-insight confidence scores + timestamps",
+          "status": "done"
+        },
+        {
+          "name": "Action/Bullish/Bearish badges on trade signals",
+          "status": "done"
+        },
+        {
+          "name": "AI-stack honest live/roadmap panel (Phase 8 update: ADELA router ready)",
+          "status": "done"
+        },
+        {
+          "name": "Per-user insight history (personalized feed)",
+          "status": "todo"
+        },
+        {
+          "name": "Zyra comments on social network posts (Phase 9)",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "zyra-trainer",
-      "name": "Zyra — Trainer & Learning Loop",
+      "name": "Zyra \u2014 Trainer & Learning Loop",
       "category": "ai",
       "percent": 55,
-      "icon": "🎓",
+      "icon": "\ud83c\udf93",
       "priority": true,
       "description": "Train Zyra with domain corrections, approved facts, and stakeholder-specific knowledge. Every correction feeds back so Zyra gets smarter over time.",
       "features": [
-        { "name": "zyra_memory table schema (user-scoped learning)", "status": "done" },
-        { "name": "Trainer UI: thumb-up / thumb-down on any Zyra reply", "status": "done" },
-        { "name": "Correction input: 'actually the answer is X because Y'", "status": "done" },
-        { "name": "Feedback persisted locally + best-effort to zyra_feedback table", "status": "done" },
-        { "name": "buildCorrectionContext() helper for future-prompt context injection", "status": "done" },
-        { "name": "Corrections auto-injected into Zyra system prompt on every reply", "status": "done" },
-        { "name": "Admin-curated knowledge base (market facts, pricing rules, margins)", "status": "todo" },
-        { "name": "Per-user knowledge (Zyra remembers what each user traded / asked)", "status": "todo" },
-        { "name": "Escalation flow: Zyra says 'I don't know — routing to Muzammil' + WhatsApp ping", "status": "todo" }
+        {
+          "name": "zyra_memory table schema (user-scoped learning)",
+          "status": "done"
+        },
+        {
+          "name": "Trainer UI: thumb-up / thumb-down on any Zyra reply",
+          "status": "done"
+        },
+        {
+          "name": "Correction input: 'actually the answer is X because Y'",
+          "status": "done"
+        },
+        {
+          "name": "Feedback persisted locally + best-effort to zyra_feedback table",
+          "status": "done"
+        },
+        {
+          "name": "buildCorrectionContext() helper for future-prompt context injection",
+          "status": "done"
+        },
+        {
+          "name": "Corrections auto-injected into Zyra system prompt on every reply",
+          "status": "done"
+        },
+        {
+          "name": "Admin-curated knowledge base (market facts, pricing rules, margins)",
+          "status": "todo"
+        },
+        {
+          "name": "Per-user knowledge (Zyra remembers what each user traded / asked)",
+          "status": "todo"
+        },
+        {
+          "name": "Escalation flow: Zyra says 'I don't know \u2014 routing to Muzammil' + WhatsApp ping",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "zyra-whatsapp",
-      "name": "Zyra — WhatsApp Channel",
+      "name": "Zyra \u2014 WhatsApp Channel",
       "category": "ai",
       "percent": 65,
-      "icon": "📱",
+      "icon": "\ud83d\udcf1",
       "priority": true,
       "description": "Zyra chats with registered users over WhatsApp via Twilio + whatsapp-webhook edge function. Real 2-way conversations, not templated drips.",
       "features": [
-        { "name": "whatsapp-webhook edge function (inbound messages → Claude)", "status": "done" },
-        { "name": "whatsapp-send edge function (outbound)", "status": "done" },
-        { "name": "whatsapp-login edge function (OTP + V1 auto-migration)", "status": "done" },
-        { "name": "whatsapp-verify edge function", "status": "done" },
-        { "name": "OTP registration flow (tested, live)", "status": "done" },
-        { "name": "Per-contact conversation memory (zyra remembers last 20 messages)", "status": "todo" },
-        { "name": "Human-like conversational style (remove keyword-template replies)", "status": "todo" },
-        { "name": "Voice note replies (not just text)", "status": "todo" },
-        { "name": "Multilingual auto-detect from inbound language", "status": "todo" }
+        {
+          "name": "whatsapp-webhook edge function (inbound messages \u2192 Claude)",
+          "status": "done"
+        },
+        {
+          "name": "whatsapp-send edge function (outbound)",
+          "status": "done"
+        },
+        {
+          "name": "whatsapp-login edge function (OTP + V1 auto-migration)",
+          "status": "done"
+        },
+        {
+          "name": "whatsapp-verify edge function",
+          "status": "done"
+        },
+        {
+          "name": "OTP registration flow (tested, live)",
+          "status": "done"
+        },
+        {
+          "name": "Per-contact conversation memory (zyra remembers last 20 messages)",
+          "status": "todo"
+        },
+        {
+          "name": "Human-like conversational style (remove keyword-template replies)",
+          "status": "todo"
+        },
+        {
+          "name": "Voice note replies (not just text)",
+          "status": "todo"
+        },
+        {
+          "name": "Multilingual auto-detect from inbound language",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "zyra-prescriptions",
-      "name": "Zyra — Trade Prescriptions Engine",
+      "name": "Zyra \u2014 Trade Prescriptions Engine",
       "category": "ai",
       "percent": 20,
-      "icon": "🎯",
+      "icon": "\ud83c\udfaf",
       "priority": true,
-      "description": "Not 'here's the data' — 'BUY Nonpareil 23/25 now because supply-shortage signal, India Diwali demand + Middle East Ramadan'. Directive + reasoning + confidence.",
+      "description": "Not 'here's the data' \u2014 'BUY Nonpareil 23/25 now because supply-shortage signal, India Diwali demand + Middle East Ramadan'. Directive + reasoning + confidence.",
       "features": [
-        { "name": "Monthly Market Brief — bullish/bearish call with reasoning", "status": "done" },
-        { "name": "Trade signal cards on /intelligence (action + direction + confidence)", "status": "done" },
-        { "name": "YoY analyses per crop year", "status": "done" },
-        { "name": "Per-user prescriptions (match to user's role / geography / volume)", "status": "todo" },
-        { "name": "Push notification when a new prescription fires", "status": "todo" },
-        { "name": "Back-testing framework: did our last 10 signals pay off?", "status": "todo" },
-        { "name": "Hyper-personalized: 'Bangladesh buyer, supply shortage incoming, buy now'", "status": "todo" }
+        {
+          "name": "Monthly Market Brief \u2014 bullish/bearish call with reasoning",
+          "status": "done"
+        },
+        {
+          "name": "Trade signal cards on /intelligence (action + direction + confidence)",
+          "status": "done"
+        },
+        {
+          "name": "YoY analyses per crop year",
+          "status": "done"
+        },
+        {
+          "name": "Per-user prescriptions (match to user's role / geography / volume)",
+          "status": "todo"
+        },
+        {
+          "name": "Push notification when a new prescription fires",
+          "status": "todo"
+        },
+        {
+          "name": "Back-testing framework: did our last 10 signals pay off?",
+          "status": "todo"
+        },
+        {
+          "name": "Hyper-personalized: 'Bangladesh buyer, supply shortage incoming, buy now'",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -455,23 +1083,65 @@
       "name": "Auth & Registration",
       "category": "users",
       "percent": 94,
-      "icon": "🔐",
-      "description": "4 login methods live, 65 V1 users migrated, admin controls built. Scope expanded 2026-04-24: V1 returning-user popup flow — when a V1 user logs in for the first time on V2, they get a modal to verify WhatsApp (OTP) and set a new password, converting them from V1 → full V2 user.",
+      "icon": "\ud83d\udd10",
+      "description": "4 login methods live, 65 V1 users migrated, admin controls built. Scope expanded 2026-04-24: V1 returning-user popup flow \u2014 when a V1 user logs in for the first time on V2, they get a modal to verify WhatsApp (OTP) and set a new password, converting them from V1 \u2192 full V2 user.",
       "features": [
-        { "name": "WhatsApp + Password login", "status": "done" },
-        { "name": "WhatsApp OTP login (passwordless)", "status": "done" },
-        { "name": "Email + Password login", "status": "done" },
-        { "name": "Email Magic Link (Supabase OTP)", "status": "done" },
-        { "name": "65 V1 users migrated to user_profiles", "status": "done" },
-        { "name": "V1 auto-migration in whatsapp-login edge function", "status": "done" },
-        { "name": "SetPassword page for V1 migrated users", "status": "done" },
-        { "name": "Profile completion banner", "status": "done" },
-        { "name": "5-min guest timer + blur overlay", "status": "done" },
-        { "name": "Forgot/Reset password + branded emails", "status": "done" },
-        { "name": "Admin Add/Delete + Change Password in Settings", "status": "done" },
-        { "name": "V1 returning-user popup: detect + OTP verify + set new password (F1a)", "status": "done" },
-        { "name": "V1 user end-to-end OTP login verification (live test)", "status": "todo" },
-        { "name": "Verification tier workflow (verified badge)", "status": "todo" }
+        {
+          "name": "WhatsApp + Password login",
+          "status": "done"
+        },
+        {
+          "name": "WhatsApp OTP login (passwordless)",
+          "status": "done"
+        },
+        {
+          "name": "Email + Password login",
+          "status": "done"
+        },
+        {
+          "name": "Email Magic Link (Supabase OTP)",
+          "status": "done"
+        },
+        {
+          "name": "65 V1 users migrated to user_profiles",
+          "status": "done"
+        },
+        {
+          "name": "V1 auto-migration in whatsapp-login edge function",
+          "status": "done"
+        },
+        {
+          "name": "SetPassword page for V1 migrated users",
+          "status": "done"
+        },
+        {
+          "name": "Profile completion banner",
+          "status": "done"
+        },
+        {
+          "name": "5-min guest timer + blur overlay",
+          "status": "done"
+        },
+        {
+          "name": "Forgot/Reset password + branded emails",
+          "status": "done"
+        },
+        {
+          "name": "Admin Add/Delete + Change Password in Settings",
+          "status": "done"
+        },
+        {
+          "name": "V1 returning-user popup: detect + OTP verify + set new password (F1a)",
+          "status": "done"
+        },
+        {
+          "name": "V1 user end-to-end OTP login verification (live test)",
+          "status": "todo"
+        },
+        {
+          "name": "Verification tier workflow (verified badge)",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -479,24 +1149,69 @@
       "name": "CRM & Deal Pipeline",
       "category": "users",
       "percent": 82,
-      "icon": "🤝",
+      "icon": "\ud83e\udd1d",
       "description": "CRM with pipeline, contacts, activities, users directory, bulk WhatsApp invite, offer builder. Scope expanded 2026-04-24: bulk WhatsApp invite tab added; per-team-member user-level profitability insights pending.",
       "features": [
-        { "name": "CRM Dashboard with pipeline view", "status": "done" },
-        { "name": "Contact management + activities", "status": "done" },
-        { "name": "Tabs: pipeline / contacts / activity / users / invite", "status": "done" },
-        { "name": "15 audit issues fixed + 12 AI enhancements", "status": "done" },
-        { "name": "Per-contact WhatsApp/email invite (existing)", "status": "done" },
-        { "name": "Customer CSV bulk import", "status": "done" },
-        { "name": "Offer builder + WhatsApp delivery (crm_deals)", "status": "done" },
-        { "name": "Bulk WhatsApp invite — paste numbers + persona type + track (C5b)", "status": "done" },
-        { "name": "Registered Users tab shows 65 V1 migrated + new registrants", "status": "done" },
-        { "name": "Users tab: tier filter chips work + counts per tier + V1-migrated badge (C5a)", "status": "done" },
-        { "name": "Users tab: Verify action for admin/team — sets access_tier='verified' + metadata (C5d)", "status": "done" },
-        { "name": "Dual-channel bulk invite: WhatsApp + Email (email queued, SMTP F1b pending)", "status": "done" },
-        { "name": "Reconcile invited → joined when recipient registers (C5b-followup)", "status": "done" },
-        { "name": "Per-team-member user-level insights for profitability targeting (C5c)", "status": "todo" },
-        { "name": "Widget filters + compare (stage vs stage, period vs period)", "status": "todo" }
+        {
+          "name": "CRM Dashboard with pipeline view",
+          "status": "done"
+        },
+        {
+          "name": "Contact management + activities",
+          "status": "done"
+        },
+        {
+          "name": "Tabs: pipeline / contacts / activity / users / invite",
+          "status": "done"
+        },
+        {
+          "name": "15 audit issues fixed + 12 AI enhancements",
+          "status": "done"
+        },
+        {
+          "name": "Per-contact WhatsApp/email invite (existing)",
+          "status": "done"
+        },
+        {
+          "name": "Customer CSV bulk import",
+          "status": "done"
+        },
+        {
+          "name": "Offer builder + WhatsApp delivery (crm_deals)",
+          "status": "done"
+        },
+        {
+          "name": "Bulk WhatsApp invite \u2014 paste numbers + persona type + track (C5b)",
+          "status": "done"
+        },
+        {
+          "name": "Registered Users tab shows 65 V1 migrated + new registrants",
+          "status": "done"
+        },
+        {
+          "name": "Users tab: tier filter chips work + counts per tier + V1-migrated badge (C5a)",
+          "status": "done"
+        },
+        {
+          "name": "Users tab: Verify action for admin/team \u2014 sets access_tier='verified' + metadata (C5d)",
+          "status": "done"
+        },
+        {
+          "name": "Dual-channel bulk invite: WhatsApp + Email (email queued, SMTP F1b pending)",
+          "status": "done"
+        },
+        {
+          "name": "Reconcile invited \u2192 joined when recipient registers (C5b-followup)",
+          "status": "done"
+        },
+        {
+          "name": "Per-team-member user-level insights for profitability targeting (C5c)",
+          "status": "todo"
+        },
+        {
+          "name": "Widget filters + compare (stage vs stage, period vs period)",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -504,17 +1219,42 @@
       "name": "App Shell & Navigation",
       "category": "platform",
       "percent": 95,
-      "icon": "🌐",
+      "icon": "\ud83c\udf10",
       "description": "19 pages, code splitting, responsive, auto-deploy from GitHub, iOS on TestFlight",
       "features": [
-        { "name": "19 lazy-loaded routes with code splitting", "status": "done" },
-        { "name": "Desktop sidebar + mobile bottom nav", "status": "done" },
-        { "name": "Cmd+K command palette", "status": "done" },
-        { "name": "GitHub Pages auto-deploy on push to main", "status": "done" },
-        { "name": "SPA routing + 404.html SW killer", "status": "done" },
-        { "name": "OG/Twitter meta tags", "status": "done" },
-        { "name": "iOS WKWebView → cropsintel.com, TestFlight #39+", "status": "done" },
-        { "name": "Drop 'Self-maintaining' aspirational tagline until true", "status": "wip", "note": "being fixed in Phase A" }
+        {
+          "name": "19 lazy-loaded routes with code splitting",
+          "status": "done"
+        },
+        {
+          "name": "Desktop sidebar + mobile bottom nav",
+          "status": "done"
+        },
+        {
+          "name": "Cmd+K command palette",
+          "status": "done"
+        },
+        {
+          "name": "GitHub Pages auto-deploy on push to main",
+          "status": "done"
+        },
+        {
+          "name": "SPA routing + 404.html SW killer",
+          "status": "done"
+        },
+        {
+          "name": "OG/Twitter meta tags",
+          "status": "done"
+        },
+        {
+          "name": "iOS WKWebView \u2192 cropsintel.com, TestFlight #39+",
+          "status": "done"
+        },
+        {
+          "name": "Drop 'Self-maintaining' aspirational tagline until true",
+          "status": "wip",
+          "note": "being fixed in Phase A"
+        }
       ]
     },
     {
@@ -522,14 +1262,30 @@
       "name": "Welcome & Onboarding",
       "category": "platform",
       "percent": 80,
-      "icon": "🏠",
+      "icon": "\ud83c\udfe0",
       "description": "Cinematic landing with 10-slide tour + 6 stakeholder cards",
       "features": [
-        { "name": "Welcome page with 3 pillars + 6 stakeholder cards", "status": "done" },
-        { "name": "10-slide cinematic tour", "status": "done" },
-        { "name": "Animated counter stats", "status": "done" },
-        { "name": "Guest preview CTA", "status": "done" },
-        { "name": "Correct hero stats (currently overstates countries tracked)", "status": "wip", "note": "being fixed in Phase A" }
+        {
+          "name": "Welcome page with 3 pillars + 6 stakeholder cards",
+          "status": "done"
+        },
+        {
+          "name": "10-slide cinematic tour",
+          "status": "done"
+        },
+        {
+          "name": "Animated counter stats",
+          "status": "done"
+        },
+        {
+          "name": "Guest preview CTA",
+          "status": "done"
+        },
+        {
+          "name": "Correct hero stats (currently overstates countries tracked)",
+          "status": "wip",
+          "note": "being fixed in Phase A"
+        }
       ]
     },
     {
@@ -537,13 +1293,25 @@
       "name": "Dashboard",
       "category": "platform",
       "percent": 80,
-      "icon": "📊",
+      "icon": "\ud83d\udcca",
       "description": "KPIs + AI Monthly Brief + charts (106 months loaded from position reports)",
       "features": [
-        { "name": "Lazy tab loading", "status": "done" },
-        { "name": "Real ABC data in charts", "status": "done" },
-        { "name": "AI Monthly Market Brief (BULLISH/BEARISH)", "status": "done" },
-        { "name": "Widget filters + compare", "status": "todo" }
+        {
+          "name": "Lazy tab loading",
+          "status": "done"
+        },
+        {
+          "name": "Real ABC data in charts",
+          "status": "done"
+        },
+        {
+          "name": "AI Monthly Market Brief (BULLISH/BEARISH)",
+          "status": "done"
+        },
+        {
+          "name": "Widget filters + compare",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -551,13 +1319,26 @@
       "name": "Reports & Analysis Pages",
       "category": "platform",
       "percent": 60,
-      "icon": "📋",
+      "icon": "\ud83d\udccb",
       "description": "/analysis has best filter+compare pattern; /reports has an indefinite spinner bug blocking load",
       "features": [
-        { "name": "/analysis with 11-year chip filter + overlay", "status": "done" },
-        { "name": "CSV export on data pages", "status": "done" },
-        { "name": "Fix /reports indefinite spinner", "status": "todo", "priority": "high" },
-        { "name": "Widget filters on Reports page", "status": "todo" }
+        {
+          "name": "/analysis with 11-year chip filter + overlay",
+          "status": "done"
+        },
+        {
+          "name": "CSV export on data pages",
+          "status": "done"
+        },
+        {
+          "name": "Fix /reports indefinite spinner",
+          "status": "todo",
+          "priority": "high"
+        },
+        {
+          "name": "Widget filters on Reports page",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -565,19 +1346,49 @@
       "name": "Widget Interactivity (new)",
       "category": "platform",
       "percent": 80,
-      "icon": "🎛️",
+      "icon": "\ud83c\udf9b\ufe0f",
       "description": "Universal rule: every widget on every tab needs intelligent filters + user-input compare. /analysis + FilterBar shared kit + 6 pages retrofitted (Destinations, Forecasts, Pricing, News, CRM, Reports).",
       "features": [
-        { "name": "/analysis chip filter + overlay compare", "status": "done" },
-        { "name": "Extract reusable <FilterBar> + <CompareChipGroup>", "status": "done" },
-        { "name": "Retrofit Destinations (country/variety/metric compare)", "status": "done" },
-        { "name": "Retrofit Forecasts (Variety + County + Forecast sections)", "status": "done" },
-        { "name": "Retrofit Pricing (variety/grade compare + history)", "status": "done" },
-        { "name": "Retrofit News (source/category/timeline compare)", "status": "done" },
-        { "name": "Retrofit CRM (stage-compare + period-compare + at-risk view)", "status": "done" },
-        { "name": "Retrofit Reports (crop-year compare panel with chip bar)", "status": "done" },
-        { "name": "Retrofit Dashboard widgets with filters", "status": "todo" },
-        { "name": "User-input compare (free-text parsed by Zyra)", "status": "todo" }
+        {
+          "name": "/analysis chip filter + overlay compare",
+          "status": "done"
+        },
+        {
+          "name": "Extract reusable <FilterBar> + <CompareChipGroup>",
+          "status": "done"
+        },
+        {
+          "name": "Retrofit Destinations (country/variety/metric compare)",
+          "status": "done"
+        },
+        {
+          "name": "Retrofit Forecasts (Variety + County + Forecast sections)",
+          "status": "done"
+        },
+        {
+          "name": "Retrofit Pricing (variety/grade compare + history)",
+          "status": "done"
+        },
+        {
+          "name": "Retrofit News (source/category/timeline compare)",
+          "status": "done"
+        },
+        {
+          "name": "Retrofit CRM (stage-compare + period-compare + at-risk view)",
+          "status": "done"
+        },
+        {
+          "name": "Retrofit Reports (crop-year compare panel with chip bar)",
+          "status": "done"
+        },
+        {
+          "name": "Retrofit Dashboard widgets with filters",
+          "status": "todo"
+        },
+        {
+          "name": "User-input compare (free-text parsed by Zyra)",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -585,17 +1396,41 @@
       "name": "BRM (Broker Relationship Management)",
       "category": "users",
       "percent": 35,
-      "icon": "🤝",
+      "icon": "\ud83e\udd1d",
       "description": "/brokers route shipped 2026-04-24 with market-signal intelligence (focus/hold/avoid per market based on YoY flow). Internal team sees all brokers; broker portal shell + broker-owned offer management is Phase 9.",
       "features": [
-        { "name": "Broker portal route /brokers (team-gated scaffold)", "status": "done" },
-        { "name": "Market-signal engine (focus/hold/avoid per country based on YoY)", "status": "done" },
-        { "name": "Region filter (ME/EU/Asia/Americas/Africa) + per-region KPIs", "status": "done" },
-        { "name": "Info-walls note + projectArrayForRole applied to queries", "status": "done" },
-        { "name": "MAXONS Needs + Margin Targets surface (internal only)", "status": "todo" },
-        { "name": "Broker offer-management surface (post inventory into Cropsintel)", "status": "todo" },
-        { "name": "Broker-scoped crm_contacts queries (broker sees only own row)", "status": "todo" },
-        { "name": "Dedicated broker portal shell (today renders inside MAXONS app)", "status": "todo" }
+        {
+          "name": "Broker portal route /brokers (team-gated scaffold)",
+          "status": "done"
+        },
+        {
+          "name": "Market-signal engine (focus/hold/avoid per country based on YoY)",
+          "status": "done"
+        },
+        {
+          "name": "Region filter (ME/EU/Asia/Americas/Africa) + per-region KPIs",
+          "status": "done"
+        },
+        {
+          "name": "Info-walls note + projectArrayForRole applied to queries",
+          "status": "done"
+        },
+        {
+          "name": "MAXONS Needs + Margin Targets surface (internal only)",
+          "status": "todo"
+        },
+        {
+          "name": "Broker offer-management surface (post inventory into Cropsintel)",
+          "status": "todo"
+        },
+        {
+          "name": "Broker-scoped crm_contacts queries (broker sees only own row)",
+          "status": "todo"
+        },
+        {
+          "name": "Dedicated broker portal shell (today renders inside MAXONS app)",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -603,18 +1438,45 @@
       "name": "SRM (Supplier Relationship Management)",
       "category": "users",
       "percent": 35,
-      "icon": "🏭",
+      "icon": "\ud83c\udfed",
       "description": "/suppliers route shipped 2026-04-24. County-level analysis tool with 11 CA counties + San Joaquin/Sacramento region presets + variety mix pie + anonymized demand signals. Info walls active via projectArrayForRole.",
       "features": [
-        { "name": "Supplier portal route /suppliers (team-gated scaffold)", "status": "done" },
-        { "name": "County selector (11 CA counties + region presets)", "status": "done" },
-        { "name": "Variety mix pie chart from abc_crop_receipts", "status": "done" },
-        { "name": "Anonymized demand signals panel (high/steady/softening)", "status": "done" },
-        { "name": "Info walls: projectArrayForRole applied on every fetch", "status": "done" },
-        { "name": "Real Land IQ county data (replaces modeled shares) — Phase 8", "status": "todo" },
-        { "name": "Supplier own-shipment tracking + documentation exchange", "status": "todo" },
-        { "name": "Own-records input + custom analysis", "status": "todo" },
-        { "name": "Dedicated supplier portal shell (today in MAXONS app)", "status": "todo" }
+        {
+          "name": "Supplier portal route /suppliers (team-gated scaffold)",
+          "status": "done"
+        },
+        {
+          "name": "County selector (11 CA counties + region presets)",
+          "status": "done"
+        },
+        {
+          "name": "Variety mix pie chart from abc_crop_receipts",
+          "status": "done"
+        },
+        {
+          "name": "Anonymized demand signals panel (high/steady/softening)",
+          "status": "done"
+        },
+        {
+          "name": "Info walls: projectArrayForRole applied on every fetch",
+          "status": "done"
+        },
+        {
+          "name": "Real Land IQ county data (replaces modeled shares) \u2014 Phase 8",
+          "status": "todo"
+        },
+        {
+          "name": "Supplier own-shipment tracking + documentation exchange",
+          "status": "todo"
+        },
+        {
+          "name": "Own-records input + custom analysis",
+          "status": "todo"
+        },
+        {
+          "name": "Dedicated supplier portal shell (today in MAXONS app)",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -622,20 +1484,53 @@
       "name": "Information Walls (DB + API + Portal)",
       "category": "platform",
       "percent": 45,
-      "icon": "🛡️",
+      "icon": "\ud83d\udee1\ufe0f",
       "description": "THE business model. 3 layers: Postgres RLS, API projection middleware, portal routing. Scaffolding shipped 2026-04-24; Phase 8 wires it to every counterparty query.",
       "features": [
-        { "name": "supabase/schema_info_walls.sql — RLS policies on crm_contacts, crm_deals, user_profiles + user_family() fn", "status": "done" },
-        { "name": "src/lib/permissions.js — ROLE_FAMILIES, projectForRole(), projectArrayForRole(), canAccess()", "status": "done" },
-        { "name": "src/lib/audit-log.js — auditAccess() writer", "status": "done" },
-        { "name": "audit_log table + RLS (internal-read, authed-write)", "status": "done" },
-        { "name": "docs/INFORMATION_WALLS.md — architecture reference + test plan", "status": "done" },
-        { "name": "Wire auditAccess() into every CRM read/write action", "status": "todo" },
-        { "name": "Apply projectArrayForRole() to crm_contacts / crm_deals fetches on Contacts + Users + Invite tabs", "status": "todo" },
-        { "name": "Drop legacy permissive policies on crm_* tables (run script)", "status": "todo" },
-        { "name": "API response filter middleware (edge function layer)", "status": "todo" },
-        { "name": "Portal-scoped routing: role determines which portal shell renders", "status": "todo" },
-        { "name": "Existing 5-min guest timer + blur overlay", "status": "done" }
+        {
+          "name": "supabase/schema_info_walls.sql \u2014 RLS policies on crm_contacts, crm_deals, user_profiles + user_family() fn",
+          "status": "done"
+        },
+        {
+          "name": "src/lib/permissions.js \u2014 ROLE_FAMILIES, projectForRole(), projectArrayForRole(), canAccess()",
+          "status": "done"
+        },
+        {
+          "name": "src/lib/audit-log.js \u2014 auditAccess() writer",
+          "status": "done"
+        },
+        {
+          "name": "audit_log table + RLS (internal-read, authed-write)",
+          "status": "done"
+        },
+        {
+          "name": "docs/INFORMATION_WALLS.md \u2014 architecture reference + test plan",
+          "status": "done"
+        },
+        {
+          "name": "Wire auditAccess() into every CRM read/write action",
+          "status": "todo"
+        },
+        {
+          "name": "Apply projectArrayForRole() to crm_contacts / crm_deals fetches on Contacts + Users + Invite tabs",
+          "status": "todo"
+        },
+        {
+          "name": "Drop legacy permissive policies on crm_* tables (run script)",
+          "status": "todo"
+        },
+        {
+          "name": "API response filter middleware (edge function layer)",
+          "status": "todo"
+        },
+        {
+          "name": "Portal-scoped routing: role determines which portal shell renders",
+          "status": "todo"
+        },
+        {
+          "name": "Existing 5-min guest timer + blur overlay",
+          "status": "done"
+        }
       ]
     },
     {
@@ -643,16 +1538,37 @@
       "name": "Commodity-Agnostic Schema",
       "category": "platform",
       "percent": 30,
-      "icon": "🌾",
+      "icon": "\ud83c\udf3e",
       "description": "Platform supports N commodities from day one. src/lib/commodity.js is the ONE switch point; supabase/schema_commodity.sql adds commodities + products tables; docs/COMMODITY_AGNOSTIC.md is the architecture reference. Migration of abc_* tables to commodity_id is Phase 8.",
       "features": [
-        { "name": "src/lib/commodity.js — runtime abstraction with almond/pistachio/pineapple registry", "status": "done" },
-        { "name": "supabase/schema_commodity.sql — commodities + products tables + RLS + seed rows", "status": "done" },
-        { "name": "docs/COMMODITY_AGNOSTIC.md — architecture doc + migration plan", "status": "done" },
-        { "name": "Migrate abc_*_reports tables to reference commodity_id (Phase 8)", "status": "todo" },
-        { "name": "Replace hardcoded 'almond' literals in UI copy (Phase 7b)", "status": "todo" },
-        { "name": "Commodity selector in sidebar (defaults to almond)", "status": "todo" },
-        { "name": "Activate pistachio scraper when first data lands", "status": "todo" }
+        {
+          "name": "src/lib/commodity.js \u2014 runtime abstraction with almond/pistachio/pineapple registry",
+          "status": "done"
+        },
+        {
+          "name": "supabase/schema_commodity.sql \u2014 commodities + products tables + RLS + seed rows",
+          "status": "done"
+        },
+        {
+          "name": "docs/COMMODITY_AGNOSTIC.md \u2014 architecture doc + migration plan",
+          "status": "done"
+        },
+        {
+          "name": "Migrate abc_*_reports tables to reference commodity_id (Phase 8)",
+          "status": "todo"
+        },
+        {
+          "name": "Replace hardcoded 'almond' literals in UI copy (Phase 7b)",
+          "status": "todo"
+        },
+        {
+          "name": "Commodity selector in sidebar (defaults to almond)",
+          "status": "todo"
+        },
+        {
+          "name": "Activate pistachio scraper when first data lands",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -660,89 +1576,206 @@
       "name": "Multi-Portal Frontend",
       "category": "platform",
       "percent": 10,
-      "icon": "🚪",
+      "icon": "\ud83d\udeaa",
       "description": "Role-scoped portal shells: customer / supplier / broker / logistics / internal team. Login determines which portal renders. Same platform spine, different views.",
       "features": [
-        { "name": "MAXONS team internal shell (current /dashboard etc.)", "status": "done" },
-        { "name": "Role-aware PersonaBanner on Dashboard (MVP)", "status": "done" },
-        { "name": "Customer portal shell + role-scoped nav", "status": "todo" },
-        { "name": "Supplier portal shell + role-scoped nav", "status": "todo" },
-        { "name": "Broker portal shell + role-scoped nav", "status": "todo" },
-        { "name": "Logistics portal shell", "status": "todo" }
+        {
+          "name": "MAXONS team internal shell (current /dashboard etc.)",
+          "status": "done"
+        },
+        {
+          "name": "Role-aware PersonaBanner on Dashboard (MVP)",
+          "status": "done"
+        },
+        {
+          "name": "Customer portal shell + role-scoped nav",
+          "status": "todo"
+        },
+        {
+          "name": "Supplier portal shell + role-scoped nav",
+          "status": "todo"
+        },
+        {
+          "name": "Broker portal shell + role-scoped nav",
+          "status": "todo"
+        },
+        {
+          "name": "Logistics portal shell",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "trade-lifecycle",
-      "name": "Trade Lifecycle (Offer → Contract → Fulfillment)",
+      "name": "Trade Lifecycle (Offer \u2192 Contract \u2192 Fulfillment)",
       "category": "future",
       "percent": 15,
-      "icon": "📜",
-      "description": "End-to-end execution layer. Offer → margin engine → customer view → request to buy → sales verification → WhatsApp contract + e-sign → fulfillment tracking. Zyra orchestrates.",
+      "icon": "\ud83d\udcdc",
+      "description": "End-to-end execution layer. Offer \u2192 margin engine \u2192 customer view \u2192 request to buy \u2192 sales verification \u2192 WhatsApp contract + e-sign \u2192 fulfillment tracking. Zyra orchestrates.",
       "features": [
-        { "name": "Offer builder with variety/grade/form/incoterm (existing in Trading Portal)", "status": "done" },
-        { "name": "CRM deal pipeline with stage progression", "status": "done" },
-        { "name": "WhatsApp offer delivery via Twilio", "status": "done" },
-        { "name": "Margin engine (applies MAXONS rules before customer display)", "status": "todo" },
-        { "name": "Source-hiding layer (customer never sees supplier identity)", "status": "todo" },
-        { "name": "Request-to-buy flow (self-serve or assisted)", "status": "todo" },
-        { "name": "Contract generation via WhatsApp link + interactive e-sign", "status": "todo" },
-        { "name": "Fulfillment tracking (payment → shipment → delivery → receipt)", "status": "todo" }
+        {
+          "name": "Offer builder with variety/grade/form/incoterm (existing in Trading Portal)",
+          "status": "done"
+        },
+        {
+          "name": "CRM deal pipeline with stage progression",
+          "status": "done"
+        },
+        {
+          "name": "WhatsApp offer delivery via Twilio",
+          "status": "done"
+        },
+        {
+          "name": "Margin engine (applies MAXONS rules before customer display)",
+          "status": "todo"
+        },
+        {
+          "name": "Source-hiding layer (customer never sees supplier identity)",
+          "status": "todo"
+        },
+        {
+          "name": "Request-to-buy flow (self-serve or assisted)",
+          "status": "todo"
+        },
+        {
+          "name": "Contract generation via WhatsApp link + interactive e-sign",
+          "status": "todo"
+        },
+        {
+          "name": "Fulfillment tracking (payment \u2192 shipment \u2192 delivery \u2192 receipt)",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "adela",
-      "name": "ADELA — Nervous System / AI Orchestrator",
+      "name": "ADELA \u2014 Nervous System / AI Orchestrator",
       "category": "ai",
       "percent": 45,
-      "icon": "🧠",
+      "icon": "\ud83e\udde0",
       "description": "Runtime orchestrator shipped as src/lib/adela.js. Router abstraction routes each job-type to Claude/GPT/Gemini/Council per JOB_ROUTES table. Info-wall filter on every AI response. Audit log on every call. Phase 8 wires OpenAI + Gemini edge functions.",
       "features": [
-        { "name": "4 edge functions live (whatsapp-login/send/verify/webhook)", "status": "done" },
-        { "name": "Zyra chat uses Claude for all conversations", "status": "done" },
-        { "name": "src/lib/adela.js router: routeAIJob(), askZyra(), analyzeMarket(), monthlyBrief(), atlasDebate()", "status": "done" },
-        { "name": "JOB_ROUTES table: zyra_chat→claude, multilingual→openai, multimodal→gemini, atlas_debate→council", "status": "done" },
-        { "name": "Info-wall filter on AI response (family-aware redaction)", "status": "done" },
-        { "name": "Audit log on every AI call", "status": "done" },
-        { "name": "OpenAI edge function (zyra-openai) — Phase 8", "status": "todo" },
-        { "name": "Gemini edge function (zyra-gemini) — Phase 8", "status": "todo" },
-        { "name": "Multi-model council edge function (brain-ai) — Phase 10", "status": "todo" },
-        { "name": "Existing Zyra callers migrate to routeAIJob()", "status": "todo" }
+        {
+          "name": "4 edge functions live (whatsapp-login/send/verify/webhook)",
+          "status": "done"
+        },
+        {
+          "name": "Zyra chat uses Claude for all conversations",
+          "status": "done"
+        },
+        {
+          "name": "src/lib/adela.js router: routeAIJob(), askZyra(), analyzeMarket(), monthlyBrief(), atlasDebate()",
+          "status": "done"
+        },
+        {
+          "name": "JOB_ROUTES table: zyra_chat\u2192claude, multilingual\u2192openai, multimodal\u2192gemini, atlas_debate\u2192council",
+          "status": "done"
+        },
+        {
+          "name": "Info-wall filter on AI response (family-aware redaction)",
+          "status": "done"
+        },
+        {
+          "name": "Audit log on every AI call",
+          "status": "done"
+        },
+        {
+          "name": "OpenAI edge function (zyra-openai) \u2014 Phase 8",
+          "status": "todo"
+        },
+        {
+          "name": "Gemini edge function (zyra-gemini) \u2014 Phase 8",
+          "status": "todo"
+        },
+        {
+          "name": "Multi-model council edge function (brain-ai) \u2014 Phase 10",
+          "status": "todo"
+        },
+        {
+          "name": "Existing Zyra callers migrate to routeAIJob()",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "monitor-bot",
-      "name": "Monitor Bot — Background Self-Audit",
+      "name": "Monitor Bot \u2014 Background Self-Audit",
       "category": "ai",
       "percent": 25,
-      "icon": "🤖",
+      "icon": "\ud83e\udd16",
       "priority": true,
-      "description": "User ask 2026-04-24: 'multi-brain AI that navigates like human, reports errors, Claude fixes, keeps app stable.' Shipped lean MVP tonight — scripts/monitor-agent.js walks public routes, scans for error signals, writes public/monitor-log.json. /map reads + renders findings. Full auto-fix loop is Phase 10 (ATLAS) — gated on founder WhatsApp+OTP per vision.",
+      "description": "User ask 2026-04-24: 'multi-brain AI that navigates like human, reports errors, Claude fixes, keeps app stable.' Shipped lean MVP tonight \u2014 scripts/monitor-agent.js walks public routes, scans for error signals, writes public/monitor-log.json. /map reads + renders findings. Full auto-fix loop is Phase 10 (ATLAS) \u2014 gated on founder WhatsApp+OTP per vision.",
       "features": [
-        { "name": "scripts/monitor-agent.js — route walker + signal scanner", "status": "done" },
-        { "name": "14 routes covered (all public + login + register + map)", "status": "done" },
-        { "name": "8 heuristic signals (NaN, TypeError, [object Object], cropsintel.net leak, empty states…)", "status": "done" },
-        { "name": "public/monitor-log.json — structured findings report", "status": "done" },
-        { "name": "docs/project_monitor_bot.md — plan + non-negotiables + phase map", "status": "done" },
-        { "name": "/map panel renders latest Monitor Bot run", "status": "todo" },
-        { "name": "Wire to GitHub Actions workflow (needs workflow-scope token)", "status": "todo" },
-        { "name": "Authenticated Playwright walker (bypasses SPA hydration limit)", "status": "todo" },
-        { "name": "Multi-model AI council scoring of each finding (Phase 10)", "status": "todo" },
-        { "name": "Auto-propose PR fixes gated on founder WhatsApp+OTP (Phase 10)", "status": "todo" }
+        {
+          "name": "scripts/monitor-agent.js \u2014 route walker + signal scanner",
+          "status": "done"
+        },
+        {
+          "name": "14 routes covered (all public + login + register + map)",
+          "status": "done"
+        },
+        {
+          "name": "8 heuristic signals (NaN, TypeError, [object Object], cropsintel.net leak, empty states\u2026)",
+          "status": "done"
+        },
+        {
+          "name": "public/monitor-log.json \u2014 structured findings report",
+          "status": "done"
+        },
+        {
+          "name": "docs/project_monitor_bot.md \u2014 plan + non-negotiables + phase map",
+          "status": "done"
+        },
+        {
+          "name": "/map panel renders latest Monitor Bot run",
+          "status": "todo"
+        },
+        {
+          "name": "Wire to GitHub Actions workflow (needs workflow-scope token)",
+          "status": "todo"
+        },
+        {
+          "name": "Authenticated Playwright walker (bypasses SPA hydration limit)",
+          "status": "todo"
+        },
+        {
+          "name": "Multi-model AI council scoring of each finding (Phase 10)",
+          "status": "todo"
+        },
+        {
+          "name": "Auto-propose PR fixes gated on founder WhatsApp+OTP (Phase 10)",
+          "status": "todo"
+        }
       ]
     },
     {
       "id": "atlas",
-      "name": "ATLAS — Self-Developing Brain",
+      "name": "ATLAS \u2014 Self-Developing Brain",
       "category": "ai",
       "percent": 0,
-      "icon": "🪐",
+      "icon": "\ud83e\ude90",
       "description": "Reads own plan, AI council debates, proposes changes, verifies, admin approves (WhatsApp video + OTP), ships. Self-monitoring + self-healing. Founder-only admin gate.",
       "features": [
-        { "name": "Nightly monitor-report agent (proposed phase-later idea)", "status": "todo" },
-        { "name": "AI council debate: Claude + GPT + Gemini on each change", "status": "todo" },
-        { "name": "Admin gate: WhatsApp video + OTP authentication", "status": "todo" },
-        { "name": "Auto-execution with human approval checkpoint", "status": "todo" },
-        { "name": "Self-monitoring: catches errors, proposes fixes, feeds back", "status": "todo" }
+        {
+          "name": "Nightly monitor-report agent (proposed phase-later idea)",
+          "status": "todo"
+        },
+        {
+          "name": "AI council debate: Claude + GPT + Gemini on each change",
+          "status": "todo"
+        },
+        {
+          "name": "Admin gate: WhatsApp video + OTP authentication",
+          "status": "todo"
+        },
+        {
+          "name": "Auto-execution with human approval checkpoint",
+          "status": "todo"
+        },
+        {
+          "name": "Self-monitoring: catches errors, proposes fixes, feeds back",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -750,14 +1783,29 @@
       "name": "Verified Social Network",
       "category": "future",
       "percent": 0,
-      "icon": "💬",
-      "description": "'Twitter for verified' — gated behind access_tier='verified'. Post, react, comment, thread. Zyra participates as contributor. Two streams: public broadcast + private personalized.",
+      "icon": "\ud83d\udcac",
+      "description": "'Twitter for verified' \u2014 gated behind access_tier='verified'. Post, react, comment, thread. Zyra participates as contributor. Two streams: public broadcast + private personalized.",
       "features": [
-        { "name": "social_posts table + RLS", "status": "todo" },
-        { "name": "Feed UI gated on access_tier='verified'", "status": "todo" },
-        { "name": "Post + react + comment", "status": "todo" },
-        { "name": "Zyra comments with analytics", "status": "todo" },
-        { "name": "Sentiment + chatter extraction into proprietary data", "status": "todo" }
+        {
+          "name": "social_posts table + RLS",
+          "status": "todo"
+        },
+        {
+          "name": "Feed UI gated on access_tier='verified'",
+          "status": "todo"
+        },
+        {
+          "name": "Post + react + comment",
+          "status": "todo"
+        },
+        {
+          "name": "Zyra comments with analytics",
+          "status": "todo"
+        },
+        {
+          "name": "Sentiment + chatter extraction into proprietary data",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -765,18 +1813,45 @@
       "name": "Persona Views (new)",
       "category": "users",
       "percent": 85,
-      "icon": "🧑‍🌾",
+      "icon": "\ud83e\uddd1\u200d\ud83c\udf3e",
       "description": "Role-aware Persona Banner + persona-specific live numeric insights on /dashboard. Grower/Packer/Processor/Broker/Buyer/Trader/Admin all see role-tailored stat rows pulling from abc_position_reports + abc_crop_receipts. Full role-specific pages still pending.",
       "features": [
-        { "name": "PersonaBanner component (role-aware welcome + 3 shortcuts)", "status": "done" },
-        { "name": "Dashboard renders PersonaBanner at top", "status": "done" },
-        { "name": "9 persona configs mapped to register roles", "status": "done" },
-        { "name": "PersonaInsights live stat row (grower/packer/processor/broker/buyer/trader/admin)", "status": "done" },
-        { "name": "Role-aware sidebar ordering (priority paths first per role)", "status": "done" },
-        { "name": "Role-aware tier gating (requireTeam now enforced, was leaking)", "status": "done" },
-        { "name": "Role-aware Zyra prompts (grower/supplier/processor/broker/buyer/trader/analyst/admin lenses)", "status": "done" },
-        { "name": "Full Grower page (pool position, harvest timing, packer-call list)", "status": "todo" },
-        { "name": "Full Packer/Handler page (handler position, pool selling, quality mix)", "status": "todo" }
+        {
+          "name": "PersonaBanner component (role-aware welcome + 3 shortcuts)",
+          "status": "done"
+        },
+        {
+          "name": "Dashboard renders PersonaBanner at top",
+          "status": "done"
+        },
+        {
+          "name": "9 persona configs mapped to register roles",
+          "status": "done"
+        },
+        {
+          "name": "PersonaInsights live stat row (grower/packer/processor/broker/buyer/trader/admin)",
+          "status": "done"
+        },
+        {
+          "name": "Role-aware sidebar ordering (priority paths first per role)",
+          "status": "done"
+        },
+        {
+          "name": "Role-aware tier gating (requireTeam now enforced, was leaking)",
+          "status": "done"
+        },
+        {
+          "name": "Role-aware Zyra prompts (grower/supplier/processor/broker/buyer/trader/analyst/admin lenses)",
+          "status": "done"
+        },
+        {
+          "name": "Full Grower page (pool position, harvest timing, packer-call list)",
+          "status": "todo"
+        },
+        {
+          "name": "Full Packer/Handler page (handler position, pool selling, quality mix)",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -784,17 +1859,41 @@
       "name": "WhatsApp + Twilio Identity",
       "category": "users",
       "percent": 80,
-      "icon": "📱",
+      "icon": "\ud83d\udcf1",
       "description": "WhatsApp as primary identity: OTP login, auth, offer delivery, Zyra chat. 4 edge functions (login/send/verify/webhook) redeployed from V2 source.",
       "features": [
-        { "name": "whatsapp-login edge function (OTP + V1 auto-migration)", "status": "done" },
-        { "name": "whatsapp-send (outbound messages)", "status": "done" },
-        { "name": "whatsapp-verify (OTP validation)", "status": "done" },
-        { "name": "whatsapp-webhook (inbound from Twilio)", "status": "done" },
-        { "name": "Registration with OTP verify step", "status": "done" },
-        { "name": "Offer delivery via Twilio", "status": "done" },
-        { "name": "V1 user end-to-end OTP login verification (live test)", "status": "todo" },
-        { "name": "Multilingual WhatsApp responses (Arabic/Hindi/Turkish/Spanish)", "status": "todo" }
+        {
+          "name": "whatsapp-login edge function (OTP + V1 auto-migration)",
+          "status": "done"
+        },
+        {
+          "name": "whatsapp-send (outbound messages)",
+          "status": "done"
+        },
+        {
+          "name": "whatsapp-verify (OTP validation)",
+          "status": "done"
+        },
+        {
+          "name": "whatsapp-webhook (inbound from Twilio)",
+          "status": "done"
+        },
+        {
+          "name": "Registration with OTP verify step",
+          "status": "done"
+        },
+        {
+          "name": "Offer delivery via Twilio",
+          "status": "done"
+        },
+        {
+          "name": "V1 user end-to-end OTP login verification (live test)",
+          "status": "todo"
+        },
+        {
+          "name": "Multilingual WhatsApp responses (Arabic/Hindi/Turkish/Spanish)",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -802,16 +1901,37 @@
       "name": "Trading Portal",
       "category": "future",
       "percent": 55,
-      "icon": "💼",
+      "icon": "\ud83d\udcbc",
       "description": "Offer builder wired to CRM + Supabase + WhatsApp delivery",
       "features": [
-        { "name": "Offer builder with variety/grade/form/incoterm", "status": "done" },
-        { "name": "CRM contact selector for buyer linking", "status": "done" },
-        { "name": "Supabase persistence (crm_deals table)", "status": "done" },
-        { "name": "Stage progression draft→quoted→sent→accepted", "status": "done" },
-        { "name": "WhatsApp offer delivery via Twilio", "status": "done" },
-        { "name": "Contract management + e-sign", "status": "todo" },
-        { "name": "Shipment tracking", "status": "todo" }
+        {
+          "name": "Offer builder with variety/grade/form/incoterm",
+          "status": "done"
+        },
+        {
+          "name": "CRM contact selector for buyer linking",
+          "status": "done"
+        },
+        {
+          "name": "Supabase persistence (crm_deals table)",
+          "status": "done"
+        },
+        {
+          "name": "Stage progression draft\u2192quoted\u2192sent\u2192accepted",
+          "status": "done"
+        },
+        {
+          "name": "WhatsApp offer delivery via Twilio",
+          "status": "done"
+        },
+        {
+          "name": "Contract management + e-sign",
+          "status": "todo"
+        },
+        {
+          "name": "Shipment tracking",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -819,15 +1939,33 @@
       "name": "Deploy Pipeline (GitHub Actions)",
       "category": "platform",
       "percent": 92,
-      "icon": "🚀",
-      "description": "Auto-scrape + build + gh-pages deploy on push to main + cron. CNAME flip-flop fixed. Scraper default mode now 'all' — full ABC pipeline fires on every workflow run.",
+      "icon": "\ud83d\ude80",
+      "description": "Auto-scrape + build + gh-pages deploy on push to main + cron. CNAME flip-flop fixed. Scraper default mode now 'all' \u2014 full ABC pipeline fires on every workflow run.",
       "features": [
-        { "name": "Workflow triggers on push to main + weekly + monthly cron", "status": "done" },
-        { "name": "ABC scraper + backfill + data processor + AI analyst steps", "status": "done" },
-        { "name": "Vite build + gh-pages deploy", "status": "done" },
-        { "name": "CNAME flip-flop removed (clean deploys from 2026-04-24)", "status": "done" },
-        { "name": "Scraper default mode 'position' → 'all' (covers all 5 ABC report types)", "status": "done" },
-        { "name": "Slack/email alert on workflow failure", "status": "todo" }
+        {
+          "name": "Workflow triggers on push to main + weekly + monthly cron",
+          "status": "done"
+        },
+        {
+          "name": "ABC scraper + backfill + data processor + AI analyst steps",
+          "status": "done"
+        },
+        {
+          "name": "Vite build + gh-pages deploy",
+          "status": "done"
+        },
+        {
+          "name": "CNAME flip-flop removed (clean deploys from 2026-04-24)",
+          "status": "done"
+        },
+        {
+          "name": "Scraper default mode 'position' \u2192 'all' (covers all 5 ABC report types)",
+          "status": "done"
+        },
+        {
+          "name": "Slack/email alert on workflow failure",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -835,11 +1973,17 @@
       "name": "Multi-AI Council",
       "category": "ai",
       "percent": 15,
-      "icon": "🏛️",
+      "icon": "\ud83c\udfdb\ufe0f",
       "description": "Claude primary; GPT + Gemini council voting deferred post-launch",
       "features": [
-        { "name": "Claude API fully integrated", "status": "done" },
-        { "name": "GPT + Gemini council", "status": "todo" }
+        {
+          "name": "Claude API fully integrated",
+          "status": "done"
+        },
+        {
+          "name": "GPT + Gemini council",
+          "status": "todo"
+        }
       ]
     },
     {
@@ -847,45 +1991,157 @@
       "name": "Portals (BRM/SRM)",
       "category": "future",
       "percent": 5,
-      "icon": "🏬",
-      "description": "Customer/Supplier/Broker portals — post launch",
+      "icon": "\ud83c\udfec",
+      "description": "Customer/Supplier/Broker portals \u2014 post launch",
       "features": []
     }
   ],
   "milestones": [
-    { "date": "2026-04-23", "text": "HONESTY PASS: progress.json rewritten with accurate per-subsystem %, V1 legacy claims removed" },
-    { "date": "2026-04-23", "text": "Full live-site audit completed: 10 ABC reports mapped, 5 populated only partially, 5 not built" },
-    { "date": "2026-04-23", "text": "SW killer deployed to index.html + 404.html (V1 cache fix)" },
-    { "date": "2026-04-23", "text": "All 4 edge functions redeployed from V2 GitHub source (Lovable fully cut)" },
-    { "date": "2026-04-23", "text": "cropsintel.net 301 redirect to cropsintel.com configured" },
-    { "date": "2026-04-22", "text": "WhatsApp login deployed — 4 auth methods live" },
-    { "date": "2026-04-22", "text": "Forgot Password + Reset flow + admin role enforcement complete" },
-    { "date": "2026-04-22", "text": "65 V1 users migrated to V2 Supabase" },
-    { "date": "2026-04-22", "text": "cropsintel.com DNS cutover complete — domain live on GitHub Pages" },
-    { "date": "2026-04-21", "text": "Cmd+K command palette + OG meta tags + CSV exports" },
-    { "date": "2026-04-21", "text": "Cinematic 10-slide tour on Welcome page" },
-    { "date": "2026-04-19", "text": "SOFT LAUNCH GATE REACHED — Phases 1-4 complete" },
-    { "date": "2026-04-19", "text": "CRM Phase 4: 15 issues + 12 AI enhancements shipped" },
-    { "date": "2026-04-18", "text": "Dashboard perf: 30s → 2-3s load" },
-    { "date": "2026-04-11", "text": "iOS app uploaded to TestFlight" },
-    { "date": "2026-04-10", "text": "Data integrity audit: 114 PDFs, 116 rows clean" },
-    { "date": "2026-04-08", "text": "Phase 3 AI Systems complete — all 4 edge functions live" },
-    { "date": "2026-03-28", "text": "Phase 2 Stabilization — 30+ steps done" },
-    { "date": "2026-03-15", "text": "72 real ABC PDFs scraped, position-report DB rebuilt" }
+    {
+      "date": "2026-04-23",
+      "text": "HONESTY PASS: progress.json rewritten with accurate per-subsystem %, V1 legacy claims removed"
+    },
+    {
+      "date": "2026-04-23",
+      "text": "Full live-site audit completed: 10 ABC reports mapped, 5 populated only partially, 5 not built"
+    },
+    {
+      "date": "2026-04-23",
+      "text": "SW killer deployed to index.html + 404.html (V1 cache fix)"
+    },
+    {
+      "date": "2026-04-23",
+      "text": "All 4 edge functions redeployed from V2 GitHub source (Lovable fully cut)"
+    },
+    {
+      "date": "2026-04-23",
+      "text": "cropsintel.net 301 redirect to cropsintel.com configured"
+    },
+    {
+      "date": "2026-04-22",
+      "text": "WhatsApp login deployed \u2014 4 auth methods live"
+    },
+    {
+      "date": "2026-04-22",
+      "text": "Forgot Password + Reset flow + admin role enforcement complete"
+    },
+    {
+      "date": "2026-04-22",
+      "text": "65 V1 users migrated to V2 Supabase"
+    },
+    {
+      "date": "2026-04-22",
+      "text": "cropsintel.com DNS cutover complete \u2014 domain live on GitHub Pages"
+    },
+    {
+      "date": "2026-04-21",
+      "text": "Cmd+K command palette + OG meta tags + CSV exports"
+    },
+    {
+      "date": "2026-04-21",
+      "text": "Cinematic 10-slide tour on Welcome page"
+    },
+    {
+      "date": "2026-04-19",
+      "text": "SOFT LAUNCH GATE REACHED \u2014 Phases 1-4 complete"
+    },
+    {
+      "date": "2026-04-19",
+      "text": "CRM Phase 4: 15 issues + 12 AI enhancements shipped"
+    },
+    {
+      "date": "2026-04-18",
+      "text": "Dashboard perf: 30s \u2192 2-3s load"
+    },
+    {
+      "date": "2026-04-11",
+      "text": "iOS app uploaded to TestFlight"
+    },
+    {
+      "date": "2026-04-10",
+      "text": "Data integrity audit: 114 PDFs, 116 rows clean"
+    },
+    {
+      "date": "2026-04-08",
+      "text": "Phase 3 AI Systems complete \u2014 all 4 edge functions live"
+    },
+    {
+      "date": "2026-03-28",
+      "text": "Phase 2 Stabilization \u2014 30+ steps done"
+    },
+    {
+      "date": "2026-03-15",
+      "text": "72 real ABC PDFs scraped, position-report DB rebuilt"
+    }
   ],
   "accessTiers": [
-    { "id": "guest", "name": "Guest", "status": "built", "description": "5-min preview, blur after timer" },
-    { "id": "registered", "name": "Registered", "status": "built", "description": "Free account, 4 login methods" },
-    { "id": "verified", "name": "Verified", "status": "built", "description": "Admin/team can click ✓ Verify on any user in CRM Users tab — sets access_tier='verified' + stamps verified_at/verified_by. Delivers the 'verified people' promise on Welcome." },
-    { "id": "maxons", "name": "MAXONS Team", "status": "built", "description": "CRM + Trading gated, admin panel built" }
+    {
+      "id": "guest",
+      "name": "Guest",
+      "status": "built",
+      "description": "5-min preview, blur after timer"
+    },
+    {
+      "id": "registered",
+      "name": "Registered",
+      "status": "built",
+      "description": "Free account, 4 login methods"
+    },
+    {
+      "id": "verified",
+      "name": "Verified",
+      "status": "built",
+      "description": "Admin/team can click \u2713 Verify on any user in CRM Users tab \u2014 sets access_tier='verified' + stamps verified_at/verified_by. Delivers the 'verified people' promise on Welcome."
+    },
+    {
+      "id": "maxons",
+      "name": "MAXONS Team",
+      "status": "built",
+      "description": "CRM + Trading gated, admin panel built"
+    }
   ],
   "nextPriorities": [
-    { "id": 1, "title": "LAUNCH: data correctness walkthrough", "color": "#ef4444", "description": "Navigate every page, verify numbers match data, fix wrong counts/formulas/labels. First launch-blocker per user pivot 2026-04-24." },
-    { "id": 2, "title": "LAUNCH: Welcome promises ↔ reality alignment", "color": "#f59e0b", "description": "Every claim on Welcome + sidebar + /map must be true on live site. Fix or soften any stale boast." },
-    { "id": 3, "title": "LAUNCH: Zyra interface polish", "color": "#8b5cf6", "description": "Align Zyra with the 'AI that speaks, thinks, advises like a senior trader' Welcome promise. Prompts, responses, prescriptions." },
-    { "id": 4, "title": "LAUNCH: CRM reconcile invited→joined", "color": "#22c55e", "description": "When a bulk-invited recipient registers, auto-upgrade their crm_contacts.metadata.invite_status to 'joined'." },
-    { "id": 5, "title": "LAUNCH: F1b SMTP edge function", "color": "#3b82f6", "description": "Unlocks bulk-invite email leg + V2 upgrade email to 65 users." },
-    { "id": 6, "title": "LAUNCH: V1 login live verification", "color": "#10b981", "description": "Test the V1 returning-user popup end-to-end on live cropsintel.com with a real V1 account." },
-    { "id": 7, "title": "DEFERRED (Phase 7 vision): BRM offers / SRM shipments / commodity migration / trade lifecycle / social network / Atlas autonomous", "color": "#6b7280", "description": "Scaffolds shipped 2026-04-24 night (routes + libs + docs on /map) but NOT launch-critical. Post-launch work." }
+    {
+      "id": 1,
+      "title": "LAUNCH: data correctness walkthrough",
+      "color": "#ef4444",
+      "description": "Navigate every page, verify numbers match data, fix wrong counts/formulas/labels. First launch-blocker per user pivot 2026-04-24."
+    },
+    {
+      "id": 2,
+      "title": "LAUNCH: Welcome promises \u2194 reality alignment",
+      "color": "#f59e0b",
+      "description": "Every claim on Welcome + sidebar + /map must be true on live site. Fix or soften any stale boast."
+    },
+    {
+      "id": 3,
+      "title": "LAUNCH: Zyra interface polish",
+      "color": "#8b5cf6",
+      "description": "Align Zyra with the 'AI that speaks, thinks, advises like a senior trader' Welcome promise. Prompts, responses, prescriptions."
+    },
+    {
+      "id": 4,
+      "title": "LAUNCH: CRM reconcile invited\u2192joined",
+      "color": "#22c55e",
+      "description": "When a bulk-invited recipient registers, auto-upgrade their crm_contacts.metadata.invite_status to 'joined'."
+    },
+    {
+      "id": 5,
+      "title": "LAUNCH: F1b SMTP edge function",
+      "color": "#3b82f6",
+      "description": "Unlocks bulk-invite email leg + V2 upgrade email to 65 users."
+    },
+    {
+      "id": 6,
+      "title": "LAUNCH: V1 login live verification",
+      "color": "#10b981",
+      "description": "Test the V1 returning-user popup end-to-end on live cropsintel.com with a real V1 account."
+    },
+    {
+      "id": 7,
+      "title": "DEFERRED (Phase 7 vision): BRM offers / SRM shipments / commodity migration / trade lifecycle / social network / Atlas autonomous",
+      "color": "#6b7280",
+      "description": "Scaffolds shipped 2026-04-24 night (routes + libs + docs on /map) but NOT launch-critical. Post-launch work."
+    }
   ]
 }
