@@ -283,7 +283,7 @@ export default function Welcome() {
                 </div>
                 <div ref={countriesRef} className="bg-gray-900/60 border border-gray-800/60 rounded-xl p-4 sm:p-5">
                   <p className="text-2xl sm:text-3xl font-bold text-white">{countriesCount}+</p>
-                  <p className="text-[11px] text-gray-500 mt-1">Countries Tracked</p>
+                  <p className="text-[11px] text-gray-500 mt-1">Export Markets</p>
                 </div>
               </div>
             </HeroReveal>

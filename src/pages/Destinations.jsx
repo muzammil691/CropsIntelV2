@@ -355,17 +355,35 @@ export default function Destinations() {
         </ChartCard>
 
         <ChartCard title="Monthly Export vs Domestic" subtitle={`${selectedCropYear} — monthly shipment trend`} insight="Monthly patterns reveal seasonal demand waves. Export shipments typically peak Oct-Dec as international buyers stock up for holiday seasons and Ramadan preparation. Domestic demand tends to be steadier. If export bars suddenly drop mid-season, it could signal trade disruption or currency headwinds.">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={monthlyExpDom}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-              <XAxis dataKey="label" tick={{ fill: '#6b7280', fontSize: 11 }} />
-              <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={v => (v / 1e6).toFixed(0) + 'M'} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="export" name="Export" fill={COLORS.blue} fillOpacity={0.7} stackId="a" />
-              <Bar dataKey="domestic" name="Domestic" fill={COLORS.green} fillOpacity={0.7} stackId="a" />
-            </BarChart>
-          </ResponsiveContainer>
+          {(() => {
+            const monthsWithData = monthlyExpDom.filter(m => (m.export || 0) + (m.domestic || 0) > 0).length;
+            const sparse = monthsWithData > 0 && monthsWithData < 6;
+            return (
+              <>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={monthlyExpDom}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                    <XAxis dataKey="label" tick={{ fill: '#6b7280', fontSize: 11 }} />
+                    <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={v => (v / 1e6).toFixed(0) + 'M'} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="export" name="Export" fill={COLORS.blue} fillOpacity={0.7} stackId="a" />
+                    <Bar dataKey="domestic" name="Domestic" fill={COLORS.green} fillOpacity={0.7} stackId="a" />
+                  </BarChart>
+                </ResponsiveContainer>
+                {sparse && (
+                  <div className="mt-2 text-[11px] text-amber-400/80 bg-amber-500/5 border border-amber-500/20 rounded-md px-3 py-2">
+                    Only {monthsWithData} of 12 months have data for {selectedCropYear}. Modeled coverage is partial for this crop year — real ABC shipment PDFs fill in when Phase B2 scraper loop completes its next cycle.
+                  </div>
+                )}
+                {monthsWithData === 0 && (
+                  <div className="mt-2 text-[11px] text-gray-500 bg-gray-800/40 border border-gray-700/40 rounded-md px-3 py-2">
+                    No monthly shipment data loaded yet for {selectedCropYear}.
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </ChartCard>
       </div>
 
