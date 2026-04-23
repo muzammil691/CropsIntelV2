@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-24T15:30:00Z",
-  "updatedBy": "Claude AI — Dashboard ShipmentTrend window toggle (3y/5y/All) shipped. Closes markedForLater:dashboard-widget-filters. Applying workaround-not-wait pattern — every 'polish later' item is a candidate for 15-min implementation, not a blocker.",
+  "lastUpdated": "2026-04-24T15:45:00Z",
+  "updatedBy": "Claude AI — ABC_SCRAPE_LIMIT env var exposed. User can trigger historical shipment+receipt backfill with one CLI arg (no code change). 4 markedForLater items now have concrete workarounds: email→intel@cropsintel.com+queue, zyra-multilingual→5 langs, dashboard-filters→3y/5y/All toggle, shipment-scraper→env var.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 94,
   "launchFindings": [
@@ -80,7 +80,7 @@
     {
       "id": "abc-shipment-scraper",
       "item": "Real ABC shipment PDF parser (destinations backfill) — currently seeded/modeled",
-      "currentWorkaround": "Modeled-data disclaimer banner + sparse-month notice on /destinations",
+      "currentWorkaround": "Shipment + receipt parsers piggy-back position-PDF downloads in abc-scraper.js (B1 skip-bug + table-name fixed). ABC_SCRAPE_LIMIT env var now exposed (default 5) so user can trigger a historical backfill via `ABC_SCRAPE_LIMIT=200 node src/scrapers/abc-scraper.js` in one shot. Modeled-data banner + sparse-month notice in place until backfill runs.",
       "markedDate": "2026-04-24",
       "category": "data"
     },

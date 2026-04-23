@@ -361,7 +361,13 @@ export async function scrapeABC() {
   //    fetch yields all three record types.
   let shipmentTotalInserted = 0;
   let receiptTotalInserted = 0;
-  for (const pdfUrl of positionPDFs.slice(0, 5)) { // Process up to 5 at a time
+  // Processing cap: default 5 for incremental runs, override via env for backfills.
+  // e.g. ABC_SCRAPE_LIMIT=50 node src/scrapers/run-scraper.js to sweep historical
+  // shipment + receipt data from cached position PDFs. The skip-bug fix in Phase B1
+  // ensures re-processing already-stored position reports still runs the shipment
+  // + receipt extractors (which are idempotent via UNIQUE constraints).
+  const PROCESSING_CAP = Number(process.env.ABC_SCRAPE_LIMIT) || 5;
+  for (const pdfUrl of positionPDFs.slice(0, PROCESSING_CAP)) {
     const pdfBuffer = await downloadPDF(pdfUrl);
     if (!pdfBuffer) continue;
 
