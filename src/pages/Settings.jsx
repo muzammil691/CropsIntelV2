@@ -1287,7 +1287,7 @@ export default function Settings() {
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3">
             <p className="text-[10px] text-gray-500 uppercase">ABC Reports</p>
-            <p className="text-sm text-white font-medium mt-1">116 Monthly</p>
+            <p className="text-sm text-white font-medium mt-1">106 Monthly</p>
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ export function getV2UpgradeWhatsAppMessage(contactName = '') {
     `🌰 *CropsIntel V2 is Live!*\n\n` +
     `We're excited to announce the launch of CropsIntel Version 2 — a complete rebuild of our almond market intelligence platform.\n\n` +
     `*What's New:*\n` +
-    `• Real ABC Position & Shipment data (9 crop years)\n` +
+    `• Real ABC Position & Shipment data (11 crop years)\n` +
     `• Live Strata pricing with MAXONS margins\n` +
     `• Zyra AI — your intelligent trading analyst\n` +
     `• CRM & Deal tracking for buyers/suppliers\n` +
@@ -67,7 +67,7 @@ export function getV2UpgradeEmailHTML(recipientName = 'Valued Partner') {
         <div style="background:#1a1a2e;border-radius:8px;padding:16px;">
           <div style="font-size:20px;margin-bottom:6px;">📊</div>
           <div style="color:#d4b16a;font-weight:bold;font-size:13px;margin-bottom:4px;">Real ABC Data</div>
-          <div style="color:#8892b0;font-size:12px;">9 crop years of verified position, shipment, and receipt data</div>
+          <div style="color:#8892b0;font-size:12px;">11 crop years of verified position, shipment, and receipt data</div>
         </div>
       </td>
       <td width="50%" style="padding:8px;vertical-align:top;">
@@ -155,7 +155,7 @@ export function getV2UpgradeEmailText(recipientName = 'Valued Partner') {
     `CropsIntel V2 is Live!\n\n` +
     `We're thrilled to announce CropsIntel Version 2 — a ground-up rebuild of our almond market intelligence platform.\n\n` +
     `What's New:\n` +
-    `- Real ABC Data: 9 crop years of verified position, shipment, and receipt data\n` +
+    `- Real ABC Data: 11 crop years of verified position, shipment, and receipt data\n` +
     `- Zyra AI Analyst: AI-powered market analysis with learning memory\n` +
     `- Live Pricing: Strata market prices with MAXONS margin calculator\n` +
     `- Global Trade Maps: Destination analysis for 80+ export markets\n` +
