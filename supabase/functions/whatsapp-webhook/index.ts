@@ -15,6 +15,7 @@ const TWILIO_WHATSAPP_FROM = Deno.env.get('TWILIO_WHATSAPP_FROM') || '+123456226
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') || '';
+const ADMIN_WHATSAPP = (Deno.env.get('ADMIN_WHATSAPP') || '+971527854447').trim();
 
 console.log('[whatsapp-webhook] boot', {
   hasTwilioSid: !!TWILIO_ACCOUNT_SID,
@@ -368,6 +369,96 @@ serve(async (req) => {
     });
 
     const lowerMsg = incomingBody.toLowerCase().trim();
+
+    // ─── Auto Dev Mode · admin-phone branch ────────────
+    // If the message is from the admin (+971527854447) AND there's an open autodev_questions
+    // row, parse the reply as a numbered option OR free text and close the question.
+    // Admin can also send commands: `status`, `tasks`, `cancel <ref>`.
+    if (from === ADMIN_WHATSAPP || from === `+${ADMIN_WHATSAPP.replace(/^\+/, '')}`) {
+      try {
+        // Admin commands (don't need an open question)
+        if (lowerMsg === 'status' || lowerMsg === 's') {
+          const { data: live } = await supabase.from('autodev_live').select('*').single();
+          const { data: openQs } = await supabase
+            .from('autodev_questions').select('id, question, asked_at, priority')
+            .eq('status', 'open').order('asked_at', { ascending: false }).limit(5);
+          let reply = `📊 *Auto Dev Status*\n\n`;
+          reply += `State: *${live?.state || 'unknown'}*\n`;
+          reply += `Worker: ${live?.worker_type || '-'}\n`;
+          reply += `Current task: ${live?.current_task_title || '(none)'}\n`;
+          reply += `Heartbeat age: ${live?.seconds_since_heartbeat ?? '?'}s\n`;
+          reply += `Tasks in progress: ${live?.tasks_in_progress ?? 0}\n`;
+          reply += `Open questions: ${openQs?.length || 0}\n`;
+          if (openQs && openQs.length) {
+            reply += `\n*Pending:*\n`;
+            openQs.forEach((q: any, i: number) => {
+              reply += `${i + 1}. [${q.priority}] ${q.question.slice(0, 80)}${q.question.length > 80 ? '…' : ''}\n`;
+            });
+          }
+          await sendReply(from, reply);
+          return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+            headers: { 'Content-Type': 'text/xml' },
+          });
+        }
+
+        // Find most recent open question
+        const { data: openQ } = await supabase
+          .from('autodev_questions')
+          .select('*')
+          .eq('status', 'open')
+          .order('asked_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (openQ) {
+          // Try to parse as numbered option first
+          let answerKey: string | null = null;
+          let answerText: string | null = null;
+          const digitMatch = incomingBody.trim().match(/^(\d+)[\s.:)\-]*(.*)$/);
+          if (digitMatch && openQ.options && Array.isArray(openQ.options)) {
+            const idx = parseInt(digitMatch[1], 10) - 1;
+            if (idx >= 0 && idx < openQ.options.length) {
+              answerKey = openQ.options[idx].key || String(idx + 1);
+              answerText = openQ.options[idx].label;
+            }
+          }
+          // If no numbered match, treat whole body as free text
+          if (!answerKey && !answerText) {
+            answerText = incomingBody.trim();
+          }
+
+          await supabase
+            .from('autodev_questions')
+            .update({
+              status: 'answered',
+              answer_key: answerKey,
+              answer_text: answerText,
+              answered_at: new Date().toISOString(),
+              answered_by_phone: from,
+              whatsapp_reply_sid: messageSid,
+            })
+            .eq('id', openQ.id);
+
+          // Bump heartbeat
+          await supabase.rpc('autodev_heartbeat', {
+            p_state: 'working',
+            p_worker_type: 'admin-reply',
+          });
+
+          const confirm = `✅ *Got it.*\n\nAnswer recorded for _"${openQ.question.slice(0, 60)}${openQ.question.length > 60 ? '…' : ''}"_\n` +
+            (answerKey ? `Option: *${answerKey}* — ${answerText}` : `Your answer: ${answerText?.slice(0, 200) || ''}`) +
+            `\n\nI'll resume next tick. Send *status* for current state.`;
+          await sendReply(from, confirm);
+
+          return new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
+            headers: { 'Content-Type': 'text/xml' },
+          });
+        }
+      } catch (adminErr) {
+        console.error('[autodev admin branch]', adminErr);
+        // fall through to normal flows
+      }
+    }
 
     // ─── Check if this is an OTP response ─────────────
     if (/^\d{6}$/.test(lowerMsg)) {
