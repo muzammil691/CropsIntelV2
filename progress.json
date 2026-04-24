@@ -1,6 +1,7 @@
 {
-  "lastUpdated": "2026-04-25T14:20:00Z",
-  "updatedBy": "Claude AI \u2014 team-invite bug hunt: (1) WhatsApp silently dropped because invite_team/invite_supplier templates not Meta-approved \u2014 funneled all roles through approved invite_buyer. (2) Email-send 502-ing at edge runtime from denomailer/Deno Deploy TCP incompatibility \u2014 SMTP path disabled (require SMTP_ENABLE=1 opt-in) so emails queue reliably. (3) email_queue table created in prod, queueEmail() column names aligned. (4) New 'Pending Invitations' admin panel in Settings shows outbound invites with per-channel delivery status + Copy/Resend/Revoke actions. (5) message_sid vs sid field mismatch in send-team-invite fixed.",
+  "lastUpdated": "2026-04-25T16:00:00Z",
+  "updatedBy": "Claude AI \u2014 Trade Hub foundation (docs + migration + role expansion + team first-login fix). (1) Canonical spec preserved as docs/TRADE_HUB_SPEC_v1.md (1405 lines, 20 sections verbatim from user). (2) Gap analysis docs/TRADE_HUB_CROSSWALK_v1.md (portal / profile / role / offer cross-walks + per-page buckets). (3) supabase/migrations/20260425_trade_hub_foundation.sql APPLIED to prod: extended user_profiles with counterparty fields (legal_entity_name, tax/vat/trade_license, addresses JSONB, region auto-derived, payment/incoterm/currency prefs, kyc_status CHECK, sanctions_screening, historical_performance JSONB, assigned_account_manager, assigned_procurement_officer, authority_tier 1-4 + override, counterparty_type CHECK, portal CHECK, onboarded_as_role); seeded entities table with MGT + MIX (spec \u00a71.3); added offers table with 5-source-type CHECK (spec \u00a73); added contract_number_counters + mint_contract_number() minting MGT-SAL-PAK-2026-NNNN format (spec \u00a75). Verified on prod: mint_contract_number returns 0001, 0002. (4) Settings ALL_ROLES expanded to 14 internal + 6 external spec roles in 4 optgroups (Trading / Value Chain / External / Maxons Internal), \u2728 marker on spec roles. (5) App.jsx sidebar profile-loading race fix: ADMIN_ROLES/TEAM_ROLES/ROLE_PRIORITY extended to all 14+6 spec roles; skeleton placeholder when profile still loading; no more silent buyer fallback. (6) AcceptInvite adds onboarded_as_role on upsert, pre-fetches profile post-signIn, passes rich state (welcomeMessage/justOnboardedAs/tier/isTeamInvite/signInSucceeded). (7) Dashboard renders InviteWelcomeBanner with team-tool links for team invitees, single-line welcome for buyers, amber fallback if sign-in failed. USER directive 2026-04-25: V2 scope narrowed to Welcome\u2192CRM; full Trade Hub lifecycle moves to V3 / Phase 7+ (11-month roadmap). Pausing for V2-up-to-CRM gap-analysis discussion per user request.",
+  "v2Scope": "Welcome \u2192 CRM (full polish). Trade Hub full lifecycle (4 portals, offers/deals/contracts/shipments/payments, per-entity ledgers, WhatsApp catalogue, 6 shipment modes) = V3 / Phase 7+. Per user directive 2026-04-25.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 68,
   "launchReadinessPercent": 95,
@@ -559,6 +560,50 @@
   "blockers": [],
   "markedForLater": [
     {
+      "id": "trade-hub-foundation-landed",
+      "item": "Trade Hub Foundation (Phase 7 / V3 anchor): canonical spec doc + cross-walk + DB migration + role expansion + team first-login fix.",
+      "currentWorkaround": "LANDED 2026-04-25. (1) docs/TRADE_HUB_SPEC_v1.md preserves the 20-section 1405-line canonical blueprint verbatim. (2) docs/TRADE_HUB_CROSSWALK_v1.md maps spec \u00a71/2/3/5/12 to current V2 per-page. (3) supabase/migrations/20260425_trade_hub_foundation.sql APPLIED to prod: user_profiles gains counterparty master (legal_entity_name, tax/vat/trade_license, addresses JSONB, region auto-derived, payment/incoterm/currency prefs, kyc_status CHECK, sanctions_screening, historical_performance, assigned_account_manager, assigned_procurement_officer, authority_tier 1-4, counterparty_type CHECK, portal CHECK, onboarded_as_role); entities table seeded with MGT + MIX; offers table with 5-source-type CHECK; mint_contract_number() minting MGT-SAL-PAK-YYYY-NNNN verified 0001\u21920002 on prod. (4) Settings ALL_ROLES expanded to 14 internal + 6 external spec roles in 4 optgroups. (5) App.jsx profile-loading race fixed: TEAM_ROLES/ROLE_PRIORITY extended; skeleton placeholder while profile loads so team invitee's first login sees team sidebar. (6) AcceptInvite passes onboarded_as_role + rich state to Dashboard; Dashboard InviteWelcomeBanner renders team-tool link cards for team invitees.",
+      "markedDate": "2026-04-25",
+      "resolvedDate": "2026-04-25",
+      "category": "foundation",
+      "status": "shipped",
+      "priority": "launch-critical",
+      "filesShipped": [
+        "docs/TRADE_HUB_SPEC_v1.md",
+        "docs/TRADE_HUB_CROSSWALK_v1.md",
+        "supabase/migrations/20260425_trade_hub_foundation.sql",
+        "src/pages/Settings.jsx",
+        "src/App.jsx",
+        "src/pages/AcceptInvite.jsx",
+        "src/pages/Dashboard.jsx"
+      ],
+      "prodDbState": {
+        "user_profiles_extended": true,
+        "entities_seeded": "MGT + MIX",
+        "offers_table_created": true,
+        "mint_contract_number_function": true,
+        "verified_output": "MGT-SAL-PAK-2026-0001 \u2192 MGT-SAL-PAK-2026-0002"
+      },
+      "unblocksWhenShipped": [
+        "Team invitees arrive at dashboard and immediately see team-scoped sidebar (no buyer-role flash)",
+        "Admin can assign any of the 14 internal + 6 external spec roles at invite time",
+        "Counterparty-master fields on user_profiles now capture the data V3 Trade Hub needs without schema churn later",
+        "Contract numbering format ready for first V3 deal (zero-config)",
+        "Offers table stub present \u2014 V3 deal-creation edge fns can write today"
+      ],
+      "userDirective_v2_scope_boundary": "2026-04-25: User narrowed V2 scope to Welcome\u2192CRM. Full Trade Hub lifecycle (4 portals, deals/contracts/shipments/payments, per-entity ledgers, WhatsApp catalogue, 6 shipment modes) = V3 / Phase 7+. Next action: pause for V2-up-to-CRM gap analysis discussion before executing further.",
+      "v3FullScopeRemaining": [
+        "4 portals (buyer / seller / broker / admin) with hermetic info walls",
+        "deals table (offer \u2192 deal \u2192 contract \u2192 shipment \u2192 payment lifecycle)",
+        "contracts table with interactive WhatsApp e-sign flow",
+        "shipments table with 6 mode support (FCL / LCL / bulk vessel / container train / truck / air)",
+        "payments + per-entity ledger (MGT books / MIX books)",
+        "ERP bridge (QuickBooks / Zoho / Xero)",
+        "ADELA orchestrator (cross-portal intelligence layer)",
+        "ATLAS self-dev brain (founder-gated autonomous code pipeline)"
+      ]
+    },
+    {
       "id": "team-invite-flow-end-to-end",
       "item": "Team member invitation flow: admin Settings \u2192 link sent via email + WhatsApp \u2192 invitee sets password + completes job profile",
       "currentWorkaround": "SHIPPED 2026-04-25 via commit f584a46. Old handleAddUser() in Settings created a zombie auth.users row with a random UUID password the invitee never saw (no email, no WhatsApp, zero awareness). New flow: send-team-invite edge fn writes team_invitations row (UUID token, 14-day TTL), delivers via email-send AND whatsapp-send (invite_buyer/supplier/broker/team approved templates via Content API, freeform fallback inside 24h window). Invitee clicks /accept-invite?t=<uuid> \u2192 3-step wizard (confirm identity, set password, job details) \u2192 auth.signUp + user_profiles upsert (role+tier from invitation + job_title + job_description + expertise tags + languages + invited_via FK) \u2192 invitation marked accepted. Migration 20260425_team_invitations.sql applied to prod (team_invitations table + extended user_profiles with job_title/job_description/expertise/languages/invited_via/onboarded_at).",
@@ -807,6 +852,24 @@
     }
   ],
   "recentCommits": [
+    {
+      "sha": "pending-trade-hub-foundation",
+      "date": "2026-04-25",
+      "subject": "trade-hub: foundation (spec + crosswalk + migration + 14 internal + 6 external roles + team first-login fix)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "a101660",
+      "date": "2026-04-25",
+      "subject": "team-invite: fix silent drop (WhatsApp template funnel + email-send 502 + pending panel)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "f584a46",
+      "date": "2026-04-25",
+      "subject": "team-invite: end-to-end invitation flow (migration + edge fn + AcceptInvite page)",
+      "author": "Claude AI"
+    },
     {
       "sha": "092ef88",
       "date": "2026-04-24",
@@ -1107,10 +1170,10 @@
     },
     {
       "id": 7,
-      "name": "Vision Alignment (from April 16 Handoff)",
+      "name": "Trade Hub Foundation (V3 anchor)",
       "status": "active",
-      "percent": 5,
-      "summary": "User shared full vision doc 2026-04-24 night. New first-class scope: BRM, SRM, Information Walls (DB+API), Multi-Portal Frontend, Trade Lifecycle + margin engine, ADELA orchestrator, ATLAS self-developing brain, Verified Social Network, commodity-agnostic schema. Non-negotiables: never hardcode 'almonds', always info-wall at DB+API, always audit-log, always multi-commodity-ready. Night-shift plan 10 blocks queued; nightShiftPlan object above."
+      "percent": 15,
+      "summary": "Spec + migration foundation landed 2026-04-25. docs/TRADE_HUB_SPEC_v1.md preserves the 20-section canonical blueprint verbatim (4 portals / 2+ entities / 5 offer source types / 14 internal + 6 external roles / 4 authority tiers / full deal\u2192contract\u2192shipment\u2192payment lifecycle). docs/TRADE_HUB_CROSSWALK_v1.md maps spec \u00a71/2/3/5/12 to current V2 state with per-page enhancement buckets. supabase/migrations/20260425_trade_hub_foundation.sql applied to prod: counterparty-master fields on user_profiles, entities table (MGT+MIX seeded), offers table with 5-source-type CHECK, contract_number_counters + mint_contract_number() returning MGT-SAL-PAK-YYYY-NNNN. Settings role picker surfaces all 14+6 spec roles. App.jsx profile-loading race fixed so team invitees see team sidebar on first login. Non-negotiables enforced: never hardcode 'almonds', info-wall at DB+API, audit-log, multi-commodity-ready. Remaining scope (deferred to V3): 4-portal split, deals/contracts/shipments/payments tables, WhatsApp catalogue, 6 shipment modes, per-entity ledgers, ERP bridge, ADELA orchestrator, ATLAS self-dev."
     },
     {
       "id": 8,
@@ -2759,6 +2822,16 @@
     }
   ],
   "subsystems": {
+    "trade-hub-spec-canonical": 100,
+    "trade-hub-crosswalk": 100,
+    "trade-hub-foundation-migration": 100,
+    "counterparty-master-fields": 100,
+    "entities-table-seeded": 100,
+    "contract-number-minter": 100,
+    "offers-table-stub": 40,
+    "roles-14-internal-6-external": 100,
+    "team-first-login-fix": 100,
+    "invite-welcome-banner": 100,
     "team-user-mgmt": 100,
     "widget-interactivity": 96,
     "offers-multi-product": 90,
