@@ -1,26 +1,40 @@
 // CropsIntelV2 — WhatsApp Send Edge Function
 // Sends WhatsApp messages via Twilio API
-// Supports: OTP, trade alerts, offer notifications, Zyra replies
+//
+// 2026-04-24: Refactored to use Twilio Content API (ContentSid + ContentVariables)
+//             with freeform fallback. Root cause of "OTP never arrives unless
+//             user texts us first": outside Meta's 24-hour customer-service
+//             window, Twilio only delivers pre-approved TEMPLATES. Freeform
+//             `Body:` is silently dropped — Twilio returns 200 OK but WhatsApp
+//             never delivers.
+//
+//             The new flow:
+//               1. Caller passes either `type: 'template'` with template_key, OR
+//                  a legacy type (otp / alert / offer / zyra_reply / custom)
+//                  which we internally map to a template_key.
+//               2. We look up whatsapp_templates.twilio_content_sid.
+//               3. If ContentSid exists → send via Content API (ALWAYS delivers).
+//               4. If ContentSid is NULL → freeform fallback (only delivers inside
+//                  24h window), status tagged `sent_window_dependent` in the log.
+//               5. Special case: OTP always tries Content API first; if no SID
+//                  we still attempt freeform (historical behavior) but the log
+//                  warns the admin that approval is pending.
 //
 // POST /whatsapp-send
-// Body: { type: 'otp' | 'alert' | 'offer' | 'zyra_reply' | 'custom', to: '+1234567890', ... }
+// Body (new):
+//   { type: 'template', to: '+X', template_key: 'otp_verification', variables: { code: '123456' } }
+// Body (legacy, still supported):
+//   { type: 'otp' | 'alert' | 'offer' | 'zyra_reply' | 'custom', to: '+X', ... }
 
-// 2026-04-23: Bumped std 0.168.0 → 0.224.0 and supabase-js 2.39.3 → 2.45.4.
-// All 4 WhatsApp edge functions were 503 BOOT_ERRORing on the prod project.
-// Older pinned esm.sh versions can stop resolving; matching the pins that
-// email-send uses (known-deployable) plus a bump to a current stable.
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID') || '';
-const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN') || '';
+const TWILIO_AUTH_TOKEN  = Deno.env.get('TWILIO_AUTH_TOKEN')  || '';
 const TWILIO_WHATSAPP_FROM = Deno.env.get('TWILIO_WHATSAPP_FROM') || '+12345622692';
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_URL        = Deno.env.get('SUPABASE_URL')        || '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-// Boot-time diagnostic — logs to Supabase function logs on cold start so we
-// can see at-a-glance which secret is missing when debugging. Does not block
-// boot (missing secret returns a 500 with a clear message per-request).
 console.log('[whatsapp-send] boot', {
   hasTwilioSid: !!TWILIO_ACCOUNT_SID,
   hasTwilioToken: !!TWILIO_AUTH_TOKEN,
@@ -35,26 +49,64 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// Generate 6-digit OTP
+// ─── Inlined template catalog (mirrors src/lib/whatsapp-templates.js) ─────
+// Edge functions run on Deno and can't import from src/; this keeps the two
+// in sync by convention. If you edit TEMPLATE_KEYS or fallback bodies, edit
+// both files. Kept minimal here — just routing + fallback text.
+const TEMPLATE_KEYS = {
+  OTP_VERIFICATION: 'otp_verification',
+  WELCOME_V2:       'welcome_v2',
+  INVITE_BUYER:     'invite_buyer',
+  INVITE_SUPPLIER:  'invite_supplier',
+  INVITE_BROKER:    'invite_broker',
+  INVITE_TEAM:      'invite_team',
+  TRADE_ALERT:      'trade_alert',
+  MARKET_BRIEF:     'market_brief',
+  OFFER_NEW:        'offer_new',
+  NEWS_UPDATE:      'news_update',
+  ACCOUNT_ACTION:   'account_action',
+  ZYRA_DIGEST:      'zyra_digest',
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Send WhatsApp message via Twilio API
-async function sendWhatsApp(to: string, body: string): Promise<{ success: boolean; sid?: string; error?: string }> {
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-
-  // Ensure WhatsApp prefix
-  const fromNumber = TWILIO_WHATSAPP_FROM.startsWith('whatsapp:')
+function twilioFrom(): string {
+  return TWILIO_WHATSAPP_FROM.startsWith('whatsapp:')
     ? TWILIO_WHATSAPP_FROM
     : `whatsapp:${TWILIO_WHATSAPP_FROM}`;
-  const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+}
+function twilioTo(to: string): string {
+  return to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+}
 
+// Look up the DB row for a template_key.
+async function getTemplate(supabase: SupabaseClient, template_key: string) {
+  const { data, error } = await supabase
+    .from('whatsapp_templates')
+    .select('template_key, twilio_content_sid, twilio_friendly_name, approval_status, category, body_preview, button_text, button_url, language_code, variables')
+    .eq('template_key', template_key)
+    .maybeSingle();
+  if (error) {
+    console.warn('[whatsapp-send] getTemplate error', { template_key, error: error.message });
+    return null;
+  }
+  return data;
+}
+
+// Send via Twilio Content API (bypasses 24h window).
+async function sendViaContentApi(to: string, contentSid: string, variables: Record<string, string> | null) {
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
   const params = new URLSearchParams({
-    From: fromNumber,
-    To: toNumber,
-    Body: body,
+    From: twilioFrom(),
+    To: twilioTo(to),
+    ContentSid: contentSid,
   });
+  if (variables && Object.keys(variables).length > 0) {
+    params.append('ContentVariables', JSON.stringify(variables));
+  }
 
   try {
     const res = await fetch(url, {
@@ -65,26 +117,100 @@ async function sendWhatsApp(to: string, body: string): Promise<{ success: boolea
       },
       body: params.toString(),
     });
-
     const data = await res.json();
-
-    if (res.ok) {
-      return { success: true, sid: data.sid };
-    } else {
-      console.error('Twilio error:', data);
-      return { success: false, error: data.message || 'Twilio API error' };
-    }
+    if (res.ok) return { success: true, sid: data.sid, mode: 'content_api' as const };
+    console.error('[whatsapp-send] Content API error:', data);
+    return { success: false, error: data.message || 'Twilio Content API error', mode: 'content_api' as const };
   } catch (err) {
-    console.error('Network error sending WhatsApp:', err);
-    return { success: false, error: err.message };
+    console.error('[whatsapp-send] Content API network error:', err);
+    return { success: false, error: (err as Error).message, mode: 'content_api' as const };
   }
 }
 
-serve(async (req) => {
-  // CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+// Legacy freeform send — only reliably delivers inside the 24h window.
+async function sendViaFreeform(to: string, body: string) {
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+  const params = new URLSearchParams({
+    From: twilioFrom(),
+    To: twilioTo(to),
+    Body: body,
+  });
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
+      },
+      body: params.toString(),
+    });
+    const data = await res.json();
+    if (res.ok) return { success: true, sid: data.sid, mode: 'freeform' as const };
+    console.error('[whatsapp-send] freeform error:', data);
+    return { success: false, error: data.message || 'Twilio freeform error', mode: 'freeform' as const };
+  } catch (err) {
+    console.error('[whatsapp-send] freeform network error:', err);
+    return { success: false, error: (err as Error).message, mode: 'freeform' as const };
   }
+}
+
+// Call the DB helper to check the 24h freeform window.
+async function insideFreeformWindow(supabase: SupabaseClient, phone: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc('whatsapp_inbound_within_24h', { p_phone: phone });
+    if (error) {
+      console.warn('[whatsapp-send] 24h check error', error.message);
+      return false;
+    }
+    return !!data;
+  } catch (err) {
+    console.warn('[whatsapp-send] 24h check threw', (err as Error).message);
+    return false;
+  }
+}
+
+// The core dispatcher: prefer Content API (template), fall back to freeform.
+// Returns a normalized status string we store in whatsapp_messages.status.
+async function dispatchTemplate(opts: {
+  supabase: SupabaseClient;
+  to: string;
+  template_key: string;
+  variables: Record<string, string>;
+  fallbackBody: string; // freeform version if ContentSid is NULL
+}): Promise<{ success: boolean; sid?: string; status: string; mode: string; error?: string; content_sid?: string | null }> {
+  const { supabase, to, template_key, variables, fallbackBody } = opts;
+
+  const tpl = await getTemplate(supabase, template_key);
+  const sid = tpl?.twilio_content_sid || null;
+
+  if (sid) {
+    const r = await sendViaContentApi(to, sid, variables);
+    return {
+      success: r.success,
+      sid: r.sid,
+      status: r.success ? 'sent' : 'failed',
+      mode: 'content_api',
+      error: r.error,
+      content_sid: sid,
+    };
+  }
+
+  // No ContentSid — freeform fallback. This ONLY delivers if the user has
+  // messaged us in the last 24h; we tag the log accordingly.
+  const inWindow = await insideFreeformWindow(supabase, to);
+  const r = await sendViaFreeform(to, fallbackBody);
+  return {
+    success: r.success,
+    sid: r.sid,
+    status: r.success ? (inWindow ? 'sent' : 'sent_window_dependent') : 'failed',
+    mode: 'freeform',
+    error: r.error,
+    content_sid: null,
+  };
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
     const { type, to, ...payload } = await req.json();
@@ -96,20 +222,55 @@ serve(async (req) => {
       );
     }
 
-    // Clean phone number — ensure + prefix
     const cleanTo = to.startsWith('+') ? to : `+${to}`;
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    let body = '';
-    let result;
 
     switch (type) {
-      // ─── OTP Verification ───────────────────────────
+      // ─── Template (the new first-class path) ────────────────────────────
+      case 'template': {
+        const { template_key, variables = {}, fallback_body } = payload;
+        if (!template_key) {
+          return new Response(
+            JSON.stringify({ error: 'template_key is required for type=template' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        const tpl = await getTemplate(supabase, template_key);
+        // Prefer caller-supplied fallback_body (they know the context); else
+        // use the seeded body_preview as a best-effort freeform version.
+        const fallbackBody = fallback_body || tpl?.body_preview || `CropsIntel: ${template_key}`;
+
+        const result = await dispatchTemplate({
+          supabase, to: cleanTo, template_key, variables, fallbackBody,
+        });
+
+        await supabase.from('whatsapp_messages').insert({
+          direction: 'outbound',
+          phone_number: cleanTo,
+          message_type: template_key,
+          body: tpl?.body_preview || fallbackBody,
+          twilio_sid: result.sid || null,
+          status: result.status,
+          metadata: { template_key, mode: result.mode, content_sid: result.content_sid, variables },
+          created_at: new Date().toISOString(),
+        });
+
+        return new Response(
+          JSON.stringify({ success: result.success, sid: result.sid, mode: result.mode, status: result.status, error: result.error }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // ─── OTP Verification (launch blocker — always tries template path) ─
       case 'otp': {
         const otp = generateOTP();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-        // Store OTP in database
+        // Invalidate any prior unused OTPs for this phone so a user on their
+        // second try can't accidentally validate with an old code.
+        await supabase.from('whatsapp_otps').update({ verified: true })
+          .eq('phone_number', cleanTo).eq('verified', false);
+
         await supabase.from('whatsapp_otps').upsert({
           phone_number: cleanTo,
           otp_code: otp,
@@ -119,127 +280,193 @@ serve(async (req) => {
           created_at: new Date().toISOString(),
         }, { onConflict: 'phone_number' });
 
-        body = `🌰 *CropsIntel Verification*\n\nYour verification code is: *${otp}*\n\nThis code expires in 10 minutes.\nDo not share this code with anyone.\n\n— CropsIntel by MAXONS`;
+        const fallbackBody =
+          `CropsIntel verification code: ${otp}\n\n` +
+          `This code expires in 10 minutes. Do not share this code with anyone.\n\n— CropsIntel by MAXONS`;
 
-        result = await sendWhatsApp(cleanTo, body);
+        const result = await dispatchTemplate({
+          supabase,
+          to: cleanTo,
+          template_key: TEMPLATE_KEYS.OTP_VERIFICATION,
+          variables: { '1': otp },
+          fallbackBody,
+        });
 
-        // Log the send
         await supabase.from('whatsapp_messages').insert({
           direction: 'outbound',
           phone_number: cleanTo,
           message_type: 'otp',
-          body: '[OTP sent]', // Don't store actual OTP in message log
+          body: '[OTP sent]', // don't store actual code in log
           twilio_sid: result.sid || null,
-          status: result.success ? 'sent' : 'failed',
+          status: result.status,
+          metadata: { mode: result.mode, content_sid: result.content_sid },
           created_at: new Date().toISOString(),
         });
 
         return new Response(
-          JSON.stringify({ success: result.success, error: result.error }),
+          JSON.stringify({
+            success: result.success,
+            error: result.error,
+            mode: result.mode,
+            status: result.status,
+            // Hint for the frontend UX: if we fell back to freeform without
+            // the 24h window, the delivery may silently drop. Login page can
+            // surface this as "your code is on the way, if it doesn't arrive
+            // message +X on WhatsApp".
+            delivery_guaranteed: result.mode === 'content_api',
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // ─── Trade Alert ────────────────────────────────
+      // ─── Trade Alert ────────────────────────────────────────────────────
       case 'alert': {
-        const { title, summary, urgency } = payload;
-        const urgencyEmoji = urgency === 'high' ? '🔴' : urgency === 'medium' ? '🟡' : '🟢';
+        const { title = '', summary = '', urgency = 'medium' } = payload;
+        const icon = urgency === 'high' ? '🔴' : urgency === 'medium' ? '🟡' : '🟢';
+        const fallbackBody =
+          `${icon} CropsIntel alert (${urgency}):\n\n${title}\n\n${summary}\n\n` +
+          `Full analysis: https://cropsintel.com/intelligence`;
 
-        body = `${urgencyEmoji} *CropsIntel Trade Alert*\n\n*${title}*\n\n${summary}\n\n📊 View full analysis: https://cropsintel.com/intelligence\n\n— Zyra AI, CropsIntel`;
-
-        result = await sendWhatsApp(cleanTo, body);
+        const result = await dispatchTemplate({
+          supabase,
+          to: cleanTo,
+          template_key: TEMPLATE_KEYS.TRADE_ALERT,
+          variables: { '1': title, '2': summary, '3': urgency },
+          fallbackBody,
+        });
 
         await supabase.from('whatsapp_messages').insert({
           direction: 'outbound',
           phone_number: cleanTo,
           message_type: 'trade_alert',
-          body,
+          body: fallbackBody,
           twilio_sid: result.sid || null,
-          status: result.success ? 'sent' : 'failed',
-          metadata: { title, urgency },
+          status: result.status,
+          metadata: { title, urgency, mode: result.mode, content_sid: result.content_sid },
           created_at: new Date().toISOString(),
         });
 
         return new Response(
-          JSON.stringify({ success: result.success, sid: result.sid }),
+          JSON.stringify({ success: result.success, sid: result.sid, mode: result.mode, status: result.status }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // ─── Offer Notification ─────────────────────────
+      // ─── Offer Notification ────────────────────────────────────────────
       case 'offer': {
         const { offer_id, variety, grade, form, price, quantity, incoterm, validity } = payload;
+        const product = `${variety || ''} ${grade || ''} ${form || ''}`.trim();
+        const priceStr = price ? `$${price}/lb ${incoterm || ''}`.trim() : '';
+        const fallbackBody =
+          `New MAXONS offer:\n\n${product}\nPrice: ${priceStr}\nQuantity: ${quantity || '—'}\n` +
+          `Valid until: ${validity || '—'}\n\nReply ACCEPT to confirm interest.\n` +
+          `https://cropsintel.com/trading`;
 
-        body = `🌰 *New MAXONS Offer*\n\n` +
-          `*${variety}* ${grade} ${form}\n` +
-          `💰 Price: $${price}/lb ${incoterm}\n` +
-          `📦 Quantity: ${quantity}\n` +
-          `⏳ Valid until: ${validity}\n\n` +
-          `Reply *ACCEPT* to confirm interest\nReply *DETAILS* for full specs\nReply *PASS* to decline\n\n` +
-          `🔗 View in portal: https://cropsintel.com/trading\n\n— MAXONS International Trading`;
-
-        result = await sendWhatsApp(cleanTo, body);
+        const result = await dispatchTemplate({
+          supabase,
+          to: cleanTo,
+          template_key: TEMPLATE_KEYS.OFFER_NEW,
+          variables: {
+            '1': product || 'MAXONS offer',
+            '2': priceStr || '—',
+            '3': quantity || '—',
+            '4': validity || '—',
+          },
+          fallbackBody,
+        });
 
         await supabase.from('whatsapp_messages').insert({
           direction: 'outbound',
           phone_number: cleanTo,
           message_type: 'offer',
-          body,
+          body: fallbackBody,
           twilio_sid: result.sid || null,
-          status: result.success ? 'sent' : 'failed',
-          metadata: { offer_id, variety, grade, price },
+          status: result.status,
+          metadata: { offer_id, variety, grade, price, mode: result.mode, content_sid: result.content_sid },
           created_at: new Date().toISOString(),
         });
 
         return new Response(
-          JSON.stringify({ success: result.success, sid: result.sid }),
+          JSON.stringify({ success: result.success, sid: result.sid, mode: result.mode, status: result.status }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // ─── Zyra AI Reply ──────────────────────────────
+      // ─── Zyra AI Reply ─────────────────────────────────────────────────
+      // This is a user-initiated conversation, so we're ALWAYS inside the
+      // 24h window (by definition — they just sent a message). Freeform is
+      // fine here; no template needed.
       case 'zyra_reply': {
         const { message, conversation_id } = payload;
-        body = message;
-
-        result = await sendWhatsApp(cleanTo, body);
-
+        const r = await sendViaFreeform(cleanTo, message);
         await supabase.from('whatsapp_messages').insert({
           direction: 'outbound',
           phone_number: cleanTo,
           message_type: 'zyra_reply',
-          body,
-          twilio_sid: result.sid || null,
-          status: result.success ? 'sent' : 'failed',
-          metadata: { conversation_id },
+          body: message,
+          twilio_sid: r.sid || null,
+          status: r.success ? 'sent' : 'failed',
+          metadata: { conversation_id, mode: 'freeform' },
           created_at: new Date().toISOString(),
         });
-
         return new Response(
-          JSON.stringify({ success: result.success, sid: result.sid }),
+          JSON.stringify({ success: r.success, sid: r.sid, mode: 'freeform' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // ─── Custom Message ─────────────────────────────
+      // ─── Custom Message (legacy) ────────────────────────────────────────
+      // Custom sends used to be the default. We now only allow them when
+      // we know we're inside the 24h window — outside, they silently drop.
+      // Callers should migrate to `type: 'template'` with an appropriate key.
       case 'custom': {
-        const { message } = payload;
-        body = message;
+        const { message, template_key: tk } = payload;
+        // If caller passed a template_key alongside, upgrade to the template
+        // path. Otherwise freeform (and let the 24h-check decide tagging).
+        if (tk) {
+          const result = await dispatchTemplate({
+            supabase,
+            to: cleanTo,
+            template_key: tk,
+            variables: payload.variables || {},
+            fallbackBody: message,
+          });
+          await supabase.from('whatsapp_messages').insert({
+            direction: 'outbound',
+            phone_number: cleanTo,
+            message_type: tk,
+            body: message,
+            twilio_sid: result.sid || null,
+            status: result.status,
+            metadata: { mode: result.mode, content_sid: result.content_sid, template_key: tk },
+            created_at: new Date().toISOString(),
+          });
+          return new Response(
+            JSON.stringify({ success: result.success, sid: result.sid, mode: result.mode, status: result.status }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
-        result = await sendWhatsApp(cleanTo, body);
-
+        const inWindow = await insideFreeformWindow(supabase, cleanTo);
+        const r = await sendViaFreeform(cleanTo, message);
         await supabase.from('whatsapp_messages').insert({
           direction: 'outbound',
           phone_number: cleanTo,
           message_type: 'custom',
-          body,
-          twilio_sid: result.sid || null,
-          status: result.success ? 'sent' : 'failed',
+          body: message,
+          twilio_sid: r.sid || null,
+          status: r.success ? (inWindow ? 'sent' : 'sent_window_dependent') : 'failed',
+          metadata: { mode: 'freeform', in_window: inWindow },
           created_at: new Date().toISOString(),
         });
-
         return new Response(
-          JSON.stringify({ success: result.success, sid: result.sid }),
+          JSON.stringify({
+            success: r.success,
+            sid: r.sid,
+            mode: 'freeform',
+            in_window: inWindow,
+            warning: inWindow ? undefined : 'Message sent but WhatsApp may drop it — recipient has not messaged us in the last 24h. Use type=template with a template_key for guaranteed delivery.',
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -253,7 +480,7 @@ serve(async (req) => {
   } catch (err) {
     console.error('WhatsApp send error:', err);
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: (err as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

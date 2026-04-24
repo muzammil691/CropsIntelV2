@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadAPIKeys, getAIStatus } from '../lib/ai-engine';
+import { syncWhatsAppTemplates } from '../lib/whatsapp';
 import { useAuth } from '../lib/auth';
 
 const ACCESS_TIERS = ['guest', 'registered', 'verified', 'maxons_team', 'admin'];
@@ -1292,6 +1293,9 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* WhatsApp Templates — Admin only */}
+      {isAdmin && <WhatsAppTemplatesPanel />}
+
       {/* How It Works — Admin only */}
       {isAdmin && (
         <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-5">
@@ -1309,6 +1313,188 @@ export default function Settings() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── WhatsApp Templates admin panel ──────────────────────────────────
+// Pulls templates from Twilio Content API + WhatsApp ApprovalRequests via
+// the `whatsapp-templates-sync` edge fn, then shows status per template
+// (approved / pending / rejected) plus the ContentSid. This is the panel
+// the admin uses to verify: "are our invite + OTP templates actually live
+// on Twilio, or are we still falling back to freeform (which WhatsApp
+// silently drops outside the 24h window)?"
+function WhatsAppTemplatesPanel() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [lastReport, setLastReport] = useState(null);
+  const [err, setErr] = useState(null);
+
+  async function loadRows() {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('whatsapp_templates')
+        .select('template_key, twilio_friendly_name, twilio_content_sid, category, approval_status, language_code, body_preview, last_synced_at')
+        .order('category', { ascending: true })
+        .order('template_key', { ascending: true });
+      if (error) throw error;
+      setRows(data || []);
+    } catch (e) {
+      setErr(`Load failed: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadRows(); }, []);
+
+  async function handleSync({ dryRun = false } = {}) {
+    setSyncing(true);
+    setErr(null);
+    setLastReport(null);
+    try {
+      const report = await syncWhatsAppTemplates({ dryRun });
+      setLastReport(report);
+      if (!dryRun) await loadRows();
+    } catch (e) {
+      setErr(`Sync failed: ${e.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const approved = rows.filter(r => r.approval_status === 'approved' && r.twilio_content_sid).length;
+  const pending  = rows.filter(r => r.approval_status === 'pending' || !r.twilio_content_sid).length;
+  const rejected = rows.filter(r => r.approval_status === 'rejected').length;
+
+  return (
+    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">WhatsApp Templates</h2>
+          <p className="text-xs text-gray-400 mt-1 leading-relaxed max-w-2xl">
+            Pulls your live Twilio Content templates + Meta approval status. Any template without a ContentSid or not in <code className="text-amber-400">approved</code> status will fall back to freeform
+            — which <b className="text-red-400">WhatsApp silently drops</b> if the recipient hasn't messaged us in the last 24h (this was the OTP bug).
+            Sync re-reads from Twilio and overwrites any stale DB rows.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleSync({ dryRun: true })}
+            disabled={syncing}
+            className="px-3 py-1.5 rounded-lg text-xs border border-gray-700 text-gray-300 hover:border-gray-500 disabled:opacity-40"
+          >
+            {syncing ? 'Checking…' : 'Dry-run'}
+          </button>
+          <button
+            onClick={() => handleSync({ dryRun: false })}
+            disabled={syncing}
+            className="px-4 py-1.5 rounded-lg text-xs bg-green-600 hover:bg-green-500 text-white font-medium disabled:opacity-40"
+          >
+            {syncing ? 'Syncing…' : 'Sync from Twilio'}
+          </button>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="bg-gray-800/40 rounded-lg p-3">
+          <p className="text-[10px] text-gray-500 uppercase">Total</p>
+          <p className="text-lg text-white font-bold">{rows.length}</p>
+        </div>
+        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+          <p className="text-[10px] text-green-400 uppercase">Approved</p>
+          <p className="text-lg text-green-300 font-bold">{approved}</p>
+        </div>
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+          <p className="text-[10px] text-amber-400 uppercase">Pending</p>
+          <p className="text-lg text-amber-300 font-bold">{pending}</p>
+        </div>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+          <p className="text-[10px] text-red-400 uppercase">Rejected</p>
+          <p className="text-lg text-red-300 font-bold">{rejected}</p>
+        </div>
+      </div>
+
+      {err && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300">{err}</div>
+      )}
+      {lastReport?.report && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-xs text-blue-300">
+          Twilio returned {lastReport.report.twilio_total} template{lastReport.report.twilio_total === 1 ? '' : 's'}. Synced {lastReport.report.synced.length}; {lastReport.report.errors.length} error(s).
+          {lastReport.report.dry_run && <span className="ml-2 text-blue-400">(dry-run — no DB writes)</span>}
+        </div>
+      )}
+
+      {/* Table */}
+      {loading ? (
+        <p className="text-xs text-gray-500">Loading templates…</p>
+      ) : rows.length === 0 ? (
+        <div className="px-3 py-6 rounded-lg border border-dashed border-gray-700 text-center">
+          <p className="text-sm text-gray-400">No templates in the DB yet.</p>
+          <p className="text-[11px] text-gray-500 mt-1">Click <b>Sync from Twilio</b> above to hydrate from your live Twilio Content account.</p>
+        </div>
+      ) : (
+        <div className="max-h-96 overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-800 text-gray-500 sticky top-0 bg-gray-900">
+                <th className="text-left py-2 pr-3">Template key</th>
+                <th className="text-left py-2 pr-3">Category</th>
+                <th className="text-left py-2 pr-3">Status</th>
+                <th className="text-left py-2 pr-3">Twilio SID</th>
+                <th className="text-left py-2">Last synced</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.template_key} className="border-b border-gray-800/50">
+                  <td className="py-2 pr-3">
+                    <div className="text-gray-200 font-mono">{r.template_key}</div>
+                    {r.twilio_friendly_name && r.twilio_friendly_name !== r.template_key && (
+                      <div className="text-[10px] text-gray-500">twilio: {r.twilio_friendly_name}</div>
+                    )}
+                    {r.body_preview && (
+                      <div className="text-[10px] text-gray-500 mt-0.5 line-clamp-1" title={r.body_preview}>{r.body_preview}</div>
+                    )}
+                  </td>
+                  <td className="py-2 pr-3">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                      r.category === 'authentication' ? 'bg-blue-500/20 text-blue-400' :
+                      r.category === 'marketing'     ? 'bg-purple-500/20 text-purple-400' :
+                                                       'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {r.category}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                      r.approval_status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                      r.approval_status === 'rejected' ? 'bg-red-500/20 text-red-400'   :
+                      r.approval_status === 'paused'   ? 'bg-amber-500/20 text-amber-400':
+                                                         'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {r.approval_status || 'pending'}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3 font-mono text-gray-400 text-[10px]">
+                    {r.twilio_content_sid || <span className="text-red-400/80">— not set</span>}
+                  </td>
+                  <td className="py-2 text-gray-500 text-[10px]">
+                    {r.last_synced_at ? new Date(r.last_synced_at).toLocaleString() : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-[10px] text-gray-600 mt-3">
+        See <code className="text-gray-400">docs/WHATSAPP_TEMPLATES.md</code> for the runbook — how to create + submit templates in Twilio Content Editor, the role → template map, and approval-category guidance.
+      </p>
     </div>
   );
 }

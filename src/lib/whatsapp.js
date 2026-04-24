@@ -131,8 +131,15 @@ export async function sendOfferNotification(phoneNumber, offer) {
   return res.json();
 }
 
-// ─── Send Custom Message ──────────────────────────────────────
+// ─── Send Custom Message (legacy freeform) ───────────────────
+// NOTE: Outside Meta's 24-hour customer-service window (i.e. the recipient
+// has not messaged us in the last 24h), WhatsApp SILENTLY DROPS freeform
+// messages even though Twilio returns 200 OK. If you need guaranteed
+// delivery, use sendWhatsAppTemplate() with an approved template key.
+// This function will now pass along a `warning` in the response when we
+// detect the recipient is outside the window.
 export async function sendWhatsAppMessage(phoneNumber, message) {
+  assertConfigured();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
     method: 'POST',
     headers: {
@@ -145,8 +152,75 @@ export async function sendWhatsAppMessage(phoneNumber, message) {
       message,
     }),
   });
-
   return res.json();
+}
+
+// ─── Send via Meta-approved Template (guaranteed delivery) ────
+// Use this for OTP, invites, alerts, offers, news — anything that must
+// reach a recipient who may not have messaged us in the last 24h.
+//
+// Args:
+//   phoneNumber   — E.164 phone (+971501234567)
+//   templateKey   — key from TEMPLATE_KEYS in src/lib/whatsapp-templates.js
+//                   (e.g. 'invite_buyer', 'otp_verification', 'trade_alert')
+//   variables     — context object matching the template's variable list
+//                   (e.g. { name: 'Alice', inviter: 'MAXONS Team' })
+//   fallbackBody  — optional freeform body if the template's ContentSid is
+//                   not yet approved (falls back inside the 24h window only).
+export async function sendWhatsAppTemplate(phoneNumber, templateKey, variables = {}, fallbackBody = null) {
+  assertConfigured();
+  // Lazy-load to avoid circular imports if other modules re-export from here.
+  const { buildTemplateVariables, renderFallback } = await import('./whatsapp-templates.js');
+  const positionalVars = buildTemplateVariables(templateKey, variables);
+  const body = fallbackBody || renderFallback(templateKey, variables);
+
+  let res;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      },
+      body: JSON.stringify({
+        type: 'template',
+        to: phoneNumber,
+        template_key: templateKey,
+        variables: positionalVars,
+        fallback_body: body,
+      }),
+    });
+  } catch (networkErr) {
+    throw new Error(
+      'Could not reach the WhatsApp send service. ' +
+      `(Original: ${networkErr.message})`
+    );
+  }
+  return readEdgeResponse(res, `Send template ${templateKey}`);
+}
+
+// ─── Sync WhatsApp templates from Twilio (admin only) ─────────
+// Calls the `whatsapp-templates-sync` edge function which reads your actual
+// Twilio account's Content API + ApprovalRequests and upserts each template
+// into `whatsapp_templates` with the real body text, ContentSid, category,
+// approval status. Run once after deployment and whenever you edit a
+// template in Twilio Content Editor.
+//
+// Optional opts:
+//   { dryRun: true } — preview the would-sync list without writing
+//
+// Returns the sync report object.
+export async function syncWhatsAppTemplates(opts = {}) {
+  assertConfigured();
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-templates-sync`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+    },
+    body: JSON.stringify({ dry_run: !!opts.dryRun }),
+  });
+  return readEdgeResponse(res, 'Sync WhatsApp templates');
 }
 
 // ─── WhatsApp OTP Login ──────────────────────────────────────
