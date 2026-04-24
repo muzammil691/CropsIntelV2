@@ -8,6 +8,8 @@ import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 import PersonaBanner from '../components/PersonaBanner';
 import PersonaInsights from '../components/PersonaInsights';
 import Card from '../components/Card';
+import { useAuth } from '../lib/auth';
+import { isInternal } from '../lib/permissions';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts';
@@ -346,6 +348,8 @@ function ShipmentTrend({ reports }) {
 
 
 export default function Dashboard() {
+  const { profile } = useAuth();
+  const internal = isInternal(profile);
   const [latestReport, setLatestReport] = useState(null);
   const [priorYearReport, setPriorYearReport] = useState(null);
   const [allReports, setAllReports] = useState([]);
@@ -765,9 +769,11 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-300">
-                        ${marketPrice.toFixed(2)}
-                      </span>
+                      {internal && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-300">
+                          ${marketPrice.toFixed(2)}
+                        </span>
+                      )}
                       <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">
                         ${maxonsPrice}
                       </span>
@@ -775,9 +781,11 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-              <div className="pt-2">
-                <p className="text-[10px] text-gray-600 text-right">Market | MAXONS (+3%)</p>
-              </div>
+              {internal && (
+                <div className="pt-2">
+                  <p className="text-[10px] text-gray-600 text-right">Market | MAXONS (+3%)</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">

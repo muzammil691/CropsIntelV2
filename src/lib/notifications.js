@@ -16,7 +16,7 @@ export function getV2UpgradeWhatsAppMessage(contactName = '') {
     `We're excited to announce the launch of CropsIntel Version 2 — a complete rebuild of our almond market intelligence platform.\n\n` +
     `*What's New:*\n` +
     `• Real ABC Position & Shipment data (11 crop years)\n` +
-    `• Live Strata pricing with MAXONS margins\n` +
+    `• Live almond pricing across every variety and grade\n` +
     `• Zyra AI — your intelligent trading analyst\n` +
     `• CRM & Deal tracking for buyers/suppliers\n` +
     `• WhatsApp-integrated trade alerts\n` +
@@ -83,7 +83,7 @@ export function getV2UpgradeEmailHTML(recipientName = 'Valued Partner') {
         <div style="background:#1a1a2e;border-radius:8px;padding:16px;">
           <div style="font-size:20px;margin-bottom:6px;">💰</div>
           <div style="color:#d4b16a;font-weight:bold;font-size:13px;margin-bottom:4px;">Live Pricing</div>
-          <div style="color:#8892b0;font-size:12px;">Strata market prices with MAXONS margin calculator</div>
+          <div style="color:#8892b0;font-size:12px;">Live almond pricing across every variety and grade</div>
         </div>
       </td>
       <td width="50%" style="padding:8px;vertical-align:top;">
@@ -157,7 +157,7 @@ export function getV2UpgradeEmailText(recipientName = 'Valued Partner') {
     `What's New:\n` +
     `- Real ABC Data: 11 crop years of verified position, shipment, and receipt data\n` +
     `- Zyra AI Analyst: AI-powered market analysis with learning memory\n` +
-    `- Live Pricing: Strata market prices with MAXONS margin calculator\n` +
+    `- Live Pricing: real-time almond prices across every variety and grade\n` +
     `- Global Trade Maps: Destination analysis for 80+ export markets\n` +
     `- CRM & Deals: Full trading pipeline with AI-powered insights\n` +
     `- WhatsApp Alerts: Trade alerts and Zyra AI chat on WhatsApp\n\n` +

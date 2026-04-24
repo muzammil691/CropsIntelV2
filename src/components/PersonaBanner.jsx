@@ -33,7 +33,7 @@ const PERSONA_MAP = {
     actions: [
       { label: 'Supply & Demand', to: '/supply', desc: 'Commit rate, ship rate, uncommitted inventory' },
       { label: 'Variety Mix', to: '/forecasts', desc: 'Crop receipts breakdown by variety' },
-      { label: 'Pricing', to: '/pricing', desc: 'Strata prices with MAXONS 3% margin' },
+      { label: 'Pricing', to: '/pricing', desc: 'Live almond pricing across every variety and grade' },
     ],
   },
   processor: {
