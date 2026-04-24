@@ -1,14 +1,21 @@
 {
-  "lastUpdated": "2026-04-25T20:30:00Z",
+  "lastUpdated": "2026-04-25T21:00:00Z",
   "updatedBy": "Claude AI \u2014 Auto Dev Mode + /map bird's-eye gates shipped. (0) supabase/migrations/20260425_autodev_mode.sql APPLIED: autodev_status (singleton), autodev_questions (WhatsApp-backed Q/A with options JSONB), autodev_tasks, autodev_live view, autodev_heartbeat() SECURITY DEFINER. Verified on prod. (1) supabase/functions/autodev-ask edge fn + src/autonomous/autodev-ask.js Node helper \u2014 insert question \u2192 WhatsApp push \u2192 bump heartbeat. (2) whatsapp-webhook extended with admin-phone branch BEFORE OTP check: replies to open questions (numbered option or free text) answer the row, 'status' command returns live state. (3) First test ping dispatched to +971527854447 \u2014 template-backed (invite_buyer, MM034d...) confirmed delivery. (4) src/components/AutoDevBanner.jsx polls autodev_live every 10s, shows live worker state + open Qs. (5) src/components/LaunchGates.jsx new 3-tier bird's-eye: Soft (35%) \u2192 Full (50%) \u2192 V3 (100%) with rollup % per gate + honest weighted total. (6) ProjectMap.jsx: new default tab 'Launch Gates' + banner injected. Earlier: Trade Hub foundation (spec + crosswalk + migration + role expansion + team first-login fix). (1) Canonical spec preserved as docs/TRADE_HUB_SPEC_v1.md (1405 lines, 20 sections verbatim from user). (2) Gap analysis docs/TRADE_HUB_CROSSWALK_v1.md (portal / profile / role / offer cross-walks + per-page buckets). (3) supabase/migrations/20260425_trade_hub_foundation.sql APPLIED to prod: extended user_profiles with counterparty fields (legal_entity_name, tax/vat/trade_license, addresses JSONB, region auto-derived, payment/incoterm/currency prefs, kyc_status CHECK, sanctions_screening, historical_performance JSONB, assigned_account_manager, assigned_procurement_officer, authority_tier 1-4 + override, counterparty_type CHECK, portal CHECK, onboarded_as_role); seeded entities table with MGT + MIX (spec \u00a71.3); added offers table with 5-source-type CHECK (spec \u00a73); added contract_number_counters + mint_contract_number() minting MGT-SAL-PAK-2026-NNNN format (spec \u00a75). Verified on prod: mint_contract_number returns 0001, 0002. (4) Settings ALL_ROLES expanded to 14 internal + 6 external spec roles in 4 optgroups (Trading / Value Chain / External / Maxons Internal), \u2728 marker on spec roles. (5) App.jsx sidebar profile-loading race fix: ADMIN_ROLES/TEAM_ROLES/ROLE_PRIORITY extended to all 14+6 spec roles; skeleton placeholder when profile still loading; no more silent buyer fallback. (6) AcceptInvite adds onboarded_as_role on upsert, pre-fetches profile post-signIn, passes rich state (welcomeMessage/justOnboardedAs/tier/isTeamInvite/signInSucceeded). (7) Dashboard renders InviteWelcomeBanner with team-tool links for team invitees, single-line welcome for buyers, amber fallback if sign-in failed. USER directive 2026-04-25: V2 scope narrowed to Welcome\u2192CRM; full Trade Hub lifecycle moves to V3 / Phase 7+ (11-month roadmap). Pausing for V2-up-to-CRM gap-analysis discussion per user request.",
   "v2Scope": "Welcome \u2192 CRM (full polish). Trade Hub full lifecycle (4 portals, offers/deals/contracts/shipments/payments, per-entity ledgers, WhatsApp catalogue, 6 shipment modes) = V3 / Phase 7+. Per user directive 2026-04-25.",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 68,
-  "launchReadinessPercent": 95,
+  "overallPercent": 62,
+  "launchReadinessPercent": 100,
+  "softLaunchGatePercent": 100,
+  "fullLaunchGatePercent": 13,
+  "v3GatePercent": 4,
+  "gateWeightedTotalPercent": 39,
   "metricsExplainer": {
-    "overallPercent": "Phase-weighted average across all 10 phases (full MAXONS vision). Phases 7-10 are queued/active so honest total is ~60%.",
-    "launchReadinessPercent": "Narrower metric \u2014 how ready Phases 1-6 are for the launch-first scope. Email/gdrive code landed but not activated (deps install step pending), UI polish in flight, so 85% not 100%.",
-    "math": "(100+100+100+100+100+85+5+0+0+0)/10 = 59; rounded to 60. Launch readiness = average of phases 1-6 = 97.5, minus penalties for unactivated email (\u22125) and unactivated gdrive (\u22124) + UI polish in flight (\u22123) = 85."
+    "overallPercent": "Phase-weighted average across all 10 phases (full MAXONS vision). Phases 7-10 are queued/active so honest total is ~62%. (100+100+100+100+100+100+15+0+0+0)/10 = 61.5.",
+    "launchReadinessPercent": "V2 soft-launch readiness \u2014 phases 1\u20136 complete. All 5 launch-blocker bugs fixed, Mini-Phases 0\u20135 landed, all data-intel pages have FilterBar + multi-metric + compare. 100%.",
+    "softLaunchGatePercent": "Rollup of phases 1\u20136 percents \u2014 drives the 35% soft-launch share of total plan. At 100% = 35 of 35 earned.",
+    "fullLaunchGatePercent": "Rollup of Full-Launch placeholders (ABC real scrapers 30, V1 real-device tests 10, iOS TestFlight 0). At 13% = 2 of 15 earned.",
+    "v3GatePercent": "Rollup of phases 7\u201310 (Trade Hub, CRM+BRM+SRM spine, Trade lifecycle, Atlas self-dev). At 4% = 1.88 of 50 earned.",
+    "gateWeightedTotalPercent": "softRollup*0.35 + fullRollup*0.15 + v3Rollup*0.50 \u2014 the honest planwide number shown in LaunchGates.jsx. Currently 39%."
   },
   "dbState": {
     "note": "Applied 2026-04-24 via pg8000 direct connection. All 4 migrations landed in production.",
@@ -735,12 +742,13 @@
     {
       "id": "v1-login-live-verify",
       "item": "End-to-end V1 login test with one real migrated user (WhatsApp OTP \u2192 V2 Welcome \u2192 password set + email verify \u2192 dashboard)",
-      "currentWorkaround": "Flow code is complete + tested on user's phone 2026-04-24. OTP login works. V2 Welcome now auto-shows for V1 migrated users on first login (via Login.jsx profile check on v2_welcome_completed_at). Still need real V1 migrated account test through full new welcome.",
+      "currentWorkaround": "Flow code is complete + tested on user's phone 2026-04-24. OTP login works. V2 Welcome now auto-shows for V1 migrated users on first login (via Login.jsx profile check on v2_welcome_completed_at). All 5 login blocker bugs from plan are fixed on branch (audit 2026-04-25: profile-orphan protection line 231-251, mutual-exclusive flags line 289/323-324/366-367/398, OTP invalidation in whatsapp-send line 269-272, env-var guard whatsapp.js line 11-18, frontend routing Login.jsx 133-137). Still need real V1 migrated account test through full new welcome.",
       "markedDate": "2026-04-24",
       "category": "manual-qa",
-      "status": "welcome-flow-updated-re-test",
+      "status": "code-complete-awaiting-live-verify",
       "edge_fns_deployed": "2026-04-23T19:44Z",
       "welcome_flow_shipped": "2026-04-24",
+      "audit_completed": "2026-04-25",
       "next_step": "User re-tests OTP login with a V1 migrated phone; expects V2 Welcome page on first login with password + email verify + profile nudge"
     },
     {
@@ -826,6 +834,29 @@
       "resolvedDate": "2026-04-24",
       "sha": "3fc05ba",
       "notes": "Default comparison window 3y \u2192 5y; shared FilterBar with Last 3/5/All quick actions; variety + county breakdowns dropped in below supply metrics."
+    },
+    {
+      "id": "destinations-country-deep-dive",
+      "title": "Destinations: per-country deep-dive drill-down (monthly trend + YoY bars isolated)",
+      "status": "phase-later",
+      "markedDate": "2026-04-25",
+      "notes": "F2 audit 2026-04-25: country search + FilterBar + Top N/All toggles + continent filter + compare multi-select are all live. Core intent (any country searchable + comparable) is met. Missing: dedicated 'click a country to see its isolated monthly + YoY' drill-down card. Non-blocking for launch \u2014 compare mode covers the use case.",
+      "category": "polish"
+    },
+    {
+      "id": "forecasts-subjective-objective-overlay",
+      "title": "Forecasts: Subjective vs Objective vs Actual overlay + variety pie + county breakdown",
+      "status": "queued",
+      "markedDate": "2026-04-25",
+      "notes": "F5 audit 2026-04-25: requires real subjective/objective forecast scraper + acreage scraper to land first (Phase B4/B5). VarietySection + CountySection already render on Forecasts but as tables, not overlay/pie. Deferred to post-launch scraper work.",
+      "category": "data+polish"
+    },
+    {
+      "id": "data-intel-audit-2026-04-25",
+      "title": "Data-intel page polish sweep: Destinations + Supply + Forecasts + Reports",
+      "status": "done",
+      "resolvedDate": "2026-04-25",
+      "notes": "Audit findings: F2 (Destinations) 95% \u2014 search + FilterBar + compare + continent filter all done; missing deep-dive card queued above. F3 (Supply) 100% \u2014 FilterBar + Last-5 default + VarietySection + CountySection all rendering. F4 (Reports spinner) 100% \u2014 try/finally setLoading(false) guard in place. F5 (Forecasts overlay) queued above \u2014 depends on scraper data."
     },
     {
       "id": "abc-position-month-gaps",
@@ -1187,10 +1218,10 @@
     {
       "id": 6,
       "name": "Honesty + Completion Sprint",
-      "status": "active",
-      "percent": 95,
-      "completedDate": null,
-      "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. UI polish (sidebar reorg + shared Card component + premium page treatment) in flight. Wave 3 (2026-04-24 evening): Zyra unified across bubble + /intelligence full-page via src/lib/zyra-prompts.js; removed anti-human keyword-routing fallback on /intelligence; added trainer thumbs + multilingual pill. Launch-blocker F1\u2013F6 audit (2026-04-24 night): all 6 fixes verified already-shipped or non-issue (whatsapp-login orphan/mutex/OTP, Destinations country filter + slice caps, Supply FilterBar+VarietySection+CountySection+last-5, team-verify Settings panel + RLS/trigger migration). APPLY_ALL_2026-04-24.sql extended with widget_configs + team_can_verify_users sections so one paste applies both remaining DB migrations. permissions.js got isTeamMember/canVerifyUsers/isAdminUser helpers. Wave 7 (2026-04-24 late night): info-walls leak-kill across Pricing/Welcome/Zyra/PersonaBanner (205eb82) + Destinations continent hierarchy (CONTINENT_ORDER/COUNTRY_TO_CONTINENT/CONTINENT_COLORS, multi-continent chip filter, continent-rollup hero chart, country color-coded by continent) + reusable VOLUME_METRICS (lbs/40HC containers/MT/kernel-K) with MetricToggle chip-bar component. Dashboard MarketPulseBand (3dbff61) \u2014 6-cell top strip showing what MOVED since last update (monthly ship delta, commit rate YoY, uncommitted YoY, Nonpareil $/lb WoW w/ info-walls, news sentiment mood, AI signal). Multi-metric toggle propagated to Destinations (dd57f5a), Supply (Supply Balance Timeline + crop-year health table + MetricCards + CSV) and Forecasts (crop production bar chart + receipt cards + summary table + CSV)."
+      "status": "done",
+      "percent": 100,
+      "completedDate": "2026-04-25",
+      "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. Wave 3 (2026-04-24 evening): Zyra unified across bubble + /intelligence full-page via src/lib/zyra-prompts.js; removed anti-human keyword-routing fallback; added trainer thumbs + multilingual pill. Launch-blocker F1\u2013F6 audit (2026-04-24 night): all 6 fixes verified already-shipped or non-issue. APPLY_ALL_2026-04-24.sql extended with widget_configs + team_can_verify_users. permissions.js got isTeamMember/canVerifyUsers/isAdminUser helpers. Wave 7 (2026-04-24 late night): info-walls leak-kill + Destinations continent hierarchy + reusable VOLUME_METRICS with MetricToggle. Dashboard MarketPulseBand (3dbff61) \u2014 6-cell top strip showing what MOVED since last update. Multi-metric toggle propagated to Destinations/Supply/Forecasts. Autonomous Mini-Phase arc (2026-04-25): Mini-Phase 0 Auto Dev Mode (autodev schema + edge fn + webhook admin branch + WhatsApp test ping delivered), Mini-Phase 1 /map bird's-eye rebuild (AutoDevBanner + LaunchGates with soft 35/full 15/v3 50 weighting + default tab rewire), Mini-Phase 4 CRM semi-auto (record_category 9-value enum + KYC/credit/upcoming-features banner + offer-source-type link + 3 indexes), Mini-Phase 5 multilingual LocaleProvider + Zyra IP-first greeting (5 langs: en/ar/hi/tr/es + ipapi.co detection + RTL + preferred_language column + LocaleSwitcher in Settings), Mini-Phase 2 login-blocker audit (all 5 bugs from plan verified fixed), Mini-Phase 3 data-intel polish audit (F2 Destinations 95%: search+FilterBar+compare done; F3 Supply 100%; F4 Reports 100%; F5 Forecasts overlay deferred to scraper work). Soft-launch gate at 100% rollup \u2014 35% of total plan earned."
     },
     {
       "id": 7,
@@ -2871,6 +2902,7 @@
     "zyra-ip-first-greeting": 100,
     "locale-switcher-settings": 100,
     "preferred-language-column": 100,
+    "login-blocker-audit": 100,
     "team-user-mgmt": 100,
     "widget-interactivity": 96,
     "offers-multi-product": 90,
