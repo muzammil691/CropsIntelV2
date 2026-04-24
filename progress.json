@@ -853,7 +853,7 @@
   ],
   "recentCommits": [
     {
-      "sha": "pending-crm-semi-auto",
+      "sha": "8c470d0",
       "date": "2026-04-25",
       "subject": "crm: Mini-Phase 4 \u2014 record_category (9-value enum) + upcoming_features banner + KYC/credit display",
       "author": "Claude AI"
