@@ -853,7 +853,7 @@
   ],
   "recentCommits": [
     {
-      "sha": "PENDING",
+      "sha": "daffcd7",
       "date": "2026-04-25",
       "subject": "locale: Mini-Phase 5 \u2014 multilingual LocaleProvider + Zyra IP-first greeting (5 langs: en/ar/hi/tr/es)",
       "author": "Claude AI"
