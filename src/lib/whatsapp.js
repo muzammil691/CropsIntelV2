@@ -223,6 +223,61 @@ export async function syncWhatsAppTemplates(opts = {}) {
   return readEdgeResponse(res, 'Sync WhatsApp templates');
 }
 
+// ─── Create a new WhatsApp template in Twilio + submit for approval ───
+// Mirror of sync — instead of pulling from Twilio, this PUSHES a new
+// Content resource into your Twilio account, submits it for Meta approval,
+// and writes the resulting ContentSid back into the DB so dispatcher can
+// start using it (once Meta flips it to `approved`).
+//
+// Options:
+//   template_key         — required, matches whatsapp_templates.template_key
+//   friendly_name        — optional, defaults to template_key
+//   category             — required: 'UTILITY' | 'AUTHENTICATION' | 'MARKETING'
+//   body                 — required, e.g. "Hi {{1}}, please {{2}} ..."
+//   variables            — optional { "1": "Alice", "2": "verify your account" }
+//   button               — optional { type: 'URL', text, url } or { type: 'PHONE_NUMBER', text, phone }
+//   language             — default 'en'
+//   submitForApproval    — default true; set false to create-but-hold so you
+//                          can tweak in Twilio Console before submitting.
+//
+// Returns the edge fn response: { success, twilio_sid, friendly_name,
+// approval_status, db_row_updated, note, approval_submit_error? }.
+export async function createWhatsAppTemplate(opts = {}) {
+  assertConfigured();
+  const {
+    template_key,
+    friendly_name,
+    category,
+    body,
+    variables,
+    button,
+    language,
+    submitForApproval = true,
+  } = opts;
+  if (!template_key) throw new Error('createWhatsAppTemplate: template_key required');
+  if (!category)     throw new Error('createWhatsAppTemplate: category required');
+  if (!body)         throw new Error('createWhatsAppTemplate: body required');
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/whatsapp-template-create`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+    },
+    body: JSON.stringify({
+      template_key,
+      friendly_name,
+      category,
+      body,
+      variables,
+      button,
+      language,
+      submit_for_approval: submitForApproval,
+    }),
+  });
+  return readEdgeResponse(res, 'Create WhatsApp template');
+}
+
 // ─── WhatsApp OTP Login ──────────────────────────────────────
 // Sends OTP, verifies, and returns a Supabase session
 export async function whatsAppLogin(phoneNumber, otpCode) {

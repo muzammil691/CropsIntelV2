@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadAPIKeys, getAIStatus } from '../lib/ai-engine';
-import { syncWhatsAppTemplates } from '../lib/whatsapp';
+import { syncWhatsAppTemplates, createWhatsAppTemplate } from '../lib/whatsapp';
 import { useAuth } from '../lib/auth';
 
 const ACCESS_TIERS = ['guest', 'registered', 'verified', 'maxons_team', 'admin'];
@@ -1330,13 +1330,17 @@ function WhatsAppTemplatesPanel() {
   const [syncing, setSyncing] = useState(false);
   const [lastReport, setLastReport] = useState(null);
   const [err, setErr] = useState(null);
+  // Create-in-Twilio modal state. `creatingKey` = template_key of the row
+  // the admin is editing; null = modal closed.
+  const [creatingKey, setCreatingKey] = useState(null);
+  const [createToast, setCreateToast] = useState(null);
 
   async function loadRows() {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('whatsapp_templates')
-        .select('template_key, twilio_friendly_name, twilio_content_sid, category, approval_status, language_code, body_preview, last_synced_at')
+        .select('template_key, twilio_friendly_name, twilio_content_sid, category, approval_status, language_code, body_preview, button_text, button_url, variables, last_synced_at')
         .order('category', { ascending: true })
         .order('template_key', { ascending: true });
       if (error) throw error;
@@ -1349,6 +1353,23 @@ function WhatsAppTemplatesPanel() {
   }
 
   useEffect(() => { loadRows(); }, []);
+
+  // Callback passed into the modal: after a successful Create, refresh
+  // the table so the new ContentSid + status shows. Also surface a toast
+  // so the admin sees what Meta status Twilio returned (usually
+  // "submitted" / "received" → flips to "approved" in hours).
+  async function handleCreated(result) {
+    setCreatingKey(null);
+    setCreateToast({
+      kind: result.success ? 'success' : 'warn',
+      text: result.success
+        ? `Created ${result.friendly_name} (${result.twilio_sid}) — status: ${result.approval_status}. ${result.note || ''}`
+        : (result.error || 'Create failed'),
+    });
+    // Auto-dismiss after 15s so the admin has time to read.
+    setTimeout(() => setCreateToast(null), 15000);
+    await loadRows();
+  }
 
   async function handleSync({ dryRun = false } = {}) {
     setSyncing(true);
@@ -1421,6 +1442,15 @@ function WhatsAppTemplatesPanel() {
       {err && (
         <div className="mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300">{err}</div>
       )}
+      {createToast && (
+        <div className={`mb-3 px-3 py-2 rounded-lg text-xs border ${
+          createToast.kind === 'success'
+            ? 'bg-green-500/10 border-green-500/30 text-green-300'
+            : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+        }`}>
+          {createToast.text}
+        </div>
+      )}
       {lastReport?.report && (
         <div className="mb-3 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-xs text-blue-300">
           Twilio returned {lastReport.report.twilio_total} template{lastReport.report.twilio_total === 1 ? '' : 's'}. Synced {lastReport.report.synced.length}; {lastReport.report.errors.length} error(s).
@@ -1445,7 +1475,8 @@ function WhatsAppTemplatesPanel() {
                 <th className="text-left py-2 pr-3">Category</th>
                 <th className="text-left py-2 pr-3">Status</th>
                 <th className="text-left py-2 pr-3">Twilio SID</th>
-                <th className="text-left py-2">Last synced</th>
+                <th className="text-left py-2 pr-3">Last synced</th>
+                <th className="text-right py-2">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -1482,8 +1513,19 @@ function WhatsAppTemplatesPanel() {
                   <td className="py-2 pr-3 font-mono text-gray-400 text-[10px]">
                     {r.twilio_content_sid || <span className="text-red-400/80">— not set</span>}
                   </td>
-                  <td className="py-2 text-gray-500 text-[10px]">
+                  <td className="py-2 pr-3 text-gray-500 text-[10px]">
                     {r.last_synced_at ? new Date(r.last_synced_at).toLocaleString() : '—'}
+                  </td>
+                  <td className="py-2 text-right">
+                    {!r.twilio_content_sid && (
+                      <button
+                        onClick={() => setCreatingKey(r.template_key)}
+                        className="text-[10px] px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 whitespace-nowrap"
+                        title="Create this template in your Twilio account and submit for WhatsApp approval"
+                      >
+                        Create in Twilio →
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1494,7 +1536,235 @@ function WhatsAppTemplatesPanel() {
 
       <p className="text-[10px] text-gray-600 mt-3">
         See <code className="text-gray-400">docs/WHATSAPP_TEMPLATES.md</code> for the runbook — how to create + submit templates in Twilio Content Editor, the role → template map, and approval-category guidance.
+        <br />
+        The <b className="text-amber-400">Create in Twilio</b> button on rows without a ContentSid lets you POST a new Content resource + submit it for Meta approval without leaving this page (same flow the Twilio Content Editor UI runs). Future AI operators can call <code className="text-gray-400">createWhatsAppTemplate()</code> from <code className="text-gray-400">src/lib/whatsapp.js</code> to automate this.
       </p>
+
+      {creatingKey && (
+        <CreateTemplateModal
+          row={rows.find(r => r.template_key === creatingKey)}
+          onClose={() => setCreatingKey(null)}
+          onCreated={handleCreated}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Create-in-Twilio modal ──────────────────────────────────────
+// Shown when the admin clicks "Create in Twilio" next to a seed row
+// that has no ContentSid yet. Pre-fills body/button/vars from the DB row
+// (our seed from the migration) so the admin can edit copy before POSTing.
+// On submit, calls the whatsapp-template-create edge fn, which POSTs to
+// Twilio Content + submits for WhatsApp approval in one hop.
+function CreateTemplateModal({ row, onClose, onCreated }) {
+  const initialVars = (row?.variables && Array.isArray(row.variables))
+    ? row.variables.reduce((acc, v) => { acc[String(v.name)] = String(v.example || ''); return acc; }, {})
+    : {};
+
+  const [body, setBody] = useState(row?.body_preview || '');
+  const [category, setCategory] = useState(
+    row?.category === 'authentication' ? 'AUTHENTICATION' :
+    row?.category === 'marketing'      ? 'MARKETING'      :
+                                         'UTILITY'
+  );
+  const [language, setLanguage] = useState(row?.language_code || 'en');
+  const [useButton, setUseButton] = useState(!!row?.button_url);
+  const [buttonText, setButtonText] = useState(row?.button_text || '');
+  const [buttonUrl, setButtonUrl] = useState(row?.button_url || '');
+  const [sampleVars, setSampleVars] = useState(initialVars);
+  const [submitting, setSubmitting] = useState(false);
+  const [modalErr, setModalErr] = useState(null);
+
+  // Detect {{N}} positions in whatever's currently in the body textarea so
+  // the sample-value input list stays in sync as the admin edits copy.
+  const positions = (() => {
+    const seen = new Set();
+    const out = [];
+    const re = /\{\{\s*(\d+)\s*\}\}/g;
+    let m;
+    while ((m = re.exec(body)) !== null) {
+      if (!seen.has(m[1])) { seen.add(m[1]); out.push(m[1]); }
+    }
+    return out.sort((a, b) => Number(a) - Number(b));
+  })();
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setModalErr(null);
+    try {
+      const variables = {};
+      for (const p of positions) {
+        variables[p] = sampleVars[p] || `sample_${p}`;
+      }
+      const button = useButton && buttonText
+        ? { type: 'URL', text: buttonText, url: buttonUrl }
+        : undefined;
+      const result = await createWhatsAppTemplate({
+        template_key: row.template_key,
+        category,
+        language,
+        body,
+        variables,
+        button,
+        submitForApproval: true,
+      });
+      onCreated(result);
+    } catch (e) {
+      setModalErr(e.message || 'Create failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-5 border-b border-gray-800 flex items-start justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-white">Create in Twilio: <code className="text-amber-400 font-mono">{row.template_key}</code></h3>
+            <p className="text-[11px] text-gray-400 mt-1">
+              POSTs a new Content resource to your Twilio account and submits it for WhatsApp (Meta) approval.
+              Approval typically takes hours for Utility/Authentication, days for Marketing.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl leading-none">×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Category */}
+          <div>
+            <label className="block text-[11px] text-gray-400 mb-1.5 uppercase tracking-wide">Category</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { v: 'UTILITY',        label: 'Utility',        hint: 'receipts, updates, verifications' },
+                { v: 'AUTHENTICATION', label: 'Authentication', hint: 'OTP, login codes' },
+                { v: 'MARKETING',      label: 'Marketing',      hint: 'promotions, offers' },
+              ].map(opt => (
+                <button
+                  type="button"
+                  key={opt.v}
+                  onClick={() => setCategory(opt.v)}
+                  className={`text-left px-3 py-2 rounded-lg border text-xs ${
+                    category === opt.v
+                      ? 'bg-amber-500/10 border-amber-500/60 text-amber-300'
+                      : 'border-gray-700 text-gray-400 hover:border-gray-600'
+                  }`}
+                >
+                  <div className="font-semibold">{opt.label}</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">{opt.hint}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Body */}
+          <div>
+            <label className="block text-[11px] text-gray-400 mb-1.5 uppercase tracking-wide">Body (use {`{{1}}`}, {`{{2}}`} for variables)</label>
+            <textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              rows={4}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 font-mono"
+              placeholder="Hi {{1}}, please {{2}} at cropsintel.com/settings. Reply HELP if you need assistance."
+              required
+            />
+            <p className="text-[10px] text-gray-500 mt-1">Detected variables: {positions.length === 0 ? 'none' : positions.map(p => `{{${p}}}`).join(', ')}</p>
+          </div>
+
+          {/* Sample values — one input per detected position */}
+          {positions.length > 0 && (
+            <div>
+              <label className="block text-[11px] text-gray-400 mb-1.5 uppercase tracking-wide">Sample values (shown to Meta reviewer)</label>
+              <div className="space-y-2">
+                {positions.map(p => (
+                  <div key={p} className="flex items-center gap-2">
+                    <code className="text-[10px] text-amber-400 w-10">{`{{${p}}}`}</code>
+                    <input
+                      type="text"
+                      value={sampleVars[p] || ''}
+                      onChange={e => setSampleVars({ ...sampleVars, [p]: e.target.value })}
+                      placeholder={`sample_${p}`}
+                      className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Button (optional) */}
+          <div>
+            <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useButton}
+                onChange={e => setUseButton(e.target.checked)}
+                className="rounded"
+              />
+              Add a call-to-action URL button
+            </label>
+            {useButton && (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <input
+                  type="text"
+                  value={buttonText}
+                  onChange={e => setButtonText(e.target.value)}
+                  placeholder="Button label (e.g. Open settings)"
+                  className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
+                />
+                <input
+                  type="url"
+                  value={buttonUrl}
+                  onChange={e => setButtonUrl(e.target.value)}
+                  placeholder="https://cropsintel.com/..."
+                  className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Language */}
+          <div>
+            <label className="block text-[11px] text-gray-400 mb-1.5 uppercase tracking-wide">Language</label>
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-200"
+            >
+              <option value="en">English (en)</option>
+              <option value="en_US">English US (en_US)</option>
+              <option value="es">Spanish (es)</option>
+              <option value="ar">Arabic (ar)</option>
+              <option value="hi">Hindi (hi)</option>
+              <option value="tr">Turkish (tr)</option>
+            </select>
+          </div>
+
+          {modalErr && (
+            <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300">{modalErr}</div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-800">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-3 py-1.5 rounded-lg text-xs border border-gray-700 text-gray-300 hover:border-gray-500 disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !body.trim()}
+              className="px-4 py-1.5 rounded-lg text-xs bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-40"
+            >
+              {submitting ? 'Creating…' : 'Create + submit for approval'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
