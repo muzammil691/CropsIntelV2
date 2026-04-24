@@ -7,7 +7,11 @@ import ProfileCompletionBanner from './components/ProfileCompletionBanner';
 import ProtectedRoute, { AdminRoute, TeamRoute, AuthRoute } from './components/ProtectedRoute';
 import ZyraWidget from './components/ZyraWidget';
 import CommandPalette from './components/CommandPalette';
-import LocaleSwitcher from './components/LocaleSwitcher';
+// LocaleSwitcher import retained behind feature flag — see AppLocaleLock note
+// in src/contexts/LocaleContext.jsx. Not rendered while app-locale is locked
+// to English; restore <LocaleSwitcher compact /> in the two top-bar blocks
+// below when the multilingual rollout is approved.
+// import LocaleSwitcher from './components/LocaleSwitcher';
 import V1ReturningUserModal from './components/V1ReturningUserModal';
 
 // Lazy-load pages for code splitting
@@ -145,7 +149,7 @@ function UserMenu() {
     return (
       <div className="flex items-center gap-2">
         <GuestTimerBadge />
-        <LocaleSwitcher compact />
+        {/* <LocaleSwitcher compact />  ← restore when app-wide multilingual is approved */}
         <Link
           to="/login"
           className="px-3 py-1.5 text-[11px] text-gray-400 hover:text-white border border-gray-700 hover:border-gray-600 rounded-lg transition-colors"
@@ -158,7 +162,7 @@ function UserMenu() {
 
   return (
     <div className="flex items-center gap-2">
-      <LocaleSwitcher compact />
+      {/* <LocaleSwitcher compact />  ← restore when app-wide multilingual is approved */}
       <div className="text-right hidden sm:block">
         <p className="text-[11px] text-white font-medium leading-tight truncate max-w-[120px]">
           {profile?.full_name || user?.email?.split('@')[0] || 'User'}

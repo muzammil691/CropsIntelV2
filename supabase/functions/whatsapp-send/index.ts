@@ -215,23 +215,14 @@ serve(async (req) => {
   try {
     const { type, to, ...payload } = await req.json();
 
-    if (!type) {
+    if (!to || !type) {
       return new Response(
-        JSON.stringify({ error: 'Missing required field: type' }),
+        JSON.stringify({ error: 'Missing required fields: type, to' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // admin_create_template is server-to-server, no recipient needed.
-    // All other types require a `to` phone number.
-    if (type !== 'admin_create_template' && !to) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required field: to' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const cleanTo = to ? (to.startsWith('+') ? to : `+${to}`) : '';
+    const cleanTo = to.startsWith('+') ? to : `+${to}`;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     switch (type) {
@@ -475,156 +466,6 @@ serve(async (req) => {
             mode: 'freeform',
             in_window: inWindow,
             warning: inWindow ? undefined : 'Message sent but WhatsApp may drop it — recipient has not messaged us in the last 24h. Use type=template with a template_key for guaranteed delivery.',
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // ─── Admin: create Twilio Content template + submit for approval ────
-      // Server-to-server only. Caller must pass the service-role key in
-      // Authorization: Bearer <key>. Returns the new ContentSid and upserts
-      // the template row so the rest of the send pipeline can use it.
-      //
-      // Payload:
-      //   {
-      //     type: 'admin_create_template',
-      //     template_key: 'autodev_question',
-      //     friendly_name: 'autodev_question',
-      //     category: 'utility',          // utility | marketing | authentication
-      //     language: 'en',
-      //     body: 'Auto Dev needs you:\n\n{{1}}\n\nReply {{2}} or free text.',
-      //     buttons: [{ id: '1', title: 'Yes' }, { id: '2', title: 'No' }],  // optional
-      //     variables: { '1': 'question body', '2': 'options hint' },        // sample values
-      //     submit_for_approval: true
-      //   }
-      case 'admin_create_template': {
-        // Auth: require Bearer service-role key
-        const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
-        const providedToken = authHeader.replace(/^Bearer\s+/i, '').trim();
-        if (!SUPABASE_SERVICE_KEY || providedToken !== SUPABASE_SERVICE_KEY) {
-          return new Response(
-            JSON.stringify({ error: 'Forbidden — service-role key required' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-          return new Response(
-            JSON.stringify({ error: 'Twilio credentials not configured in edge function env' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const {
-          template_key,
-          friendly_name,
-          category = 'utility',
-          language = 'en',
-          body: tplBody,
-          buttons = null,
-          variables = null,
-          submit_for_approval = true,
-        } = payload;
-
-        if (!template_key || !friendly_name || !tplBody) {
-          return new Response(
-            JSON.stringify({ error: 'template_key, friendly_name, body are required' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Step 1: Build the Content API payload.
-        const contentPayload: any = { friendly_name, language };
-        if (variables && typeof variables === 'object') {
-          contentPayload.variables = variables;
-        }
-        if (Array.isArray(buttons) && buttons.length > 0) {
-          contentPayload.types = {
-            'twilio/quick-reply': {
-              body: tplBody,
-              actions: buttons.slice(0, 3).map((b: any, i: number) => ({
-                id: String(b.id ?? i + 1),
-                title: String(b.title ?? b.label ?? `Option ${i + 1}`).slice(0, 20),
-              })),
-            },
-          };
-        } else {
-          contentPayload.types = { 'twilio/text': { body: tplBody } };
-        }
-
-        // Step 2: POST to Twilio Content API.
-        const createRes = await fetch('https://content.twilio.com/v1/Content', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Basic ' + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(contentPayload),
-        });
-        const createData = await createRes.json().catch(() => ({}));
-        if (!createRes.ok) {
-          return new Response(
-            JSON.stringify({
-              error: 'Twilio Content create failed',
-              http_status: createRes.status,
-              details: createData,
-            }),
-            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        const contentSid = createData.sid as string;
-
-        // Step 3: Optional — submit for WhatsApp approval.
-        let approvalStatus = 'created';
-        let approvalDetails: any = null;
-        if (submit_for_approval) {
-          const approvalBody = new URLSearchParams({
-            name: friendly_name,
-            category: String(category).toUpperCase(),
-          });
-          const apprRes = await fetch(
-            `https://content.twilio.com/v1/Content/${contentSid}/ApprovalRequests/whatsapp`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': 'Basic ' + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: approvalBody.toString(),
-            }
-          );
-          approvalDetails = await apprRes.json().catch(() => ({}));
-          approvalStatus = apprRes.ok ? (approvalDetails?.status || 'submitted') : 'approval_failed';
-        }
-
-        // Step 4: Upsert the row so the send pipeline sees it.
-        const { error: upsertErr } = await supabase.from('whatsapp_templates').upsert({
-          template_key,
-          category,
-          twilio_content_sid: contentSid,
-          twilio_friendly_name: friendly_name,
-          variables: variables || {},
-          body_preview: tplBody,
-          button_text: Array.isArray(buttons) && buttons.length > 0
-            ? buttons.map((b: any) => b.title || b.label).join('|')
-            : null,
-          language_code: language,
-          approval_status: approvalStatus,
-          last_synced_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'template_key' });
-
-        if (upsertErr) {
-          console.warn('[whatsapp-send] template upsert warning', upsertErr.message);
-        }
-
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            content_sid: contentSid,
-            approval_status: approvalStatus,
-            approval_details: approvalDetails,
-            upsert_warning: upsertErr?.message || null,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

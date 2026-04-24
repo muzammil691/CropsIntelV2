@@ -1,90 +1,57 @@
 // CropsIntel V2 — Locale Context
-// 2026-04-25 · Mini-Phase 5
+// 2026-04-25 · Mini-Phase 5 (app-lock revert 2026-04-25 evening)
 //
-// Resolves the app-wide UI locale on mount using this priority:
-//   1. user_profiles.preferred_language (if logged in)
-//   2. localStorage 'cropsintel_locale'
-//   3. IP-derived (ipapi.co, cached in sessionStorage)
-//   4. navigator.language
-//   5. 'en'
+// APP-LEVEL LOCALE IS CURRENTLY LOCKED TO ENGLISH + LTR.
 //
-// Exposes { locale, setLocale, t, dir, meta } via useLocale(). Persists
-// explicit switches to localStorage + user_profiles.preferred_language.
+// Why: on first live render the `<html dir>` flipped to RTL for non-English
+// detected locales, which visually flipped the whole app even though the
+// copy stayed English. The user explicitly asked us to roll back the
+// app-wide multilingual rollout ("the app should go back to english and
+// left to right") until we've done a careful render-review cycle.
+//
+// Still locale-aware (these run INDEPENDENTLY of this provider):
+//   - Zyra's first-greeting IP detection (`resolveZyraFirstLocale` in
+//     src/lib/locale.js — bypasses this provider entirely)
+//   - WhatsApp per-country messaging (server-side, edge functions)
+//
+// When we re-enable app-wide multilingual, un-hardcode `ENFORCED_LOCALE`
+// and restore the resolution chain + the LocaleSwitcher in the top bar.
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useCallback, useMemo } from 'react';
 import {
   SUPPORTED_LOCALES,
   DEFAULT_LOCALE,
   LOCALE_META,
   DICT,
   t as translate,
-  resolveAppLocale,
 } from '../lib/locale';
 import { supabase } from '../lib/supabase';
 
 const LocaleContext = createContext(null);
 
-const STORAGE_KEY = 'cropsintel_locale';
+// Hard lock — flip to `null` (and restore the resolution chain below)
+// when the multilingual app-layer is approved.
+const ENFORCED_LOCALE = 'en';
 
 export function LocaleProvider({ children }) {
-  const [locale, setLocaleState] = useState(() => {
-    // Synchronous best-guess from localStorage for zero-flash SSR-safe init.
-    try {
-      const stored = typeof window !== 'undefined'
-        ? window.localStorage.getItem(STORAGE_KEY)
-        : null;
-      if (stored && SUPPORTED_LOCALES.includes(stored)) return stored;
-    } catch {}
-    return DEFAULT_LOCALE;
-  });
-  const [ready, setReady] = useState(false);
+  // While the app-lock is in place, locale is always ENFORCED_LOCALE.
+  // We still expose setLocale() so the profile column can be persisted
+  // (Zyra + WhatsApp use that value); it just won't flip the UI.
+  const locale = ENFORCED_LOCALE;
 
-  // On mount: kick off async resolution. If resolveAppLocale returns
-  // something different from our sync guess, upgrade silently.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // Try to read the user's stored preference from the profile (if logged
-      // in). We don't block on auth — a null result just means no preference.
-      let preferred = null;
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.id) {
-          const { data } = await supabase
-            .from('user_profiles')
-            .select('preferred_language')
-            .eq('id', session.user.id)
-            .maybeSingle();
-          if (data?.preferred_language && SUPPORTED_LOCALES.includes(data.preferred_language)) {
-            preferred = data.preferred_language;
-          }
-        }
-      } catch {
-        // Silent — locale must never block app init.
-      }
-
-      const resolved = await resolveAppLocale({ preferred });
-      if (!cancelled && resolved && SUPPORTED_LOCALES.includes(resolved)) {
-        setLocaleState(resolved);
-      }
-      if (!cancelled) setReady(true);
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Apply <html lang> + dir attributes whenever locale changes.
+  // Apply <html lang> + dir attributes — always English + LTR.
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const meta = LOCALE_META[locale] || LOCALE_META.en;
-    document.documentElement.setAttribute('lang', locale);
-    document.documentElement.setAttribute('dir', meta.dir);
-  }, [locale]);
+    document.documentElement.setAttribute('lang', 'en');
+    document.documentElement.setAttribute('dir', 'ltr');
+  }, []);
 
+  // setLocale persists to user_profiles.preferred_language only — Zyra
+  // reads that column for its first-greeting locale and WhatsApp uses it
+  // for outbound template selection. It does NOT flip the app UI while
+  // the lock is in place.
   const setLocale = useCallback(async (next) => {
     if (!SUPPORTED_LOCALES.includes(next)) return;
-    setLocaleState(next);
-    try { window.localStorage.setItem(STORAGE_KEY, next); } catch {}
-    // Best-effort: persist to user_profiles if logged in. Swallow errors.
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
@@ -94,7 +61,7 @@ export function LocaleProvider({ children }) {
           .eq('id', session.user.id);
       }
     } catch {
-      // Column may not exist yet (pre-migration); ignore.
+      // Column may not exist yet (pre-migration); ignore silently.
     }
   }, []);
 
@@ -104,12 +71,15 @@ export function LocaleProvider({ children }) {
     locale,
     setLocale,
     t,
-    ready,
+    ready: true,
     meta: LOCALE_META[locale] || LOCALE_META.en,
-    dir: (LOCALE_META[locale] || LOCALE_META.en).dir,
+    dir: 'ltr',
     supported: SUPPORTED_LOCALES,
     localeMeta: LOCALE_META,
-  }), [locale, setLocale, t, ready]);
+    // Surface the lock so admin UI can show "language preview locked"
+    // instead of rendering a switcher that does nothing visible.
+    appLocaleLocked: true,
+  }), [locale, setLocale, t]);
 
   return (
     <LocaleContext.Provider value={value}>
@@ -132,6 +102,7 @@ export function useLocale() {
       dir: 'ltr',
       supported: SUPPORTED_LOCALES,
       localeMeta: LOCALE_META,
+      appLocaleLocked: true,
     };
   }
   return ctx;
