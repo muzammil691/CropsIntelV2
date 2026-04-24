@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-25T16:00:00Z",
-  "updatedBy": "Claude AI \u2014 Trade Hub foundation (docs + migration + role expansion + team first-login fix). (1) Canonical spec preserved as docs/TRADE_HUB_SPEC_v1.md (1405 lines, 20 sections verbatim from user). (2) Gap analysis docs/TRADE_HUB_CROSSWALK_v1.md (portal / profile / role / offer cross-walks + per-page buckets). (3) supabase/migrations/20260425_trade_hub_foundation.sql APPLIED to prod: extended user_profiles with counterparty fields (legal_entity_name, tax/vat/trade_license, addresses JSONB, region auto-derived, payment/incoterm/currency prefs, kyc_status CHECK, sanctions_screening, historical_performance JSONB, assigned_account_manager, assigned_procurement_officer, authority_tier 1-4 + override, counterparty_type CHECK, portal CHECK, onboarded_as_role); seeded entities table with MGT + MIX (spec \u00a71.3); added offers table with 5-source-type CHECK (spec \u00a73); added contract_number_counters + mint_contract_number() minting MGT-SAL-PAK-2026-NNNN format (spec \u00a75). Verified on prod: mint_contract_number returns 0001, 0002. (4) Settings ALL_ROLES expanded to 14 internal + 6 external spec roles in 4 optgroups (Trading / Value Chain / External / Maxons Internal), \u2728 marker on spec roles. (5) App.jsx sidebar profile-loading race fix: ADMIN_ROLES/TEAM_ROLES/ROLE_PRIORITY extended to all 14+6 spec roles; skeleton placeholder when profile still loading; no more silent buyer fallback. (6) AcceptInvite adds onboarded_as_role on upsert, pre-fetches profile post-signIn, passes rich state (welcomeMessage/justOnboardedAs/tier/isTeamInvite/signInSucceeded). (7) Dashboard renders InviteWelcomeBanner with team-tool links for team invitees, single-line welcome for buyers, amber fallback if sign-in failed. USER directive 2026-04-25: V2 scope narrowed to Welcome\u2192CRM; full Trade Hub lifecycle moves to V3 / Phase 7+ (11-month roadmap). Pausing for V2-up-to-CRM gap-analysis discussion per user request.",
+  "lastUpdated": "2026-04-25T18:30:00Z",
+  "updatedBy": "Claude AI \u2014 Auto Dev Mode + /map bird's-eye gates shipped. (0) supabase/migrations/20260425_autodev_mode.sql APPLIED: autodev_status (singleton), autodev_questions (WhatsApp-backed Q/A with options JSONB), autodev_tasks, autodev_live view, autodev_heartbeat() SECURITY DEFINER. Verified on prod. (1) supabase/functions/autodev-ask edge fn + src/autonomous/autodev-ask.js Node helper \u2014 insert question \u2192 WhatsApp push \u2192 bump heartbeat. (2) whatsapp-webhook extended with admin-phone branch BEFORE OTP check: replies to open questions (numbered option or free text) answer the row, 'status' command returns live state. (3) First test ping dispatched to +971527854447 \u2014 template-backed (invite_buyer, MM034d...) confirmed delivery. (4) src/components/AutoDevBanner.jsx polls autodev_live every 10s, shows live worker state + open Qs. (5) src/components/LaunchGates.jsx new 3-tier bird's-eye: Soft (35%) \u2192 Full (50%) \u2192 V3 (100%) with rollup % per gate + honest weighted total. (6) ProjectMap.jsx: new default tab 'Launch Gates' + banner injected. Earlier: Trade Hub foundation (spec + crosswalk + migration + role expansion + team first-login fix). (1) Canonical spec preserved as docs/TRADE_HUB_SPEC_v1.md (1405 lines, 20 sections verbatim from user). (2) Gap analysis docs/TRADE_HUB_CROSSWALK_v1.md (portal / profile / role / offer cross-walks + per-page buckets). (3) supabase/migrations/20260425_trade_hub_foundation.sql APPLIED to prod: extended user_profiles with counterparty fields (legal_entity_name, tax/vat/trade_license, addresses JSONB, region auto-derived, payment/incoterm/currency prefs, kyc_status CHECK, sanctions_screening, historical_performance JSONB, assigned_account_manager, assigned_procurement_officer, authority_tier 1-4 + override, counterparty_type CHECK, portal CHECK, onboarded_as_role); seeded entities table with MGT + MIX (spec \u00a71.3); added offers table with 5-source-type CHECK (spec \u00a73); added contract_number_counters + mint_contract_number() minting MGT-SAL-PAK-2026-NNNN format (spec \u00a75). Verified on prod: mint_contract_number returns 0001, 0002. (4) Settings ALL_ROLES expanded to 14 internal + 6 external spec roles in 4 optgroups (Trading / Value Chain / External / Maxons Internal), \u2728 marker on spec roles. (5) App.jsx sidebar profile-loading race fix: ADMIN_ROLES/TEAM_ROLES/ROLE_PRIORITY extended to all 14+6 spec roles; skeleton placeholder when profile still loading; no more silent buyer fallback. (6) AcceptInvite adds onboarded_as_role on upsert, pre-fetches profile post-signIn, passes rich state (welcomeMessage/justOnboardedAs/tier/isTeamInvite/signInSucceeded). (7) Dashboard renders InviteWelcomeBanner with team-tool links for team invitees, single-line welcome for buyers, amber fallback if sign-in failed. USER directive 2026-04-25: V2 scope narrowed to Welcome\u2192CRM; full Trade Hub lifecycle moves to V3 / Phase 7+ (11-month roadmap). Pausing for V2-up-to-CRM gap-analysis discussion per user request.",
   "v2Scope": "Welcome \u2192 CRM (full polish). Trade Hub full lifecycle (4 portals, offers/deals/contracts/shipments/payments, per-entity ledgers, WhatsApp catalogue, 6 shipment modes) = V3 / Phase 7+. Per user directive 2026-04-25.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 68,
@@ -852,6 +852,18 @@
     }
   ],
   "recentCommits": [
+    {
+      "sha": "pending-autodev-gates",
+      "date": "2026-04-25",
+      "subject": "autodev+map: Mini-Phase 1 \u2014 AutoDevBanner + LaunchGates bird's-eye (soft 35 / full 50 / v3 100) + default tab rewire",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "ec143fc",
+      "date": "2026-04-25",
+      "subject": "autodev: Mini-Phase 0 \u2014 Auto Dev Mode infra (migration applied, edge fn, webhook admin branch, first WA test ping dispatched)",
+      "author": "Claude AI"
+    },
     {
       "sha": "e66f76c",
       "date": "2026-04-25",
@@ -2832,6 +2844,13 @@
     "roles-14-internal-6-external": 100,
     "team-first-login-fix": 100,
     "invite-welcome-banner": 100,
+    "autodev-mode-schema": 100,
+    "autodev-mode-edge-fn": 80,
+    "autodev-mode-webhook-admin-branch": 100,
+    "autodev-mode-node-helper": 100,
+    "autodev-banner-live": 100,
+    "launch-gates-bird-eye": 100,
+    "map-gates-default-tab": 100,
     "team-user-mgmt": 100,
     "widget-interactivity": 96,
     "offers-multi-product": 90,
