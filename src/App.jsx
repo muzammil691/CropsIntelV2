@@ -23,6 +23,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const SetPassword = lazy(() => import('./pages/SetPassword'));
+const AcceptInvite = lazy(() => import('./pages/AcceptInvite'));
 const CRM = lazy(() => import('./pages/CRM'));
 const Intelligence = lazy(() => import('./pages/Intelligence'));
 const Trading = lazy(() => import('./pages/Trading'));
@@ -455,7 +456,7 @@ function usePageTitle() {
 }
 
 // Full-page routes (no sidebar/nav chrome)
-const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password', '/set-password', '/map'];
+const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password', '/set-password', '/map', '/accept-invite'];
 
 export default function App() {
   usePageTitle();
@@ -473,6 +474,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/set-password" element={<SetPassword />} />
+          <Route path="/accept-invite" element={<AcceptInvite />} />
           <Route path="/map" element={<ProjectMap />} />
         </Routes>
       </Suspense>

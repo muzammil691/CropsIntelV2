@@ -80,7 +80,7 @@ export default function Settings() {
   const [editingUser, setEditingUser] = useState(null);
   const [adminMsg, setAdminMsg] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({ full_name: '', email: '', company: '', whatsapp_number: '', role: 'buyer', access_tier: 'registered' });
+  const [newUser, setNewUser] = useState({ full_name: '', email: '', company: '', whatsapp_number: '', role: 'buyer', access_tier: 'registered', personal_note: '' });
   const [addingUser, setAddingUser] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // userId to confirm deletion
 
@@ -524,48 +524,77 @@ export default function Settings() {
     setTimeout(() => setPasswordMsg(''), 5000);
   }
 
-  // Admin: Add new user
+  // Admin: Invite new user via email + WhatsApp (no zombie auth accounts).
+  //
+  // Old bug (2026-04-24): signUp() with a random UUID password created an
+  // auth.users row the invitee never saw the password for — no email was
+  // sent, no WhatsApp sent, invitee had zero awareness.
+  //
+  // New flow: POST to send-team-invite edge fn which (1) writes a
+  // team_invitations row with a UUID token, (2) sends email via email-send,
+  // (3) sends WhatsApp via whatsapp-send (approved invite_* template).
+  // The invitee clicks the link → lands on /accept-invite → sets password
+  // + completes job details → auth account + user_profiles row created.
   async function handleAddUser() {
-    if (!newUser.email?.trim()) return setAdminMsg('Error: Email is required');
     if (!newUser.full_name?.trim()) return setAdminMsg('Error: Name is required');
+    if (!newUser.email?.trim() && !newUser.whatsapp_number?.trim()) {
+      return setAdminMsg('Error: Provide at least one of email or WhatsApp number');
+    }
 
     setAddingUser(true);
     setAdminMsg('');
     try {
-      // Create Supabase auth account
-      const tempPassword = crypto.randomUUID?.() || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
-        email: newUser.email.trim(),
-        password: tempPassword,
-        options: { data: { full_name: newUser.full_name.trim() } },
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error('You must be logged in to invite users');
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-team-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          full_name:       newUser.full_name.trim(),
+          email:           newUser.email?.trim() || null,
+          whatsapp_number: newUser.whatsapp_number?.trim() || null,
+          role:            newUser.role,
+          access_tier:     newUser.access_tier,
+          company:         newUser.company?.trim() || null,
+          personal_note:   newUser.personal_note?.trim() || null,
+        }),
       });
-
-      // Note: signUp creates the auth account. The user will need to verify email or use WhatsApp OTP.
-      // We also create their profile row.
-      if (authErr) throw authErr;
-
-      if (authData.user) {
-        await supabase.from('user_profiles').upsert({
-          id: authData.user.id,
-          email: newUser.email.trim(),
-          full_name: newUser.full_name.trim(),
-          company: newUser.company.trim(),
-          whatsapp_number: newUser.whatsapp_number.trim(),
-          role: newUser.role,
-          access_tier: newUser.access_tier,
-          created_at: new Date().toISOString(),
-        });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result?.success) {
+        throw new Error(result?.error || `Invite failed (HTTP ${res.status})`);
       }
 
-      setAdminMsg(`User ${newUser.full_name} added. They'll need to verify their email or use WhatsApp OTP to log in.`);
+      // Build a per-channel summary so the admin can see exactly what happened.
+      const parts = [];
+      const emailRes = result.delivery?.email;
+      const waRes = result.delivery?.whatsapp;
+      if (emailRes) {
+        parts.push(emailRes.ok ? `email ✓ (${emailRes.mode})` : `email ✗ (${emailRes.error || 'failed'})`);
+      }
+      if (waRes) {
+        parts.push(waRes.ok ? `whatsapp ✓ (${waRes.mode})` : `whatsapp ✗ (${waRes.error || 'failed'})`);
+      }
+      const deliverySummary = parts.length ? ` — ${parts.join(', ')}` : '';
+
+      setAdminMsg(
+        `Invitation sent to ${newUser.full_name}${deliverySummary}. ` +
+        `Link: ${result.accept_url}`
+      );
       setShowAddUser(false);
-      setNewUser({ full_name: '', email: '', company: '', whatsapp_number: '', role: 'buyer', access_tier: 'registered' });
+      setNewUser({ full_name: '', email: '', company: '', whatsapp_number: '', role: 'buyer', access_tier: 'registered', personal_note: '' });
       await loadAllUsers();
     } catch (err) {
-      setAdminMsg('Error: ' + (err.message || 'Failed to add user'));
+      setAdminMsg('Error: ' + (err.message || 'Failed to send invitation'));
     }
     setAddingUser(false);
-    setTimeout(() => setAdminMsg(''), 6000);
+    // Keep the link visible longer so the admin can copy it as a fallback.
+    setTimeout(() => setAdminMsg(''), 30000);
   }
 
   // Admin: Delete user (profile row only — auth account requires admin API)
@@ -839,7 +868,7 @@ export default function Settings() {
                 onClick={() => setShowAddUser(!showAddUser)}
                 className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs transition-colors font-medium"
               >
-                + Add User
+                + Invite User
               </button>
               <button
                 onClick={loadAllUsers}
@@ -862,15 +891,18 @@ export default function Settings() {
             />
           </div>
 
-          {/* Add User Form */}
+          {/* Invite User Form */}
           {showAddUser && (
             <div className="bg-gray-800/70 border border-green-500/20 rounded-lg p-4 mb-4">
-              <h3 className="text-sm font-semibold text-green-400 mb-3">Add New Team Member</h3>
+              <h3 className="text-sm font-semibold text-green-400 mb-1">Invite Team Member</h3>
+              <p className="text-[11px] text-gray-500 mb-3">
+                We'll send them a link via <span className="text-gray-300">email</span> and/or <span className="text-gray-300">WhatsApp</span>. They'll click it, set their password, and complete their job profile (2 min).
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input type="text" value={newUser.full_name} onChange={e => setNewUser(p => ({ ...p, full_name: e.target.value }))}
                   placeholder="Full Name *" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
                 <input type="email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))}
-                  placeholder="Email *" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
+                  placeholder="Email (or WhatsApp below)" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
                 <input type="text" value={newUser.company} onChange={e => setNewUser(p => ({ ...p, company: e.target.value }))}
                   placeholder="Company" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
                 <input type="text" value={newUser.whatsapp_number} onChange={e => setNewUser(p => ({ ...p, whatsapp_number: e.target.value }))}
@@ -898,6 +930,13 @@ export default function Settings() {
                   {ACCESS_TIERS.map(t => <option key={t} value={t}>{TIER_LABELS[t]}</option>)}
                 </select>
               </div>
+              <textarea
+                value={newUser.personal_note}
+                onChange={e => setNewUser(p => ({ ...p, personal_note: e.target.value }))}
+                rows={2}
+                placeholder="Optional personal note (shown at the top of the invitation) — e.g. &quot;Looking forward to having you on the team&quot;"
+                className="w-full mt-3 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50 resize-none"
+              />
               {/* Preset buttons — set role + tier in one click */}
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 <span className="text-[11px] text-gray-500">Quick presets:</span>
@@ -929,7 +968,7 @@ export default function Settings() {
               <div className="flex items-center gap-2 mt-3">
                 <button onClick={handleAddUser} disabled={addingUser}
                   className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
-                  {addingUser ? 'Creating...' : 'Create User'}
+                  {addingUser ? 'Sending invitation...' : 'Send Invitation'}
                 </button>
                 <button onClick={() => setShowAddUser(false)}
                   className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs transition-colors">
