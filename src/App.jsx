@@ -1,11 +1,13 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
+import { useLocale } from './contexts/LocaleContext';
 import GuestOverlay from './components/GuestOverlay';
 import ProfileCompletionBanner from './components/ProfileCompletionBanner';
 import ProtectedRoute, { AdminRoute, TeamRoute, AuthRoute } from './components/ProtectedRoute';
 import ZyraWidget from './components/ZyraWidget';
 import CommandPalette from './components/CommandPalette';
+import LocaleSwitcher from './components/LocaleSwitcher';
 import V1ReturningUserModal from './components/V1ReturningUserModal';
 
 // Lazy-load pages for code splitting
@@ -75,22 +77,27 @@ const NAV_ITEMS = [
 const NAV_SECTIONS = [
   {
     label: 'Main',
+    key: 'nav.section.main',
     items: ['/dashboard', '/analysis'],
   },
   {
     label: 'Market Data',
+    key: 'nav.section.marketData',
     items: ['/supply', '/destinations', '/pricing', '/forecasts', '/news'],
   },
   {
     label: 'AI & Intelligence',
+    key: 'nav.section.aiIntelligence',
     items: ['/intelligence', '/reports'],
   },
   {
     label: 'Relationships',
+    key: 'nav.section.relationships',
     items: ['/crm', '/brokers', '/suppliers', '/trading'],
   },
   {
     label: 'Admin',
+    key: 'nav.section.admin',
     items: ['/settings#team-panel', '/settings#broadcast-panel', '/autonomous', '/settings'],
   },
 ];
@@ -104,6 +111,7 @@ function formatTime(ms) {
 
 function GuestTimerBadge() {
   const { isAuthenticated, guestTimeLeft, guestExpired } = useAuth();
+  const { t } = useLocale();
   if (isAuthenticated) return null;
 
   const pct = (guestTimeLeft / (5 * 60 * 1000)) * 100;
@@ -123,24 +131,26 @@ function GuestTimerBadge() {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
       <span className="font-mono font-medium">{formatTime(guestTimeLeft)}</span>
-      <span className="hidden sm:inline text-gray-500">guest</span>
+      <span className="hidden sm:inline text-gray-500">{t('auth.guest')}</span>
     </Link>
   );
 }
 
 function UserMenu() {
   const { isAuthenticated, profile, user, signOut } = useAuth();
+  const { t } = useLocale();
   const navigate = useNavigate();
 
   if (!isAuthenticated) {
     return (
       <div className="flex items-center gap-2">
         <GuestTimerBadge />
+        <LocaleSwitcher compact />
         <Link
           to="/login"
           className="px-3 py-1.5 text-[11px] text-gray-400 hover:text-white border border-gray-700 hover:border-gray-600 rounded-lg transition-colors"
         >
-          Sign In
+          {t('auth.signIn')}
         </Link>
       </div>
     );
@@ -148,6 +158,7 @@ function UserMenu() {
 
   return (
     <div className="flex items-center gap-2">
+      <LocaleSwitcher compact />
       <div className="text-right hidden sm:block">
         <p className="text-[11px] text-white font-medium leading-tight truncate max-w-[120px]">
           {profile?.full_name || user?.email?.split('@')[0] || 'User'}
@@ -162,7 +173,7 @@ function UserMenu() {
       <button
         onClick={async () => { await signOut(); navigate('/welcome'); }}
         className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
-        title="Sign out"
+        title={t('auth.signOut')}
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -235,6 +246,14 @@ const ROLE_PRIORITY = {
 function Sidebar() {
   const location = useLocation();
   const { isAuthenticated, profile } = useAuth();
+  const { t } = useLocale();
+  // t() falls through to English if key missing, so the raw item.label
+  // remains a safe fallback. 'nav.path.<path>' keys translate the labels
+  // live. Section headers use `section.key` → t().
+  const navLabel = (item) => {
+    const translated = t('nav.path.' + item.path);
+    return translated === 'nav.path.' + item.path ? item.label : translated;
+  };
   // PROFILE-LOADING RACE FIX (see docs/TRADE_HUB_CROSSWALK_v1.md §6):
   // When an invitee lands on /dashboard from /accept-invite, the session
   // has just been created but loadProfile() hasn't resolved yet. Without a
@@ -311,7 +330,7 @@ function Sidebar() {
           return (
             <div key={section.label}>
               <div className="px-3 pb-1.5 text-[10px] uppercase tracking-wider text-gray-600 font-semibold">
-                {section.label}
+                {section.key ? t(section.key) : section.label}
               </div>
               <div className="space-y-0.5">
                 {sectionItems.map(item => {
@@ -323,7 +342,7 @@ function Sidebar() {
                       key={item.path}
                       to={isLocked ? '#' : item.path}
                       onClick={isLocked ? e => e.preventDefault() : undefined}
-                      title={isLocked ? 'Team access required' : item.label}
+                      title={isLocked ? 'Team access required' : navLabel(item)}
                       className={`group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                         isLocked
                           ? 'text-gray-700 cursor-not-allowed'
@@ -333,7 +352,7 @@ function Sidebar() {
                       }`}
                     >
                       <span className="text-base leading-none">{item.icon}</span>
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate">{navLabel(item)}</span>
                       {isLocked && <span className="ml-auto text-[10px] text-gray-700">🔒</span>}
                       {isActive && !isLocked && (
                         <span className="ml-auto w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]" />
