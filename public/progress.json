@@ -853,7 +853,7 @@
   ],
   "recentCommits": [
     {
-      "sha": "pending-trade-hub-foundation",
+      "sha": "e66f76c",
       "date": "2026-04-25",
       "subject": "trade-hub: foundation (spec + crosswalk + migration + 14 internal + 6 external roles + team first-login fix)",
       "author": "Claude AI"
