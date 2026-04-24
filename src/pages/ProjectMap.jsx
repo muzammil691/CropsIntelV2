@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import AutoDevBanner from '../components/AutoDevBanner';
+import LaunchGates from '../components/LaunchGates';
 
 const CATEGORY_COLORS = {
   data: { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400', bar: 'bg-blue-500', glow: 'shadow-blue-500/20' },
@@ -520,7 +522,7 @@ function MonitorBotPanel({ monitorLog }) {
 export default function ProjectMap() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('gates');
   const [lastRefresh, setLastRefresh] = useState(null);
 
   const [monitorLog, setMonitorLog] = useState(null);
@@ -573,6 +575,7 @@ export default function ProjectMap() {
   }
 
   const tabs = [
+    { id: 'gates', label: 'Launch Gates', icon: '\uD83D\uDEA6' },
     { id: 'overview', label: 'Overview', icon: '\uD83D\uDCCA' },
     { id: 'systems', label: 'Systems', icon: '\u2699\uFE0F' },
     { id: 'timeline', label: 'Timeline', icon: '\uD83D\uDCC5' },
@@ -615,6 +618,9 @@ export default function ProjectMap() {
         </div>
       </div>
 
+      {/* Auto Dev Mode — live worker status (admin + team only) */}
+      <AutoDevBanner />
+
       {/* Now Working On — live session banner */}
       <CurrentWorkBanner currentWork={data.currentWork} />
 
@@ -656,6 +662,10 @@ export default function ProjectMap() {
       </div>
 
       {/* Tab content */}
+      {activeTab === 'gates' && (
+        <LaunchGates progress={data} />
+      )}
+
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Phases */}
