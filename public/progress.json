@@ -735,7 +735,7 @@
   ],
   "recentCommits": [
     {
-      "sha": "pending-multi-metric",
+      "sha": "67cd023",
       "date": "2026-04-24",
       "subject": "supply+forecasts: multi-metric volume toggle (lbs/containers/MT/kernels) + progress.json bump",
       "author": "Claude AI"
