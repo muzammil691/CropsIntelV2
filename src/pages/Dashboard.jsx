@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toNum } from '../lib/utils';
 import { getAIStatus, loadAPIKeys } from '../lib/ai-engine';
@@ -16,6 +16,137 @@ import {
 } from 'recharts';
 
 // Strip markdown markers, section labels, and truncate text for card previews
+// Human-readable labels for spec-aligned roles. Used by the post-invite
+// welcome banner so a user sees "Sales Handler" not "sales_handler".
+// Legacy roles are passed through via a fallback title-case transform.
+const ROLE_LABEL_MAP = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  procurement_head: 'Procurement Head',
+  procurement_officer: 'Procurement Officer',
+  sales_lead: 'Sales Lead',
+  sales_handler: 'Sales Handler',
+  sales: 'Sales',
+  documentation_lead: 'Documentation Lead',
+  documentation_officer: 'Documentation Officer',
+  logistics_head: 'Logistics Head',
+  logistics_officer: 'Logistics Officer',
+  warehouse_manager: 'Warehouse Manager',
+  finance_head: 'Finance Head',
+  finance_officer: 'Finance Officer',
+  compliance_officer: 'Compliance Officer',
+  analyst: 'Analyst',
+  maxons_team: 'MAXONS Team',
+  company_admin: 'Company Admin',
+  finance_user: 'Finance User',
+  ops_user: 'Ops User',
+  procurement_trading_user: 'Procurement / Trading User',
+  sales_user: 'Sales User',
+  view_only_user: 'View-Only User',
+  reseller_both: 'Reseller',
+  buyer: 'Buyer',
+  seller: 'Seller',
+  trader: 'Trader',
+  broker: 'Broker',
+  grower: 'Grower',
+  supplier: 'Handler / Packer',
+  processor: 'Processor',
+};
+
+function prettyRole(role) {
+  if (!role) return 'Team Member';
+  return ROLE_LABEL_MAP[role] || role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Post-invite welcome banner. Shown once on first Dashboard render after a
+// successful /accept-invite flow. Team invitees see the full team-tool map
+// so they don't mistake the default persona view for their whole permission
+// set (see crosswalk §6 — "team members didn't see team functions at first
+// login" root cause). Non-team invitees still see a generic welcome.
+function InviteWelcomeBanner({ welcome, onDismiss }) {
+  const roleLabel = prettyRole(welcome.role);
+  const teamLinks = [
+    { to: '/crm',      icon: '🤝', label: 'CRM & Deals',    note: 'Pipeline + invite flow' },
+    { to: '/brokers',  icon: '🗺️', label: 'Brokers (BRM)',  note: 'Broker directory + contacts' },
+    { to: '/suppliers',icon: '🏭', label: 'Suppliers (SRM)', note: 'Packers + handlers' },
+    { to: '/trading',  icon: '💼', label: 'Trading Portal',  note: 'Offer & deal workspace' },
+    { to: '/settings#team-panel', icon: '👥', label: 'Team & Users', note: 'Verify users + invitations' },
+  ];
+
+  if (!welcome.signInOk) {
+    return (
+      <div className="mb-6 bg-amber-500/10 border border-amber-500/30 rounded-xl p-5 flex items-start gap-4">
+        <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 text-lg shrink-0">!</div>
+        <div className="flex-1">
+          <h3 className="text-base font-semibold text-amber-300 mb-1">Your account was created — please sign in</h3>
+          <p className="text-sm text-gray-300 mb-2">
+            We created your profile as a <b>{roleLabel}</b>, but auto-sign-in didn't complete. Confirm your email and sign in at{' '}
+            <Link to="/login" className="text-amber-300 underline hover:text-amber-200">/login</Link>.
+          </p>
+          <button
+            onClick={onDismiss}
+            className="text-[11px] text-gray-500 hover:text-gray-300"
+          >Dismiss</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!welcome.isTeam) {
+    // Non-team invitees (buyer etc.) just see a plain friendly banner.
+    return (
+      <div className="mb-6 bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-base shrink-0">✓</div>
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-green-300">Welcome to CropsIntel · {roleLabel}</h3>
+          <p className="text-xs text-gray-400 mt-1">{welcome.message || 'Your profile is ready. Explore the dashboard and let Zyra guide you.'}</p>
+        </div>
+        <button onClick={onDismiss} className="text-xs text-gray-500 hover:text-gray-300">×</button>
+      </div>
+    );
+  }
+
+  // Team invitees get the full team-tool map.
+  return (
+    <div className="mb-6 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-blue-500/10 border border-green-500/30 rounded-xl p-5">
+      <div className="flex items-start gap-4 mb-4">
+        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-lg shrink-0">★</div>
+        <div className="flex-1">
+          <h3 className="text-base font-semibold text-white mb-1">Welcome to the team — you're a {roleLabel}</h3>
+          <p className="text-sm text-gray-300">
+            Your team permissions are active. Here are the tools your role gets access to (also pinned in the left sidebar under <b>Relationships</b> and <b>Admin</b>).
+          </p>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="text-xs text-gray-500 hover:text-gray-300"
+          title="Dismiss"
+        >×</button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        {teamLinks.map(link => (
+          <Link
+            key={link.to}
+            to={link.to}
+            onClick={onDismiss}
+            className="flex items-center gap-3 bg-gray-900/60 hover:bg-gray-800 border border-gray-800 hover:border-green-500/40 rounded-lg px-3 py-2.5 transition-all group"
+          >
+            <span className="text-lg">{link.icon}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold text-white group-hover:text-green-300">{link.label}</div>
+              <div className="text-[10px] text-gray-500 truncate">{link.note}</div>
+            </div>
+            <span className="text-gray-600 group-hover:text-green-400 text-xs">→</span>
+          </Link>
+        ))}
+      </div>
+      <p className="text-[10px] text-gray-500 mt-3 italic">
+        Tip: check Settings → profile to fill in KYC, trade license, and commercial preferences — these power smarter deal matching as the Trade Hub rolls out.
+      </p>
+    </div>
+  );
+}
+
 function truncateText(text, maxLen = 150) {
   if (!text) return '';
   const clean = text
@@ -350,7 +481,34 @@ function ShipmentTrend({ reports }) {
 
 export default function Dashboard() {
   const { profile } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const internal = isInternal(profile);
+
+  // Post-invite welcome banner. AcceptInvite navigates here with state
+  // describing the role the user was invited as. We surface this prominently
+  // so team members don't mistake the default buyer-style layout for their
+  // full permission set. See docs/TRADE_HUB_CROSSWALK_v1.md §6.
+  const [inviteWelcome, setInviteWelcome] = useState(() => {
+    const s = location.state || {};
+    if (!s.welcomeMessage && !s.justOnboardedAs) return null;
+    return {
+      message: s.welcomeMessage,
+      role: s.justOnboardedAs,
+      tier: s.justOnboardedTier,
+      isTeam: !!s.isTeamInvite,
+      signInOk: s.signInSucceeded !== false,
+    };
+  });
+
+  // Clear the navigate state once we've captured it so a subsequent reload
+  // doesn't re-show the banner.
+  useEffect(() => {
+    if (inviteWelcome && location.state) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, []); // intentionally run once
+
   const [latestReport, setLatestReport] = useState(null);
   const [priorYearReport, setPriorYearReport] = useState(null);
   const [allReports, setAllReports] = useState([]);
@@ -677,6 +835,15 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl">
+      {/* Post-invite welcome banner — only visible right after an invitee
+          lands from /accept-invite. Closes on click. See crosswalk §6. */}
+      {inviteWelcome && (
+        <InviteWelcomeBanner
+          welcome={inviteWelcome}
+          onDismiss={() => setInviteWelcome(null)}
+        />
+      )}
+
       {/* Phase D MVP: role-aware welcome + shortcuts */}
       <PersonaBanner />
       {/* Phase D2/D3: persona-specific live numeric insights */}

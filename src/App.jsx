@@ -172,12 +172,32 @@ function UserMenu() {
   );
 }
 
-const ADMIN_ROLES = ['admin'];
-const TEAM_ROLES = ['admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team'];
+// Admin-level roles — have every privilege across the app.
+// `admin` is the legacy alias for the spec's `super_admin` (§12.1).
+const ADMIN_ROLES = ['admin', 'super_admin'];
+
+// Internal-team roles — see team-only pages (CRM, Brokers, Suppliers,
+// Trading, Team & Users). Includes ALL 14 spec §12.1 internal roles PLUS
+// legacy V2 values so existing team members keep access. See
+// docs/TRADE_HUB_SPEC_v1.md §12 and docs/TRADE_HUB_CROSSWALK_v1.md §3.
+const TEAM_ROLES = [
+  // Legacy V2 values (kept for back-compat with existing user_profiles rows)
+  'admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team',
+  // Spec §12.1 — 14 Maxons internal roles
+  'super_admin',
+  'procurement_head', 'procurement_officer',
+  'sales_lead', 'sales_handler',
+  'documentation_lead', 'documentation_officer',
+  'logistics_head', 'logistics_officer', 'warehouse_manager',
+  'finance_head', 'finance_officer',
+  'compliance_officer',
+];
 
 // Role → paths this role cares about most (shown first). Everything else
-// stays visible but drops below. Closes the Phase D "role-aware nav" todo.
+// stays visible but drops below. Extended to cover every spec §12 role so
+// newly-invited team members land with a sensible sidebar ordering.
 const ROLE_PRIORITY = {
+  // ─── External / value chain (existing) ───
   grower:    ['/dashboard', '/forecasts', '/supply', '/pricing', '/news', '/analysis'],
   supplier:  ['/dashboard', '/supply', '/forecasts', '/pricing', '/destinations', '/analysis'],
   processor: ['/dashboard', '/forecasts', '/pricing', '/supply', '/analysis'],
@@ -188,15 +208,46 @@ const ROLE_PRIORITY = {
   logistics: ['/dashboard', '/destinations', '/supply', '/news'],
   finance:   ['/dashboard', '/reports', '/pricing', '/analysis'],
   admin:     ['/dashboard', '/autonomous', '/crm', '/intelligence', '/trading'],
+  // ─── Spec §12.2 external company roles ───
+  company_admin:             ['/dashboard', '/crm', '/trading', '/pricing', '/settings'],
+  finance_user:              ['/dashboard', '/reports', '/pricing', '/analysis'],
+  ops_user:                  ['/dashboard', '/destinations', '/supply', '/news'],
+  procurement_trading_user:  ['/dashboard', '/pricing', '/destinations', '/intelligence', '/analysis'],
+  sales_user:                ['/dashboard', '/trading', '/brokers', '/pricing', '/news'],
+  view_only_user:            ['/dashboard', '/analysis', '/forecasts', '/reports'],
+  reseller_both:             ['/dashboard', '/pricing', '/trading', '/destinations', '/news'],
+  // ─── Spec §12.1 Maxons internal roles ───
+  super_admin:               ['/dashboard', '/autonomous', '/crm', '/trading', '/intelligence', '/reports'],
+  procurement_head:          ['/dashboard', '/suppliers', '/brokers', '/trading', '/crm', '/analysis'],
+  procurement_officer:       ['/dashboard', '/suppliers', '/brokers', '/trading', '/pricing'],
+  sales_lead:                ['/dashboard', '/crm', '/trading', '/analysis', '/reports'],
+  sales_handler:             ['/dashboard', '/crm', '/trading', '/pricing', '/destinations'],
+  documentation_lead:        ['/dashboard', '/crm', '/trading', '/reports'],
+  documentation_officer:     ['/dashboard', '/crm', '/trading'],
+  logistics_head:            ['/dashboard', '/destinations', '/supply', '/trading', '/reports'],
+  logistics_officer:         ['/dashboard', '/destinations', '/supply', '/trading'],
+  warehouse_manager:         ['/dashboard', '/supply', '/trading'],
+  finance_head:              ['/dashboard', '/reports', '/analysis', '/pricing', '/crm'],
+  finance_officer:           ['/dashboard', '/reports', '/pricing', '/analysis'],
+  compliance_officer:        ['/dashboard', '/crm', '/reports', '/settings'],
 };
 
 function Sidebar() {
   const location = useLocation();
   const { isAuthenticated, profile } = useAuth();
-  const userRole = profile?.role || 'buyer';
+  // PROFILE-LOADING RACE FIX (see docs/TRADE_HUB_CROSSWALK_v1.md §6):
+  // When an invitee lands on /dashboard from /accept-invite, the session
+  // has just been created but loadProfile() hasn't resolved yet. Without a
+  // guard, `profile?.role || 'buyer'` falsely flags the user as a buyer and
+  // hides all team-only nav entries. If they refresh quickly they see a
+  // "you were given buyer access" experience even though they were invited
+  // as team. Guard: while authenticated and profile is null, render
+  // placeholder nav (no team-gating decision yet).
+  const profileLoading = isAuthenticated && profile === null;
+  const userRole = profile?.role || (isAuthenticated ? null : 'buyer');
   const userTier = profile?.access_tier || profile?.tier;
-  const isAdmin = ADMIN_ROLES.includes(userRole) || userTier === 'admin';
-  const isTeam = isAdmin || TEAM_ROLES.includes(userRole) || userTier === 'maxons_team';
+  const isAdmin = userRole ? ADMIN_ROLES.includes(userRole) || userTier === 'admin' : false;
+  const isTeam = isAdmin || (userRole ? TEAM_ROLES.includes(userRole) : false) || userTier === 'maxons_team';
 
   // Index nav items by path so section render can look them up.
   const byPath = Object.fromEntries(NAV_ITEMS.map(i => [i.path, i]));
@@ -242,7 +293,19 @@ function Sidebar() {
 
       {/* Navigation — grouped into labeled sections */}
       <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
-        {NAV_SECTIONS.map(section => {
+        {/* Profile-load skeleton — prevents the buyer-role flash for team
+            invitees while AuthContext.loadProfile is in flight. */}
+        {profileLoading && (
+          <div className="space-y-2 px-3 py-2">
+            <div className="h-3 w-24 bg-gray-800/70 rounded animate-pulse" />
+            <div className="h-8 bg-gray-800/50 rounded animate-pulse" />
+            <div className="h-8 bg-gray-800/50 rounded animate-pulse" />
+            <div className="h-3 w-20 bg-gray-800/70 rounded animate-pulse mt-3" />
+            <div className="h-8 bg-gray-800/50 rounded animate-pulse" />
+            <div className="h-8 bg-gray-800/50 rounded animate-pulse" />
+          </div>
+        )}
+        {!profileLoading && NAV_SECTIONS.map(section => {
           const sectionItems = sortByPriority(visibleIn(section));
           if (sectionItems.length === 0) return null;
           return (
@@ -345,11 +408,15 @@ const MOBILE_MORE = NAV_ITEMS.slice(4);
 function MobileNav() {
   const location = useLocation();
   const { isAuthenticated, profile } = useAuth();
-  const userRole = profile?.role || 'buyer';
+  // Same profile-loading guard as desktop Sidebar (see crosswalk §6).
+  const profileLoading = isAuthenticated && profile === null;
+  const userRole = profile?.role || (isAuthenticated ? null : 'buyer');
   const [showMore, setShowMore] = React.useState(false);
 
   const userTier = profile?.access_tier || profile?.tier;
-  const isTeam = ADMIN_ROLES.includes(userRole) || TEAM_ROLES.includes(userRole) || userTier === 'admin' || userTier === 'maxons_team';
+  const isTeam = userRole
+    ? (ADMIN_ROLES.includes(userRole) || TEAM_ROLES.includes(userRole) || userTier === 'admin' || userTier === 'maxons_team')
+    : false;
 
   const moreItems = MOBILE_MORE.filter(item => {
     if (item.requireAdmin && !ADMIN_ROLES.includes(userRole) && userTier !== 'admin') return false;

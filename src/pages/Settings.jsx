@@ -14,26 +14,64 @@ const TIER_COLORS = {
   admin: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
-// All role options — mirrors the role set in App.jsx TEAM_ROLES + ROLE_PRIORITY.
-// Grouped: buy/sell side, value chain, and internal team roles.
+// All role options — aligned with Trade Hub spec §12.1 (14 internal) + §12.2
+// (6 external) PLUS legacy V2 roles kept for back-compat. Grouped for the
+// admin add/edit-user dropdown; spec roles are labeled with a tiny badge so
+// admins can distinguish the canonical names from legacy aliases.
+//
+// See docs/TRADE_HUB_SPEC_v1.md §12 and docs/TRADE_HUB_CROSSWALK_v1.md §3.
 const ALL_ROLES = [
-  { value: 'buyer',       label: 'Buyer',              group: 'trading' },
-  { value: 'seller',      label: 'Seller',             group: 'trading' },
-  { value: 'trader',      label: 'Trader',             group: 'trading' },
-  { value: 'broker',      label: 'Broker',             group: 'trading' },
-  { value: 'grower',      label: 'Grower',             group: 'chain'   },
-  { value: 'supplier',    label: 'Handler / Packer',   group: 'chain'   },
-  { value: 'processor',   label: 'Processor',          group: 'chain'   },
-  { value: 'analyst',     label: 'Analyst',            group: 'team'    },
-  { value: 'sales',       label: 'Sales',              group: 'team'    },
-  { value: 'maxons_team', label: 'MAXONS Team',        group: 'team'    },
-  { value: 'admin',       label: 'Admin',              group: 'team'    },
+  // ─── External — buy/sell side (legacy + spec) ───
+  { value: 'buyer',                    label: 'Buyer',                           group: 'trading', spec: false },
+  { value: 'procurement_trading_user', label: 'Procurement / Trading User',      group: 'trading', spec: true, note: 'Buyer-side: places bids, accepts offers' },
+  { value: 'seller',                   label: 'Seller',                          group: 'trading', spec: false },
+  { value: 'sales_user',               label: 'Sales User (Supplier/Broker)',    group: 'trading', spec: true, note: 'Posts offers, negotiates with Maxons' },
+  { value: 'trader',                   label: 'Trader',                          group: 'trading', spec: false },
+  { value: 'broker',                   label: 'Broker',                          group: 'trading', spec: false },
+  { value: 'reseller_both',            label: 'Reseller (buys + resells)',       group: 'trading', spec: true, note: 'Trades both directions' },
+  // ─── Value chain (legacy) ───
+  { value: 'grower',                   label: 'Grower',                          group: 'chain',   spec: false },
+  { value: 'supplier',                 label: 'Handler / Packer',                group: 'chain',   spec: false },
+  { value: 'processor',                label: 'Processor',                       group: 'chain',   spec: false },
+  // ─── External company roles (spec §12.2) ───
+  { value: 'company_admin',            label: 'Company Admin',                   group: 'external', spec: true, note: 'Manages their own company users' },
+  { value: 'finance_user',             label: 'Finance User (external)',         group: 'external', spec: true, note: 'Invoices + payment proofs only' },
+  { value: 'ops_user',                 label: 'Ops User (external)',             group: 'external', spec: true, note: 'Shipments + docs tracking' },
+  { value: 'view_only_user',           label: 'View-Only (external)',            group: 'external', spec: true, note: 'Read-only dashboard' },
+  // ─── Maxons internal — 14 spec roles (§12.1) ───
+  { value: 'super_admin',              label: 'Super Admin',                     group: 'team',    spec: true, note: 'Tier 4 — everything' },
+  { value: 'admin',                    label: 'Admin (legacy alias of Super Admin)', group: 'team', spec: false },
+  { value: 'procurement_head',         label: 'Procurement Head',                group: 'team',    spec: true, note: 'Tier 3 offer/supplier approvals' },
+  { value: 'procurement_officer',      label: 'Procurement Officer',             group: 'team',    spec: true, note: 'Tier 1 — assigned suppliers' },
+  { value: 'sales_lead',               label: 'Sales Lead',                      group: 'team',    spec: true, note: 'Tier 3 deal approvals' },
+  { value: 'sales_handler',            label: 'Sales Handler',                   group: 'team',    spec: true, note: 'Tier 1 — assigned buyers' },
+  { value: 'sales',                    label: 'Sales (legacy alias of Sales Handler)', group: 'team', spec: false },
+  { value: 'documentation_lead',       label: 'Documentation Lead',              group: 'team',    spec: true, note: 'Originals release + discrepancies' },
+  { value: 'documentation_officer',    label: 'Documentation Officer',           group: 'team',    spec: true, note: 'Draft uploads + OCR intake' },
+  { value: 'logistics_head',           label: 'Logistics Head',                  group: 'team',    spec: true, note: 'Tier 2 shipment approvals' },
+  { value: 'logistics_officer',        label: 'Logistics Officer',               group: 'team',    spec: true, note: 'LI creation + tracking' },
+  { value: 'warehouse_manager',        label: 'Warehouse Manager',               group: 'team',    spec: true, note: 'Per-location inventory + movements' },
+  { value: 'finance_head',             label: 'Finance Head',                    group: 'team',    spec: true, note: 'Tier 3 financial actions' },
+  { value: 'finance_officer',          label: 'Finance Officer / Accounts',      group: 'team',    spec: true, note: 'Tier 1 AR/AP + reconciliation' },
+  { value: 'compliance_officer',       label: 'Compliance Officer',              group: 'team',    spec: true, note: 'KYC, sanctions, licenses, audit' },
+  { value: 'analyst',                  label: 'Analyst / Read-only',             group: 'team',    spec: true, note: 'Dashboards + reports only' },
+  { value: 'maxons_team',              label: 'MAXONS Team (generic)',           group: 'team',    spec: false },
 ];
 
-// Canonical internal-team role set. Mirrors TEAM_ROLES in App.jsx line 138.
-// Any role in this list (or access_tier === 'maxons_team' / 'admin') counts
-// as "internal team" for purposes of verify-users capability.
-const TEAM_ROLE_VALUES = ['admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team'];
+// Canonical internal-team role set — includes ALL spec §12.1 internal roles
+// plus legacy V2 team roles. Any role in this list (or access_tier === one
+// of the elevated tiers) counts as "internal team" for verify-users and
+// team-only UI gates.
+const TEAM_ROLE_VALUES = [
+  // Legacy
+  'admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team',
+  // Spec §12.1 internal (14)
+  'super_admin', 'procurement_head', 'procurement_officer',
+  'sales_lead', 'sales_handler',
+  'documentation_lead', 'documentation_officer',
+  'logistics_head', 'logistics_officer', 'warehouse_manager',
+  'finance_head', 'finance_officer', 'compliance_officer',
+];
 
 const AI_SYSTEMS = [
   { key: 'anthropic', name: 'Claude (Anthropic)', role: 'Primary Brain', desc: 'Deep reasoning, document analysis, trade synthesis', color: 'orange' },
@@ -789,9 +827,9 @@ export default function Settings() {
                   onChange={e => setProfile(prev => ({ ...prev, role: e.target.value }))}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50"
                 >
-                  <optgroup label="Trading">
+                  <optgroup label="Trading (buy / sell side)">
                     {ALL_ROLES.filter(r => r.group === 'trading').map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                      <option key={r.value} value={r.value}>{r.label}{r.spec ? '  ✦' : ''}</option>
                     ))}
                   </optgroup>
                   <optgroup label="Value Chain">
@@ -799,9 +837,14 @@ export default function Settings() {
                       <option key={r.value} value={r.value}>{r.label}</option>
                     ))}
                   </optgroup>
-                  <optgroup label="Internal Team">
+                  <optgroup label="External Company User (spec §12.2)">
+                    {ALL_ROLES.filter(r => r.group === 'external').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}  ✦</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Maxons Internal Team (spec §12.1 + legacy)">
                     {ALL_ROLES.filter(r => r.group === 'team').map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                      <option key={r.value} value={r.value}>{r.label}{r.spec ? '  ✦' : ''}</option>
                     ))}
                   </optgroup>
                 </select>
@@ -1009,9 +1052,9 @@ export default function Settings() {
                   placeholder="WhatsApp (+971...)" className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/50" />
                 <select value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}
                   className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500/50">
-                  <optgroup label="Trading">
+                  <optgroup label="Trading (buy / sell side)">
                     {ALL_ROLES.filter(r => r.group === 'trading').map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                      <option key={r.value} value={r.value}>{r.label}{r.spec ? '  ✦' : ''}</option>
                     ))}
                   </optgroup>
                   <optgroup label="Value Chain">
@@ -1019,9 +1062,14 @@ export default function Settings() {
                       <option key={r.value} value={r.value}>{r.label}</option>
                     ))}
                   </optgroup>
-                  <optgroup label="Internal Team">
+                  <optgroup label="External Company User (spec §12.2)">
+                    {ALL_ROLES.filter(r => r.group === 'external').map(r => (
+                      <option key={r.value} value={r.value}>{r.label}  ✦</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Maxons Internal Team (spec §12.1 + legacy)">
                     {ALL_ROLES.filter(r => r.group === 'team').map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                      <option key={r.value} value={r.value}>{r.label}{r.spec ? '  ✦' : ''}</option>
                     ))}
                   </optgroup>
                 </select>

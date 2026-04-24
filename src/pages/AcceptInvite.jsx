@@ -184,6 +184,9 @@ export default function AcceptInvite() {
       }
 
       // 2. Upsert user_profiles with tier/role from invitation + job details.
+      // `onboarded_as_role` preserves the original invited role for audit, even
+      // if admin later promotes/demotes the user. See migration
+      // 20260425_trade_hub_foundation.sql (spec §2.2 / crosswalk §2).
       const profileRow = {
         id: newUserId,
         email: cleanEmail,
@@ -197,6 +200,7 @@ export default function AcceptInvite() {
         expertise: expertise.length ? expertise : null,
         languages: languages.length ? languages : null,
         invited_via: invitation.id,
+        onboarded_as_role: invitation.role, // audit trail — original role at invitation time
         onboarded_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -226,16 +230,65 @@ export default function AcceptInvite() {
 
       // 4. If email needs confirmation (Supabase default), auth.session may
       // be null. Sign them in immediately so they land on the dashboard.
+      let signInOk = !!authData?.session;
       if (!authData?.session) {
-        await supabase.auth.signInWithPassword({
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password,
-        }).catch(() => { /* rolls forward — they can always log in manually */ });
+        });
+        if (!signInErr) signInOk = true;
+        else console.warn('[AcceptInvite] auto-signin failed:', signInErr.message);
       }
+
+      // 5. Pre-seed the profile fetch before Dashboard mounts. Without this,
+      // AuthContext.loadProfile races with navigate() and the sidebar briefly
+      // renders the fallback 'buyer' role — team-only nav entries never
+      // appear, leaving new team members confused about where their tools
+      // are. Forcing a SELECT here guarantees the row is hot in Supabase's
+      // replication before we navigate. See docs/TRADE_HUB_CROSSWALK_v1.md §6.
+      let freshProfile = null;
+      if (signInOk) {
+        try {
+          const { data: refreshed } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', newUserId)
+            .maybeSingle();
+          freshProfile = refreshed;
+        } catch (pullErr) {
+          console.warn('[AcceptInvite] profile pre-fetch failed:', pullErr?.message);
+        }
+      }
+
+      // 6. Decide whether this invitee landed on the team side so Dashboard
+      // can render a team-specific welcome banner.
+      const TEAM_ROLE_LIST = [
+        // legacy
+        'admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team',
+        // spec §12.1 (14 internal)
+        'super_admin', 'procurement_head', 'procurement_officer',
+        'sales_lead', 'sales_handler',
+        'documentation_lead', 'documentation_officer',
+        'logistics_head', 'logistics_officer', 'warehouse_manager',
+        'finance_head', 'finance_officer', 'compliance_officer',
+      ];
+      const isTeamInvite =
+        TEAM_ROLE_LIST.includes(invitation.role) ||
+        invitation.access_tier === 'maxons_team' ||
+        invitation.access_tier === 'admin';
 
       navigate('/dashboard', {
         replace: true,
-        state: { welcomeMessage: `Welcome to CropsIntel, ${fullName.trim().split(' ')[0]}! Your profile is ready.` },
+        state: {
+          welcomeMessage: `Welcome to CropsIntel, ${fullName.trim().split(' ')[0]}! Your profile is ready.`,
+          justOnboardedAs: invitation.role,
+          justOnboardedTier: invitation.access_tier,
+          isTeamInvite,
+          // If sign-in failed (e.g. email-confirm required), tell Dashboard so
+          // it can show a "please check your inbox / try login" nudge instead
+          // of the team welcome banner.
+          signInSucceeded: signInOk,
+        },
       });
     } catch (err) {
       setSubmitError(err.message || 'Could not complete invitation acceptance');
