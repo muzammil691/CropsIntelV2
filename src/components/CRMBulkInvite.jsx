@@ -9,7 +9,9 @@
 
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { sendWhatsAppMessage } from '../lib/whatsapp';
+import { sendWhatsAppTemplate } from '../lib/whatsapp';
+import { pickInviteTemplate, TEMPLATE_CATALOG } from '../lib/whatsapp-templates';
+import { useAuth } from '../lib/auth';
 
 const CONTACT_TYPES = [
   { value: 'buyer',     label: 'Buyer / Importer' },
@@ -76,12 +78,22 @@ const CHANNELS = [
 ];
 
 export default function CRMBulkInvite() {
+  const { profile } = useAuth();
   const [raw, setRaw] = useState('');
   const [contactType, setContactType] = useState('buyer');
   const [channel, setChannel] = useState('whatsapp');
   const [message, setMessage] = useState(DEFAULT_TEMPLATE);
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState([]); // [{ row, status, notes[] }]
+
+  // The WhatsApp template auto-selected from contact_type. Buyer → invite_buyer,
+  // supplier/grower/packer → invite_supplier, broker/trader → invite_broker,
+  // team roles → invite_team. Admin can edit the custom freeform body used as
+  // fallback, but the template path is what actually delivers outside the 24h
+  // window (see src/lib/whatsapp-templates.js for the routing map).
+  const templateKey = pickInviteTemplate(contactType);
+  const templateMeta = TEMPLATE_CATALOG[templateKey];
+  const inviterName = profile?.display_name || profile?.email || 'MAXONS Team';
 
   const rows = parseRows(raw);
 
@@ -110,7 +122,8 @@ export default function CRMBulkInvite() {
             invite_status: 'sent',
             invite_channel: channel,
             invited_at: new Date().toISOString(),
-            invite_template: 'default_v1',
+            invite_template: templateKey,
+            invite_template_category: templateMeta?.category || 'utility',
           },
           relationship_score: 40,
         }, { onConflict: r.phone ? 'phone' : 'email', ignoreDuplicates: false });
@@ -121,11 +134,25 @@ export default function CRMBulkInvite() {
         notes.push(`CRM insert error: ${err.message}`);
       }
 
-      // WhatsApp leg
+      // WhatsApp leg — sent via template (guaranteed delivery even if recipient
+      // hasn't messaged us in the last 24h, provided the template is Meta-
+      // approved in Twilio). Variables are the recipient's name + our inviter
+      // name; the custom `message` textarea becomes the freeform fallback.
       if ((channel === 'whatsapp' || channel === 'both') && r.phone) {
         try {
-          await sendWhatsAppMessage(r.phone, message);
-          notes.push('WhatsApp delivered');
+          const result = await sendWhatsAppTemplate(
+            r.phone,
+            templateKey,
+            { name: r.name || 'there', inviter: inviterName },
+            message
+          );
+          if (result?.mode === 'content_api') {
+            notes.push(`WhatsApp template delivered (${templateKey})`);
+          } else if (result?.status === 'sent_window_dependent') {
+            notes.push(`WhatsApp freeform queued — template ${templateKey} not yet approved, may drop outside 24h`);
+          } else {
+            notes.push(`WhatsApp sent (${result?.mode || 'unknown'})`);
+          }
           ok = true;
         } catch (err) {
           notes.push(`WhatsApp failed: ${err?.message || err}`);
@@ -145,7 +172,8 @@ export default function CRMBulkInvite() {
               invite_status: 'sent',
               invite_channel: channel,
               invited_at: new Date().toISOString(),
-              invite_template: 'default_v1',
+              invite_template: templateKey,
+              invite_template_category: templateMeta?.category || 'utility',
               email_queued: true,
               email_queued_at: new Date().toISOString(),
             }
@@ -231,6 +259,24 @@ export default function CRMBulkInvite() {
           <p className="text-[10px] text-gray-600 -mt-2">
             Email sending is queued to <code>crm_contacts.metadata.email_queued</code> — the SMTP edge function (Phase F1b) will drain the queue. WhatsApp sends immediately via the whatsapp-send edge function.
           </p>
+
+          {/* Template binding preview — tells the admin which Meta-approved
+              template will actually ship to this persona, and in which Meta
+              category (authentication/utility/marketing). If the template is
+              not yet approved in Twilio, the edge fn falls back to the
+              custom message textarea freeform — but that ONLY delivers
+              inside the 24h window. */}
+          <div className="mt-1 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+            <p className="text-[10px] text-green-300 font-semibold uppercase tracking-wider">
+              WhatsApp template: <code className="text-green-200">{templateKey}</code>
+              <span className="ml-2 text-[10px] text-green-400/80 normal-case font-normal">
+                (Meta category: {templateMeta?.category || 'utility'})
+              </span>
+            </p>
+            <p className="text-[10px] text-gray-400 mt-1 leading-snug">
+              {templateMeta?.description || 'Per-role invite template; admin-editable in Settings.'}
+            </p>
+          </div>
 
           <button
             onClick={handleSend}

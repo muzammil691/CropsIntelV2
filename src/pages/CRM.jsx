@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { seedCRM } from '../lib/seed-crm';
-import { sendWhatsAppMessage } from '../lib/whatsapp';
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../lib/whatsapp';
+import { pickInviteTemplate } from '../lib/whatsapp-templates';
 import { getV2UpgradeWhatsAppMessage, getV2UpgradeEmailHTML } from '../lib/notifications';
 import CRMBulkInvite from '../components/CRMBulkInvite';
 import FilterBar, { SingleSelectBar } from '../components/FilterBar';
@@ -187,6 +188,11 @@ export default function CRM() {
   }
 
   // ─── Invitation System ──────────────────────────────────────
+  // Sends a Meta-approved WhatsApp TEMPLATE matching the contact's persona
+  // (buyer / supplier / broker / team). Delivery is guaranteed even if the
+  // recipient hasn't messaged our number in the last 24 hours, as long as
+  // the template is approved on Twilio. Falls back to freeform (original
+  // behavior) when the template's ContentSid is still NULL in the DB.
   async function sendInviteWhatsApp(contact) {
     if (!contact.whatsapp && !contact.phone) {
       setInviteMsg({ type: 'error', text: `${contact.contact_name || contact.company_name} has no WhatsApp/phone number` });
@@ -195,17 +201,33 @@ export default function CRM() {
     const phone = contact.whatsapp || contact.phone;
     setInviting(prev => ({ ...prev, [contact.id]: 'sending' }));
     try {
-      const msg = getV2UpgradeWhatsAppMessage(contact.contact_name || contact.company_name);
-      await sendWhatsAppMessage(phone, msg);
-      // Log activity
+      const templateKey = pickInviteTemplate(contact.contact_type || contact.role);
+      const recipientName = contact.contact_name || contact.company_name || 'there';
+      const inviterName = profile?.display_name || profile?.email || 'MAXONS Team';
+      const freeformFallback = getV2UpgradeWhatsAppMessage(recipientName);
+
+      const result = await sendWhatsAppTemplate(
+        phone,
+        templateKey,
+        { name: recipientName, inviter: inviterName },
+        freeformFallback
+      );
+
+      // Log activity — note the template path so we can audit which
+      // templates are actually delivering vs falling back.
       await supabase.from('crm_activities').insert({
         contact_id: contact.id,
         activity_type: 'whatsapp',
-        subject: 'V2 platform invitation sent via WhatsApp',
+        subject: `V2 invitation sent (${templateKey} via ${result?.mode || 'unknown'})`,
         outcome: 'positive',
       });
       setInviting(prev => ({ ...prev, [contact.id]: 'sent' }));
-      setInviteMsg({ type: 'success', text: `Invitation sent to ${contact.contact_name || contact.company_name}` });
+      const modeNote = result?.mode === 'content_api'
+        ? ' (template delivered — guaranteed)'
+        : result?.status === 'sent_window_dependent'
+        ? ' (freeform fallback — may drop outside 24h window; submit template to Twilio)'
+        : '';
+      setInviteMsg({ type: 'success', text: `Invitation sent to ${recipientName}${modeNote}` });
     } catch (err) {
       setInviting(prev => ({ ...prev, [contact.id]: 'error' }));
       setInviteMsg({ type: 'error', text: `Failed: ${err.message}` });
@@ -261,7 +283,15 @@ export default function CRM() {
       try {
         if (method === 'whatsapp') {
           const phone = contact.whatsapp || contact.phone;
-          await sendWhatsAppMessage(phone, getV2UpgradeWhatsAppMessage(contact.contact_name || contact.company_name));
+          const recipientName = contact.contact_name || contact.company_name || 'there';
+          const inviterName = profile?.display_name || profile?.email || 'MAXONS Team';
+          const templateKey = pickInviteTemplate(contact.contact_type || contact.role);
+          await sendWhatsAppTemplate(
+            phone,
+            templateKey,
+            { name: recipientName, inviter: inviterName },
+            getV2UpgradeWhatsAppMessage(recipientName)
+          );
         } else {
           await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-send`, {
             method: 'POST',
