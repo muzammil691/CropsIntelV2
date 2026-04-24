@@ -1,9 +1,9 @@
 {
-  "lastUpdated": "2026-04-24T23:20:00Z",
-  "updatedBy": "Claude AI \u2014 continent hierarchy + MarketPulseBand + multi-metric rollout across Destinations/Dashboard/Supply/Forecasts",
+  "lastUpdated": "2026-04-24T23:55:00Z",
+  "updatedBy": "Claude AI \u2014 WhatsApp template system: Twilio Content API migration, OTP-via-auth-template, per-role invite routing, admin sync panel",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 63,
-  "launchReadinessPercent": 87,
+  "overallPercent": 64,
+  "launchReadinessPercent": 89,
   "metricsExplainer": {
     "overallPercent": "Phase-weighted average across all 10 phases (full MAXONS vision). Phases 7-10 are queued/active so honest total is ~60%.",
     "launchReadinessPercent": "Narrower metric \u2014 how ready Phases 1-6 are for the launch-first scope. Email/gdrive code landed but not activated (deps install step pending), UI polish in flight, so 85% not 100%.",
@@ -559,6 +559,21 @@
   "blockers": [],
   "markedForLater": [
     {
+      "id": "whatsapp-meta-template-approval",
+      "item": "Meta approval for WhatsApp templates (otp_verification + 4 invite templates + 4 marketing templates + welcome_v2 + account_action + zyra_digest = 12 total). Until approved, edge fn falls back to freeform which silently drops outside 24h window.",
+      "currentWorkaround": "Code is live and sends via Content API the moment `whatsapp_templates.twilio_content_sid` is populated. User action: 1) In Twilio Console \u2192 Messaging \u2192 Content Template Builder, create/verify templates exist (or rename existing ones to match template_key). 2) Submit each to WhatsApp for approval (authentication category is fast-tracked \u2014 OTP should land within hours). 3) Run `Sync from Twilio` button in Settings \u2014 pulls ContentSids + approval status into the DB. See docs/WHATSAPP_TEMPLATES.md for the full runbook.",
+      "markedDate": "2026-04-24",
+      "category": "launch-blocker-external",
+      "priority": "launch-critical",
+      "spec_doc": "docs/WHATSAPP_TEMPLATES.md",
+      "codeShipped": "2026-04-24",
+      "unblocksWhenApproved": [
+        "OTP delivery for cold users (the exact bug reported 2026-04-24)",
+        "CRM bulk invites to cold contacts (currently only deliver to users who messaged us in last 24h)",
+        "Zyra market brief / offer / news push to users who aren't in active conversation"
+      ]
+    },
+    {
       "id": "abc-full-8-page-scrape",
       "item": "ABC Position Report full 8-page scrape (pages 2/3 country shipments w/ container math \u00f7 0.7 + \u00f745000/44000, page 5 variety share, page 6 historical mln-lb, page 7 county\u00d7variety matrix, page 8 region rollup)",
       "currentWorkaround": "Scraper reads page 1 summary + partial page 2. County + variety stored as separate rows (not cross-tab). User flagged 2026-04-24: 'data isn\\'t complete'. See memory/project_abc_position_report_scope.md for full spec.",
@@ -734,6 +749,12 @@
     }
   ],
   "recentCommits": [
+    {
+      "sha": "092ef88",
+      "date": "2026-04-24",
+      "subject": "whatsapp: Twilio Content API + template system (OTP delivery fix for cold users, per-role invite routing, admin sync panel)",
+      "author": "Claude AI"
+    },
     {
       "sha": "67cd023",
       "date": "2026-04-24",
@@ -2690,6 +2711,9 @@
     "multi-metric-rollout": 85,
     "info-walls-enforcement": 100,
     "whatsapp-otp": 100,
+    "whatsapp-templates": 90,
+    "whatsapp-content-api": 95,
+    "whatsapp-per-role-invites": 100,
     "email-pipeline": 85,
     "gdrive-storage": 80,
     "ui-polish": 75,
