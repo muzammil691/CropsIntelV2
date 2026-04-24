@@ -29,26 +29,39 @@ const SERVICE_ROLE  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANON_KEY      = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SITE_ORIGIN   = Deno.env.get('SITE_ORIGIN') || 'https://cropsintel.com';
 
+// APPROVED-TEMPLATE FUNNEL — 2026-04-25
+// Only invite_buyer and invite_broker are Meta-approved right now.
+// invite_supplier is pending; invite_team is submitted.
+// Twilio's Content API will accept *any* ContentSid and return an MM... SID,
+// but Meta silently drops messages whose templates aren't approved — so the
+// recipient sees nothing.
+// Until invite_supplier and invite_team are approved we funnel everything
+// through invite_buyer (approved, single {{1}} = name variable). The email
+// leg carries the real invite text + accept_url; WhatsApp only nudges the
+// recipient to check their inbox.
+// Original role→template mapping preserved in the commented block below so
+// we can flip back once Meta approves the other templates.
 const ROLE_TO_TEMPLATE_KEY: Record<string, string> = {
-  // Invitee role → which Twilio template key to use.
-  // Per-role templates exist as seeds; approved ones are preferred, rest
-  // fall through to the freeform body (which is fine inside the 24h window).
+  // Everybody → invite_buyer while non-buyer templates sit in Meta review.
   buyer:       'invite_buyer',
   customer:    'invite_buyer',
   importer:    'invite_buyer',
-  supplier:    'invite_supplier',
-  handler:     'invite_supplier',
-  grower:      'invite_supplier',
-  packer:      'invite_supplier',
-  processor:   'invite_supplier',
-  broker:      'invite_broker',
-  trader:      'invite_broker',
-  // Team roles → invite_team template
-  admin:       'invite_team',
-  analyst:     'invite_team',
-  sales:       'invite_team',
-  maxons_team: 'invite_team',
-  seller:      'invite_team',
+  supplier:    'invite_buyer',
+  handler:     'invite_buyer',
+  grower:      'invite_buyer',
+  packer:      'invite_buyer',
+  processor:   'invite_buyer',
+  broker:      'invite_buyer', // invite_broker is approved but has different {{N}} shape; keep unified
+  trader:      'invite_buyer',
+  admin:       'invite_buyer',
+  analyst:     'invite_buyer',
+  sales:       'invite_buyer',
+  maxons_team: 'invite_buyer',
+  seller:      'invite_buyer',
+  // TODO(post-meta-approval): restore per-role funnel:
+  //   supplier/handler/grower/packer/processor → invite_supplier
+  //   admin/analyst/sales/maxons_team/seller   → invite_team
+  //   broker/trader                             → invite_broker
 };
 
 const corsHeaders = {
@@ -216,8 +229,10 @@ async function deliverWhatsApp({
   accept_url: string;
 }) {
   const template_key = ROLE_TO_TEMPLATE_KEY[role] || 'invite_buyer';
-  // Match the positional order declared in src/lib/whatsapp-templates.js:
-  // invite_{buyer|supplier|broker|team}: [name, inviter]
+  // invite_buyer is a single-variable approved template: {{1}} = name.
+  // The real invite text + accept_url go via email. WhatsApp is a nudge.
+  // Keep '2' populated in case we flip back to multi-var templates later —
+  // extra variables on a single-var template are harmless (Twilio ignores them).
   const variables = { '1': full_name, '2': inviter_name };
   const fallback_body =
     `Hi ${full_name}, ${inviter_name} has invited you to CropsIntel by MAXONS.\n\n` +
@@ -240,15 +255,18 @@ async function deliverWhatsApp({
       }),
     });
     const data = await res.json().catch(() => ({}));
+    // whatsapp-send returns { success, sid, mode, status, error } — the
+    // field is `sid`, NOT `message_sid` (fixed 2026-04-25).
     return {
       ok: !!data?.success,
       template_key,
-      mode: data?.used_template ? 'template' : (data?.mode || 'freeform'),
-      message_sid: data?.message_sid || null,
+      mode: data?.mode || 'unknown',
+      status: data?.status || null,
+      message_sid: data?.sid || null,
       error: data?.success ? null : (data?.error || data?.message || `HTTP ${res.status}`),
     };
   } catch (err) {
-    return { ok: false, template_key, mode: 'error', message_sid: null, error: (err as Error).message || String(err) };
+    return { ok: false, template_key, mode: 'error', status: null, message_sid: null, error: (err as Error).message || String(err) };
   }
 }
 

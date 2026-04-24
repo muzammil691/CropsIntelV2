@@ -84,6 +84,11 @@ export default function Settings() {
   const [addingUser, setAddingUser] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // userId to confirm deletion
 
+  // Admin: pending team invitations (outbound, not yet accepted)
+  const [pendingInvitations, setPendingInvitations] = useState([]);
+  const [invLoading, setInvLoading] = useState(false);
+  const [invMsg, setInvMsg] = useState('');
+
   const isAdmin = authProfile?.role === 'admin';
   // Team capability: role is in TEAM_ROLE_VALUES or tier is elevated.
   const isTeam = Boolean(
@@ -237,6 +242,7 @@ export default function Settings() {
       loadAllUsers();
       loadSubscribers();
       loadBroadcastHistory();
+      loadPendingInvitations();
     }
   }, [isAdmin]);
 
@@ -588,13 +594,107 @@ export default function Settings() {
       );
       setShowAddUser(false);
       setNewUser({ full_name: '', email: '', company: '', whatsapp_number: '', role: 'buyer', access_tier: 'registered', personal_note: '' });
-      await loadAllUsers();
+      // Reload both lists so admin sees the new invite in the Pending Invitations panel.
+      await Promise.all([loadAllUsers(), loadPendingInvitations()]);
     } catch (err) {
       setAdminMsg('Error: ' + (err.message || 'Failed to send invitation'));
     }
     setAddingUser(false);
     // Keep the link visible longer so the admin can copy it as a fallback.
     setTimeout(() => setAdminMsg(''), 30000);
+  }
+
+  // Admin: load outbound team invitations (pending/sent/not-yet-accepted)
+  async function loadPendingInvitations() {
+    setInvLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('team_invitations')
+        .select('id, full_name, email, whatsapp_number, role, access_tier, company, invited_at, expires_at, status, delivery_email, delivery_whatsapp, accepted_at, invited_by_name')
+        .in('status', ['pending', 'sent'])
+        .order('invited_at', { ascending: false })
+        .limit(100);
+      if (!error && data) setPendingInvitations(data);
+    } catch { /* table may not exist yet */ }
+    setInvLoading(false);
+  }
+
+  // Admin: resend invitation — re-invokes the edge fn for an existing invite,
+  // which creates a NEW row (fresh token + fresh expires_at). Old row is revoked.
+  async function handleResendInvite(inv) {
+    setInvMsg('');
+    if (!confirm(`Resend invitation to ${inv.full_name}? This will generate a new link.`)) return;
+    try {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error('Not logged in');
+
+      // Revoke the old invite first so there's only one active link per person.
+      await supabase
+        .from('team_invitations')
+        .update({ status: 'revoked' })
+        .eq('id', inv.id);
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-team-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          full_name:       inv.full_name,
+          email:           inv.email,
+          whatsapp_number: inv.whatsapp_number,
+          role:            inv.role,
+          access_tier:     inv.access_tier,
+          company:         inv.company,
+        }),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result?.success) {
+        throw new Error(result?.error || `Resend failed (HTTP ${res.status})`);
+      }
+
+      const parts = [];
+      if (result.delivery?.email)    parts.push(result.delivery.email.ok    ? 'email ✓'    : `email ✗ (${result.delivery.email.error})`);
+      if (result.delivery?.whatsapp) parts.push(result.delivery.whatsapp.ok ? 'whatsapp ✓' : `whatsapp ✗ (${result.delivery.whatsapp.error})`);
+      setInvMsg(`Resent to ${inv.full_name} — ${parts.join(', ') || 'queued'}. New link: ${result.accept_url}`);
+      await loadPendingInvitations();
+    } catch (err) {
+      setInvMsg('Error: ' + (err.message || 'Failed to resend'));
+    }
+    setTimeout(() => setInvMsg(''), 30000);
+  }
+
+  // Admin: revoke invitation — flips status to 'revoked' so the link stops working.
+  async function handleRevokeInvite(inv) {
+    setInvMsg('');
+    if (!confirm(`Revoke invitation to ${inv.full_name}? The accept link will stop working.`)) return;
+    try {
+      const { error } = await supabase
+        .from('team_invitations')
+        .update({ status: 'revoked' })
+        .eq('id', inv.id);
+      if (error) throw error;
+      setInvMsg(`Invitation to ${inv.full_name} revoked.`);
+      await loadPendingInvitations();
+    } catch (err) {
+      setInvMsg('Error: ' + (err.message || 'Failed to revoke'));
+    }
+    setTimeout(() => setInvMsg(''), 6000);
+  }
+
+  // Copy accept URL to clipboard — manual fallback when delivery fails
+  async function copyInviteLink(inv) {
+    const url = `${window.location.origin}/accept-invite?t=${inv.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setInvMsg(`Copied accept link for ${inv.full_name}: ${url}`);
+    } catch {
+      setInvMsg(`Link: ${url}`);
+    }
+    setTimeout(() => setInvMsg(''), 10000);
   }
 
   // Admin: Delete user (profile row only — auth account requires admin API)
@@ -1077,6 +1177,141 @@ export default function Settings() {
               <p className="text-center text-sm text-gray-600 py-4">No users found</p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Admin: Pending Team Invitations — outbound invites not yet accepted */}
+      {isAdmin && (
+        <div id="invitations-panel" className="bg-gray-900/50 border border-amber-500/20 rounded-xl p-5 scroll-mt-20">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                Pending Invitations
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-normal">
+                  {pendingInvitations.length}
+                </span>
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Outbound team invitations awaiting acceptance. Delivery status shown per channel.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {invMsg && (
+                <span className={`text-xs max-w-xs truncate ${invMsg.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+                  {invMsg}
+                </span>
+              )}
+              <button
+                onClick={loadPendingInvitations}
+                disabled={invLoading}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg text-xs transition-colors border border-gray-700"
+              >
+                {invLoading ? 'Loading...' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+
+          {pendingInvitations.length === 0 && !invLoading ? (
+            <div className="bg-gray-800/30 border border-dashed border-gray-700 rounded-lg p-6 text-center">
+              <p className="text-sm text-gray-500">No pending invitations. New invites sent via the User Management panel will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {pendingInvitations.map(inv => {
+                const emailDeliv = inv.delivery_email;
+                const waDeliv = inv.delivery_whatsapp;
+                const emailOk = emailDeliv?.ok === true;
+                const waOk = waDeliv?.ok === true;
+                const anyDelivered = emailOk || waOk;
+                const expired = inv.expires_at && new Date(inv.expires_at) < new Date();
+                return (
+                  <div key={inv.id} className={`bg-gray-800/50 border rounded-lg p-3 ${expired ? 'border-red-500/30' : 'border-gray-700/50'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-white truncate">{inv.full_name || 'Unnamed'}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                            inv.status === 'sent'
+                              ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                              : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                          }`}>
+                            {inv.status === 'sent' ? 'Sent' : 'Pending'}
+                          </span>
+                          {inv.role && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full border capitalize bg-gray-700/40 text-gray-400 border-gray-600/40">
+                              {inv.role}
+                            </span>
+                          )}
+                          {expired && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-red-500/20 text-red-400 border-red-500/30">
+                              Expired
+                            </span>
+                          )}
+                          {!anyDelivered && inv.status !== 'pending' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full border bg-red-500/20 text-red-400 border-red-500/30" title="Neither email nor WhatsApp delivered — send the link manually">
+                              Delivery failed
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          {inv.email && (
+                            <span className={`text-[11px] ${emailOk ? 'text-gray-400' : 'text-red-400'}`} title={emailDeliv?.error || ''}>
+                              {emailOk ? '✓' : '✗'} {inv.email}
+                            </span>
+                          )}
+                          {inv.whatsapp_number && (
+                            <span className={`text-[11px] ${waOk ? 'text-gray-400' : 'text-red-400'}`} title={waDeliv?.error || ''}>
+                              {waOk ? '✓' : '✗'} {inv.whatsapp_number}
+                            </span>
+                          )}
+                          {inv.company && <span className="text-[11px] text-gray-600">{inv.company}</span>}
+                          {inv.invited_at && (
+                            <span className="text-[11px] text-gray-700">
+                              Sent {new Date(inv.invited_at).toLocaleDateString()}
+                            </span>
+                          )}
+                          {inv.expires_at && !expired && (
+                            <span className="text-[11px] text-gray-700">
+                              Expires {new Date(inv.expires_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        {(emailDeliv?.error || waDeliv?.error) && (
+                          <div className="mt-1.5 text-[10px] text-red-400/80 font-mono break-all">
+                            {emailDeliv?.error && <div>email: {emailDeliv.error}</div>}
+                            {waDeliv?.error && <div>whatsapp: {waDeliv.error}</div>}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => copyInviteLink(inv)}
+                          title="Copy accept link"
+                          className="px-2 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/40 rounded text-[11px] transition-colors"
+                        >
+                          Copy link
+                        </button>
+                        <button
+                          onClick={() => handleResendInvite(inv)}
+                          title="Resend invitation (generates new link)"
+                          className="px-2 py-1 bg-green-600/30 hover:bg-green-600/50 text-green-300 border border-green-500/40 rounded text-[11px] transition-colors"
+                        >
+                          Resend
+                        </button>
+                        <button
+                          onClick={() => handleRevokeInvite(inv)}
+                          title="Revoke (link stops working)"
+                          className="px-2 py-1 bg-red-600/30 hover:bg-red-600/50 text-red-300 border border-red-500/40 rounded text-[11px] transition-colors"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

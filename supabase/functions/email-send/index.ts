@@ -28,8 +28,10 @@
 //
 // Returns: { success: boolean, mode: 'smtp'|'resend'|'queued', ... }
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+// NOTE: denomailer import is now lazy (inside sendViaSMTP) so a transient
+// module-resolution failure at boot doesn't 502 the whole function.
+// Prior eager import was causing HTTP 502 at cold-start (2026-04-25).
 
 const SMTP_HOST       = Deno.env.get('SMTP_HOST');
 const SMTP_PORT       = parseInt(Deno.env.get('SMTP_PORT') || '587', 10);
@@ -161,6 +163,15 @@ async function sendViaSMTP({ to, subject, html, text }) {
   });
 
   const sendPromise = (async () => {
+    // Lazy import so boot doesn't fail if the module registry is flaky.
+    // deno-lint-ignore no-explicit-any
+    let SMTPClient: any;
+    try {
+      const mod = await import('https://deno.land/x/denomailer@1.6.0/mod.ts');
+      SMTPClient = mod.SMTPClient;
+    } catch (err) {
+      return { success: false, error: `denomailer import failed: ${(err as Error)?.message || String(err)}` };
+    }
     const client = new SMTPClient({
       connection: {
         hostname: SMTP_HOST!,
@@ -179,7 +190,7 @@ async function sendViaSMTP({ to, subject, html, text }) {
       });
       return { success: true, id: `smtp-${Date.now()}` };
     } catch (err) {
-      return { success: false, error: err?.message || String(err) };
+      return { success: false, error: (err as Error)?.message || String(err) };
     } finally {
       // Don't await — close() itself can hang if STARTTLS never completed.
       client.close().catch(() => { /* ignore */ });
@@ -223,13 +234,11 @@ async function queueEmail({ to, subject, html, text, type }) {
       },
       body: JSON.stringify([{
         to_address: to,
-        from_address: FROM_EMAIL,
         subject,
-        html_body: html,
-        text_body: text,
+        html,
+        body: text,                     // plain-text fallback; matches email_queue.body column
         email_type: type,
         status: 'queued',
-        created_at: new Date().toISOString(),
       }]),
     });
     if (!res.ok) {
@@ -244,22 +253,53 @@ async function queueEmail({ to, subject, html, text, type }) {
 }
 
 async function sendOne({ to, subject, html, text, type }) {
-  // Priority 1: SMTP (Office 365 via GoDaddy) — uses existing intel@cropsintel.com infra
-  if (SMTP_CONFIGURED) {
-    const out = await sendViaSMTP({ to, subject, html, text });
-    if (out.success) return { ...out, mode: 'smtp' };
-    // SMTP failed (auth? network? rate limit?) — fall through to Resend or queue
-    console.warn('[email-send] SMTP send failed:', out.error);
+  // Priority 1: SMTP (Office 365 via GoDaddy) — uses existing intel@cropsintel.com infra.
+  // DISABLED 2026-04-25: denomailer + Deno Deploy causes 502 at runtime
+  // (not a Promise.race bug — the TCP socket open to smtp.office365.com
+  // crashes the runtime before our try/catch can catch it). Until we either
+  // migrate to a fetch-based mailer OR Deno Deploy adds socket support for
+  // this host, the queue path handles delivery. The Node queue-flusher
+  // (server-side cron) reads email_queue and actually sends via nodemailer.
+  // To re-enable: set SMTP_ENABLE=1 in edge fn secrets.
+  const SMTP_ENABLED = Deno.env.get('SMTP_ENABLE') === '1';
+  if (SMTP_CONFIGURED && SMTP_ENABLED) {
+    try {
+      const out = await sendViaSMTP({ to, subject, html, text });
+      if (out.success) return { ...out, mode: 'smtp' };
+      console.warn('[email-send] SMTP send failed:', out.error);
+    } catch (err) {
+      console.warn('[email-send] SMTP threw:', (err as Error)?.message || String(err));
+    }
   }
   // Priority 2: Resend (if API key is set)
   if (RESEND_API_KEY) {
-    const out = await sendViaResend({ to, subject, html, text });
-    if (out.success) return { ...out, mode: 'resend' };
-    console.warn('[email-send] Resend send failed:', out.error);
+    try {
+      const out = await sendViaResend({ to, subject, html, text });
+      if (out.success) return { ...out, mode: 'resend' };
+      console.warn('[email-send] Resend send failed:', out.error);
+    } catch (err) {
+      console.warn('[email-send] Resend threw:', (err as Error)?.message || String(err));
+    }
   }
-  // Priority 3: queue for later
-  const q = await queueEmail({ to, subject, html, text, type });
-  return { ...q, mode: 'queued' };
+  // Priority 3: queue for later — this path MUST always return cleanly.
+  try {
+    const q = await queueEmail({ to, subject, html, text, type });
+    return { ...q, mode: 'queued' };
+  } catch (err) {
+    return { success: true, queued: false, mode: 'queued', error: (err as Error)?.message || String(err) };
+  }
+}
+
+// ─── Response helpers — defined above serve() so they're available in the
+// handler closure without TDZ risk ──────────────────────────────────
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+// deno-lint-ignore no-explicit-any
+function j(body: any, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
 // ─── HTTP handler ───────────────────────────────────────────────────
@@ -295,12 +335,3 @@ serve(async (req) => {
     return j({ success: false, error: err?.message || String(err) }, 500);
   }
 });
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-function j(body: any, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-}
