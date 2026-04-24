@@ -218,26 +218,40 @@ export const TEMPLATE_CATALOG = {
 //      analyst / logistics / finance / maxons_team / sales / customer /
 //      importer / handler / packer / grower / processor
 // Both funnel into the four invite templates above.
+// LAUNCH NOTE (2026-04-24):
+// The user's Twilio Content Editor currently has one approved invite-style
+// template: `registration_reminder` (mapped to our `invite_buyer` seed row).
+// Per-role variants (invite_supplier / invite_broker / invite_team) are
+// defined here and in the migration so the routing shape is ready, but
+// until those templates exist on the Twilio side, every contact_type funnels
+// through INVITE_BUYER so ALL cold-outreach invites use an approved template
+// and deliver outside Meta's 24h window. When per-role templates land, flip
+// the supplier/broker/team rows back to their own keys — no other code
+// changes needed.
 const CONTACT_TYPE_TEMPLATE = {
   buyer:     TEMPLATE_KEYS.INVITE_BUYER,
   customer:  TEMPLATE_KEYS.INVITE_BUYER,
   importer:  TEMPLATE_KEYS.INVITE_BUYER,
-  supplier:  TEMPLATE_KEYS.INVITE_SUPPLIER,
-  handler:   TEMPLATE_KEYS.INVITE_SUPPLIER,
-  grower:    TEMPLATE_KEYS.INVITE_SUPPLIER,
-  packer:    TEMPLATE_KEYS.INVITE_SUPPLIER,
-  processor: TEMPLATE_KEYS.INVITE_SUPPLIER,
-  broker:    TEMPLATE_KEYS.INVITE_BROKER,
-  trader:    TEMPLATE_KEYS.INVITE_BROKER,
-  // Internal team
-  maxons_team: TEMPLATE_KEYS.INVITE_TEAM,
-  analyst:     TEMPLATE_KEYS.INVITE_TEAM,
-  sales:       TEMPLATE_KEYS.INVITE_TEAM,
-  admin:       TEMPLATE_KEYS.INVITE_TEAM,
-  // Ambiguous — keep as buyer (safest external default)
+  // External suppliers → buyer template for now (only approved one).
+  supplier:  TEMPLATE_KEYS.INVITE_BUYER,
+  handler:   TEMPLATE_KEYS.INVITE_BUYER,
+  grower:    TEMPLATE_KEYS.INVITE_BUYER,
+  packer:    TEMPLATE_KEYS.INVITE_BUYER,
+  processor: TEMPLATE_KEYS.INVITE_BUYER,
+  // Brokers / traders → buyer template for now.
+  broker:    TEMPLATE_KEYS.INVITE_BUYER,
+  trader:    TEMPLATE_KEYS.INVITE_BUYER,
+  // Internal team → buyer template too. V1→V2 migration invites use
+  // the same "you recently visited CropsIntel" language across all cohorts
+  // until per-role templates are approved.
+  maxons_team: TEMPLATE_KEYS.INVITE_BUYER,
+  analyst:     TEMPLATE_KEYS.INVITE_BUYER,
+  sales:       TEMPLATE_KEYS.INVITE_BUYER,
+  admin:       TEMPLATE_KEYS.INVITE_BUYER,
+  // Ambiguous buckets.
   logistics: TEMPLATE_KEYS.INVITE_BUYER,
   industry:  TEMPLATE_KEYS.INVITE_BUYER,
-  finance:   TEMPLATE_KEYS.INVITE_TEAM,
+  finance:   TEMPLATE_KEYS.INVITE_BUYER,
 };
 
 /**
