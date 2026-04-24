@@ -853,7 +853,7 @@
   ],
   "recentCommits": [
     {
-      "sha": "pending-autodev-gates",
+      "sha": "35433ff",
       "date": "2026-04-25",
       "subject": "autodev+map: Mini-Phase 1 \u2014 AutoDevBanner + LaunchGates bird's-eye (soft 35 / full 50 / v3 100) + default tab rewire",
       "author": "Claude AI"
