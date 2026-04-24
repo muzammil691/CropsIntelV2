@@ -21,6 +21,11 @@ import {
   QUICK_TOPICS, ROLE_LENS, LANG_INSTRUCTION,
   detectLanguage, buildZyraSystemPrompt, resolveUserTier,
 } from '../lib/zyra-prompts';
+// Mini-Phase 5 (2026-04-25): IP-first Zyra greeting per user hard-memory
+// directive. Zyra's FIRST greeting uses the IP-derived locale even if the
+// user's stored preference is English, so visitors from AE/SA/IN/TR/ES see
+// their local language before toggling back to English if they choose.
+import { getZyraGreeting, resolveZyraFirstLocale, t as tLocale } from '../lib/locale';
 
 // ─── Message bubble component ───────────────────────────────────────
 function MessageBubble({ message, isTyping, onRate, trainable = false, rating = null, correctionOpen = false, onOpenCorrection = null, onSubmitCorrection = null }) {
@@ -303,21 +308,28 @@ export default function ZyraWidget() {
     }
   }, [isOpen]);
 
-  // Welcome message on first open
+  // Welcome message on first open — IP-first multilingual greeting.
+  // Resolution: IP geo → navigator.language → 'en'. Even if the user's
+  // stored preference is English, Zyra's FIRST greeting uses the detected
+  // local language (per user hard-memory 2026-04-25).
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      const welcomeMessages = {
-        guest: "Hello! I'm Zyra, your almond market intelligence assistant. I can give you a quick overview of the California almond market. Register for free to unlock deeper insights!",
-        registered: `Welcome back! I'm Zyra, your market intelligence assistant. I have the latest ABC position data and pricing loaded. Ask me anything about the almond market.`,
-        verified: `Hi${profile?.full_name ? ' ' + profile.full_name.split(' ')[0] : ''}! Zyra here with your personalized market brief ready. I've loaded the latest data for your markets. What would you like to know?`,
-        maxons: `${profile?.full_name ? profile.full_name.split(' ')[0] : 'Team'}, Zyra online with full MAXONS intelligence. Market data, CRM insights, and pricing engine loaded. Ready for your command.`,
-      };
+    if (!isOpen || messages.length !== 0) return;
+    let cancelled = false;
+    (async () => {
+      let locale = 'en';
+      try { locale = await resolveZyraFirstLocale(); } catch { locale = 'en'; }
+      if (cancelled) return;
+      const firstName = profile?.full_name ? profile.full_name.split(' ')[0] : null;
+      const greeting = getZyraGreeting(locale, userTier, firstName);
+      const hint = locale !== 'en' ? `\n\n${tLocale(locale, 'zyra.detectedHint')}` : '';
       setMessages([{
         role: 'assistant',
-        content: welcomeMessages[userTier] || welcomeMessages.guest,
+        content: greeting + hint,
         timestamp: Date.now(),
+        detectedLocale: locale,
       }]);
-    }
+    })();
+    return () => { cancelled = true; };
   }, [isOpen]);
 
   // Send message to Claude

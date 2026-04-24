@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import { loadAPIKeys, getAIStatus } from '../lib/ai-engine';
 import { syncWhatsAppTemplates, createWhatsAppTemplate } from '../lib/whatsapp';
 import { useAuth } from '../lib/auth';
+import { useLocale } from '../contexts/LocaleContext';
+import LocaleSwitcher from '../components/LocaleSwitcher';
 
 const ACCESS_TIERS = ['guest', 'registered', 'verified', 'maxons_team', 'admin'];
 const TIER_LABELS = { guest: 'Guest', registered: 'Registered', verified: 'Verified', maxons_team: 'MAXONS Team', admin: 'Admin' };
@@ -89,6 +91,7 @@ const colorMap = {
 
 export default function Settings() {
   const { isAuthenticated, user, profile: authProfile, updatePassword } = useAuth();
+  const { locale, meta: localeMetaCur } = useLocale();
   const [keys, setKeys] = useState({ anthropic: '', openai: '', gemini: '', elevenlabs: '' });
   const [aiStatus, setAiStatus] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -872,6 +875,25 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      {/* Language Preference (Mini-Phase 5 · 2026-04-25) */}
+      <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
+        <h2 className="text-lg font-semibold text-white mb-1">Language</h2>
+        <p className="text-xs text-gray-400 mb-4">
+          UI language for the app. Zyra's first greeting still uses your
+          region's language, then switches to your preference.
+        </p>
+        <div className="flex items-center gap-4">
+          <LocaleSwitcher />
+          <span className="text-xs text-gray-500">
+            Currently: <span className="text-gray-300 font-medium">{localeMetaCur.native}</span>
+            {' '}<span className="text-gray-600">({locale.toUpperCase()})</span>
+          </span>
+        </div>
+        <p className="text-[11px] text-gray-600 mt-3">
+          Supported launch set: English, العربية, हिन्दी, Türkçe, Español.
+        </p>
+      </div>
 
       {/* Change Password */}
       {isAuthenticated && (
