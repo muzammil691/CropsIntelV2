@@ -750,7 +750,7 @@
   ],
   "recentCommits": [
     {
-      "sha": "pending-whatsapp-templates",
+      "sha": "533146b",
       "date": "2026-04-24",
       "subject": "whatsapp: Twilio Content API + template system (OTP delivery fix for cold users, per-role invite routing, admin sync panel)",
       "author": "Claude AI"
