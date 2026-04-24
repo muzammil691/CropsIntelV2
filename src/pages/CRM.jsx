@@ -28,6 +28,30 @@ const CONTACT_TYPE_COLORS = {
   industry: 'text-purple-400',
 };
 
+// Mini-Phase 4 (2026-04-25): record_category is orthogonal to contact_type.
+// contact_type = WHAT they are (buyer/supplier/broker/logistics/industry).
+// record_category = WHERE they are in the sales funnel. Flat 9-value enum,
+// sales team assigns manually per user directive. Hierarchical nesting
+// + offer-source-link + assigned_sales_rep wired through migration
+// 20260425_crm_semi_auto.sql; this UI is the surface.
+const RECORD_CATEGORIES = [
+  'lead', 'account', 'opportunity', 'deal',
+  'supplier', 'broker', 'referral', 'returning', 'internal',
+];
+const RECORD_CATEGORY_COLORS = {
+  lead:        'bg-blue-500/10 text-blue-300 border-blue-500/30',
+  account:     'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+  opportunity: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+  deal:        'bg-violet-500/10 text-violet-300 border-violet-500/30',
+  supplier:    'bg-sky-500/10 text-sky-300 border-sky-500/30',
+  broker:      'bg-yellow-500/10 text-yellow-300 border-yellow-500/30',
+  referral:    'bg-pink-500/10 text-pink-300 border-pink-500/30',
+  returning:   'bg-teal-500/10 text-teal-300 border-teal-500/30',
+  internal:    'bg-slate-500/10 text-slate-300 border-slate-500/30',
+};
+// Warm vs cold — surfaces "how close to revenue" at a glance.
+const WARM_CATEGORIES = new Set(['account', 'opportunity', 'deal', 'returning']);
+
 
 function fmtUSD(n) { return '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
 function fmtLbs(n) { return (n || 0).toLocaleString('en-US') + ' lbs'; }
@@ -101,6 +125,10 @@ export default function CRM() {
   // Phase C6: Pipeline stage-compare + period-compare filters
   const [stageFilter, setStageFilter] = useState(DEAL_STAGES.filter(s => s !== 'lost' && s !== 'completed')); // active stages by default
   const [periodFilter, setPeriodFilter] = useState('all');
+  // Mini-Phase 4 (2026-04-25): record_category filter on the Contacts tab.
+  // Default = no filter (show all). User directive: "categories will be added
+  // manually by team"; this is the viewing surface.
+  const [categoryFilter, setCategoryFilter] = useState([]);
 
   // Admin or team can verify users (raise their access_tier to 'verified')
   const canVerify = profile && ['admin', 'maxons_team'].includes(profile.access_tier)
@@ -669,9 +697,30 @@ export default function CRM() {
       {/* Contacts View */}
       {activeTab === 'contacts' && (
         <div className="space-y-3">
+          {/* Record-category filter (Mini-Phase 4) — multi-select chips;
+              empty = show all. Categories drive the warm/cold split that
+              sales uses to focus follow-ups. */}
+          <FilterBar
+            label="Category"
+            options={RECORD_CATEGORIES}
+            selected={categoryFilter}
+            onToggle={(v) => setCategoryFilter(prev =>
+              prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]
+            )}
+            quickActions={[
+              { label: 'Warm only', action: () => setCategoryFilter(['account', 'opportunity', 'deal', 'returning']) },
+              { label: 'Cold only', action: () => setCategoryFilter(['lead', 'referral']) },
+              { label: 'Clear',     action: () => setCategoryFilter([]) },
+            ]}
+          />
+
           {/* Bulk invite bar */}
           <div className="flex items-center gap-3 bg-gray-900/50 border border-gray-800 rounded-xl p-3">
-            <span className="text-xs text-gray-400">{contacts.length} contacts</span>
+            <span className="text-xs text-gray-400">
+              {categoryFilter.length
+                ? `${contacts.filter(c => categoryFilter.includes(c.record_category)).length} of ${contacts.length} contacts`
+                : `${contacts.length} contacts`}
+            </span>
             <div className="flex-1" />
             {bulkResult && (
               <span className="text-xs text-green-400">
@@ -701,18 +750,32 @@ export default function CRM() {
             </div>
           )}
 
-          {contacts.map(contact => {
+          {contacts
+            .filter(c => categoryFilter.length === 0 || categoryFilter.includes(c.record_category))
+            .map(contact => {
             const status = inviting[contact.id];
             const hasWhatsApp = !!(contact.whatsapp || contact.phone);
             const hasEmail = !!contact.email;
+            const catCls = RECORD_CATEGORY_COLORS[contact.record_category];
+            const warm = WARM_CATEGORIES.has(contact.record_category);
             return (
-              <div key={contact.id} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors cursor-pointer" onClick={() => setSelectedContact(contact)}>
+              <div key={contact.id} className={`bg-gray-900/50 border ${warm ? 'border-emerald-800/40 hover:border-emerald-600/60' : 'border-gray-800 hover:border-gray-700'} rounded-xl p-4 transition-colors cursor-pointer`} onClick={() => setSelectedContact(contact)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className={`text-[10px] font-medium capitalize ${CONTACT_TYPE_COLORS[contact.contact_type] || 'text-gray-400'}`}>
                         {contact.contact_type}
                       </span>
+                      {contact.record_category && (
+                        <span className={`text-[9px] uppercase font-mono tracking-wide px-1.5 py-0.5 rounded border ${catCls || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                          {contact.record_category}
+                        </span>
+                      )}
+                      {contact.kyc_status && contact.kyc_status !== 'approved' && contact.kyc_status !== 'pending' && (
+                        <span className="text-[9px] uppercase font-mono tracking-wide px-1.5 py-0.5 rounded border bg-rose-500/10 text-rose-300 border-rose-500/30">
+                          KYC {contact.kyc_status}
+                        </span>
+                      )}
                       {contact.tags?.map(tag => (
                         <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500 border border-gray-700">{tag}</span>
                       ))}
@@ -730,6 +793,22 @@ export default function CRM() {
                       <p className="text-xs text-amber-400/70 mt-1.5 italic">
                         Next: {contact.ai_next_action}
                       </p>
+                    )}
+                    {/* Upcoming-Features banner (Mini-Phase 4) — per user directive:
+                        "CRM will always mention upcoming things and features."
+                        Default scope = ALL records (admin can narrow via scope-Q). */}
+                    {(contact.upcoming_features || contact.next_action_note) && (
+                      <div className="mt-2 text-[11px] text-violet-300/90 bg-violet-500/5 border border-violet-500/20 rounded-md px-2 py-1.5 flex items-start gap-1.5">
+                        <span className="text-violet-400 mt-0.5">{'\u2728'}</span>
+                        <div className="flex-1 min-w-0">
+                          {contact.next_action_date && (
+                            <span className="text-violet-400 font-mono text-[10px] mr-1">
+                              {fmtDate(contact.next_action_date)}
+                            </span>
+                          )}
+                          {contact.upcoming_features || contact.next_action_note}
+                        </div>
+                      </div>
                     )}
                   </div>
                   <div className="text-right shrink-0 space-y-1">
@@ -1026,6 +1105,26 @@ export default function CRM() {
             </div>
 
             <div className="px-6 py-5 space-y-5">
+              {/* Upcoming-features banner (Mini-Phase 4) — surfaces
+                  upcoming_features OR next_action_note above the fold.
+                  Gracefully absent when both are NULL. */}
+              {(selectedContact.upcoming_features || selectedContact.next_action_note || selectedContact.next_action_date) && (
+                <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-3 flex items-start gap-2">
+                  <span className="text-xl">{'\u2728'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-violet-400 font-mono mb-0.5">
+                      Upcoming
+                      {selectedContact.next_action_date && (
+                        <span className="ml-2 text-violet-300">{fmtDate(selectedContact.next_action_date)}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-violet-200 leading-relaxed">
+                      {selectedContact.upcoming_features || selectedContact.next_action_note}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Contact Info */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
@@ -1035,10 +1134,31 @@ export default function CRM() {
                   </p>
                 </div>
                 <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                  <p className="text-[10px] text-gray-500 uppercase">Category</p>
+                  {selectedContact.record_category ? (
+                    <span className={`inline-block mt-1 text-[10px] uppercase font-mono tracking-wide px-1.5 py-0.5 rounded border ${RECORD_CATEGORY_COLORS[selectedContact.record_category] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                      {selectedContact.record_category}
+                    </span>
+                  ) : (
+                    <p className="text-sm text-gray-600 italic">unset</p>
+                  )}
+                </div>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
                   <p className="text-[10px] text-gray-500 uppercase">Score</p>
                   <div className="flex items-center gap-2 mt-1">
                     <ScoreBar score={selectedContact.relationship_score} />
                   </div>
+                </div>
+                <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                  <p className="text-[10px] text-gray-500 uppercase">KYC</p>
+                  <p className={`text-sm font-medium capitalize mt-1 ${
+                    selectedContact.kyc_status === 'approved' ? 'text-emerald-400' :
+                    selectedContact.kyc_status === 'rejected' ? 'text-rose-400' :
+                    selectedContact.kyc_status === 'expired'  ? 'text-amber-400' :
+                                                                'text-gray-400'
+                  }`}>
+                    {selectedContact.kyc_status || 'pending'}
+                  </p>
                 </div>
                 <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
                   <p className="text-[10px] text-gray-500 uppercase">Lifetime Volume</p>
@@ -1048,6 +1168,12 @@ export default function CRM() {
                   <p className="text-[10px] text-gray-500 uppercase">Interactions</p>
                   <p className="text-sm font-medium text-white">{selectedContact.total_interactions || 0}</p>
                 </div>
+                {selectedContact.credit_limit_usd && (
+                  <div className="bg-gray-900 rounded-lg p-3 border border-gray-800 col-span-2">
+                    <p className="text-[10px] text-gray-500 uppercase">Credit Limit</p>
+                    <p className="text-sm font-medium text-emerald-400">{fmtUSD(selectedContact.credit_limit_usd)}</p>
+                  </div>
+                )}
               </div>
 
               {/* Contact Details */}
