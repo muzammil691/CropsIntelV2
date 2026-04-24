@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-25T13:15:00Z",
-  "updatedBy": "Claude AI \u2014 team-invite flow end-to-end (migration + edge fn + AcceptInvite page). Admin Settings \u2192 Invite User now delivers link via email + WhatsApp, invitee sets password + completes job profile at /accept-invite. Old zombie-auth bug killed.",
+  "lastUpdated": "2026-04-25T14:20:00Z",
+  "updatedBy": "Claude AI \u2014 team-invite bug hunt: (1) WhatsApp silently dropped because invite_team/invite_supplier templates not Meta-approved \u2014 funneled all roles through approved invite_buyer. (2) Email-send 502-ing at edge runtime from denomailer/Deno Deploy TCP incompatibility \u2014 SMTP path disabled (require SMTP_ENABLE=1 opt-in) so emails queue reliably. (3) email_queue table created in prod, queueEmail() column names aligned. (4) New 'Pending Invitations' admin panel in Settings shows outbound invites with per-channel delivery status + Copy/Resend/Revoke actions. (5) message_sid vs sid field mismatch in send-team-invite fixed.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 68,
   "launchReadinessPercent": 95,
@@ -569,18 +569,26 @@
       "priority": "launch-critical",
       "shipped": {
         "migration": "supabase/migrations/20260425_team_invitations.sql",
+        "migration_queue": "supabase/migrations/20260425_email_queue.sql (applied 2026-04-25)",
         "edge_fn": "supabase/functions/send-team-invite/index.ts (deployed to eywsfmixzrdfcywmdaaw)",
+        "edge_fn_email": "supabase/functions/email-send/index.ts (SMTP disabled \u2014 queue path; redeployed 2026-04-25)",
         "ui_page": "src/pages/AcceptInvite.jsx (/accept-invite?t=<token>)",
-        "ui_settings": "src/pages/Settings.jsx handleAddUser() replaced; button label: 'Send Invitation'",
+        "ui_settings": "src/pages/Settings.jsx handleAddUser() + new Pending Invitations admin panel with Copy link, Resend, Revoke",
         "route": "src/App.jsx /accept-invite route + STANDALONE_ROUTES list",
         "commit": "f584a46"
+      },
+      "postShipBugsFixed": {
+        "bug_a_whatsapp_silent_drop": "invite_team/invite_supplier templates not Meta-approved. Twilio Content API accepted them and returned MM SIDs, but Meta silently dropped messages. FIXED: ROLE_TO_TEMPLATE_KEY now funnels ALL roles through invite_buyer (approved). Matches CONTACT_TYPE_TEMPLATE funnel pattern in src/lib/whatsapp-templates.js.",
+        "bug_b_email_502": "email-send returned HTTP 502 on valid POST. Root cause: denomailer SMTPClient socket open to smtp.office365.com crashed the Deno Deploy runtime (not a Promise.race timeout bug \u2014 actual runtime panic). FIXED: SMTP path now requires SMTP_ENABLE=1 opt-in; otherwise falls straight through to queue. email_queue table created + column names aligned (to_address, subject, html, body, email_type).",
+        "bug_c_message_sid_mismatch": "send-team-invite read whatsapp-send response as data.message_sid but whatsapp-send returns data.sid. FIXED: field rename; delivery_whatsapp.message_sid now populates correctly.",
+        "bug_d_no_pending_list": "Admin had no UI feedback showing outbound invitations or delivery status. FIXED: New 'Pending Invitations' panel in Settings below User Management shows status badges (Sent/Pending/Expired/Delivery failed), per-channel \u2713/\u2717, error details, and Copy link / Resend / Revoke actions."
       },
       "unblocksWhenShipped": [
         "Admin can actually onboard teammates via Settings (previously bug: no message sent)",
         "Team members arrive with a complete profile (job_title, description, expertise, languages) \u2014 better Zyra + dashboard personalization",
         "Tokenized link works across email + WhatsApp; no password leaks in URLs"
       ],
-      "pendingUserHand": "Real teammate invite test: admin invites someone whose email+phone are NEVER in 24h window, confirms delivery via email AND WhatsApp, teammate clicks link and sees invitation page."
+      "pendingUserHand": "Real teammate invite test: admin invites someone whose email+phone are NEVER in 24h window, confirms delivery via email AND WhatsApp, teammate clicks link and sees invitation page. Email currently queues to email_queue table (server-side Node cron flushes via nodemailer \u2014 SMTP on Deno Deploy was blocking deliverability)."
     },
     {
       "id": "whatsapp-meta-template-approval",
