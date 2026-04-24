@@ -10,6 +10,8 @@ import FilterBar from '../components/FilterBar';
 import VarietySection from '../components/VarietySection';
 import CountySection from '../components/CountySection';
 import Card from '../components/Card';
+import MetricToggle from '../components/MetricToggle';
+import { VOLUME_METRICS, getMetric } from '../lib/continents';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -83,6 +85,13 @@ export default function Supply() {
   const [reports, setReports] = useState([]);
   const [selectedCrops, setSelectedCrops] = useState([]);
   const [loading, setLoading] = useState(true);
+  // User directive 2026-04-24: "the multi metric view should we in all the
+  // widgets..". Volume-scale widgets (Total Supply MetricCard + Supply
+  // Balance Timeline chart) repaint in lbs / containers / MT / kernel-K
+  // as the user flips this toggle. Ratio widgets (commit %, draw-down %,
+  // utilization %, velocity %, coverage x) stay unit-free.
+  const [selectedMetric, setSelectedMetric] = useState('lbs');
+  const metric = getMetric(selectedMetric);
 
   useEffect(() => {
     async function load() {
@@ -254,8 +263,8 @@ export default function Supply() {
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
           <MetricCard
             icon="📦"
-            title="Total Supply"
-            value={`${(latestMetrics.supply / 1e9).toFixed(2)}B`}
+            title={`Total Supply (${metric.short})`}
+            value={metric.formatter(latestMetrics.supply)}
             subtitle={`${latestMetrics.cropYear}`}
             color="green"
           />
@@ -277,13 +286,13 @@ export default function Supply() {
             icon="📊"
             title="Uncommitted"
             value={`${latestMetrics.uncommittedPct}%`}
-            subtitle={`${(latestMetrics.uncommitted / 1e6).toFixed(0)}M lbs`}
+            subtitle={metric.formatter(latestMetrics.uncommitted)}
             color="amber"
           />
           <MetricCard
             icon="🆕"
-            title="New Commits"
-            value={`${(latestMetrics.newCommitments / 1e6).toFixed(0)}M`}
+            title={`New Commits (${metric.short})`}
+            value={metric.formatter(latestMetrics.newCommitments)}
             subtitle="this month"
             color="purple"
           />
@@ -338,6 +347,25 @@ export default function Supply() {
         ]}
         emptyHint="Pick at least one crop year"
       />
+
+      {/* Multi-metric toggle (2026-04-24 user directive): volume widgets
+          repaint in lbs / 40HC containers / metric tons / kernel K-lbs.
+          Ratio widgets below this (commit %, draw-down, utilization,
+          velocity, coverage x) stay unit-free by design. */}
+      <div className="mb-4 flex items-center gap-3 flex-wrap">
+        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+          Volume unit
+        </span>
+        <MetricToggle
+          metrics={VOLUME_METRICS}
+          value={selectedMetric}
+          onChange={setSelectedMetric}
+          compact
+        />
+        <span className="text-[10px] text-gray-600">
+          applies to Total Supply + New Commits + Supply Balance Timeline
+        </span>
+      </div>
 
       {/* Row 1: Commitment Rate + Draw-Down */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -465,14 +493,16 @@ export default function Supply() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Supply Balance Timeline */}
-        <ChartCard title="Supply Balance Timeline" subtitle="10-year supply vs committed vs shipped" insight="The long-term timeline shows how California almond supply has grown over the decade. The gap between total supply and committed volumes represents available inventory. A narrowing gap over time indicates the industry is becoming more demand-driven.">
+        {/* Supply Balance Timeline — multi-metric aware (2026-04-24).
+            YAxis + tooltip repaint as metric toggle changes; the raw
+            series stays in lbs so no re-fetch needed. */}
+        <ChartCard title={`Supply Balance Timeline (${metric.short})`} subtitle="10-year supply vs committed vs shipped" insight="The long-term timeline shows how California almond supply has grown over the decade. The gap between total supply and committed volumes represents available inventory. A narrowing gap over time indicates the industry is becoming more demand-driven. Toggle the volume unit above to view in containers, metric tons, or kernel-lbs.">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={supplyBalance}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
               <XAxis dataKey="label" tick={{ fill: '#6b7280', fontSize: 10 }} interval={11} />
-              <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={v => (v / 1e9).toFixed(1) + 'B'} />
-              <Tooltip content={<CustomTooltip />} />
+              <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={metric.tickFormatter} />
+              <Tooltip content={<CustomTooltip formatter={metric.tooltipFormatter} />} />
               <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
               <Area type="monotone" dataKey="supply" name="Total Supply" stroke={COLORS.green} fill={COLORS.green} fillOpacity={0.1} />
               <Line type="monotone" dataKey="committed" name="Committed" stroke={COLORS.blue} strokeWidth={1.5} dot={false} />
@@ -487,7 +517,7 @@ export default function Supply() {
         <div className="flex justify-end mb-3">
           <button
             onClick={() => {
-              const headers = ['Crop Year', 'Supply (lbs)', 'Commit %', 'Ship %', 'Uncommitted %', 'Velocity %', 'Status'];
+              const headers = ['Crop Year', `Supply (${metric.csvLabel})`, 'Commit %', 'Ship %', 'Uncommitted %', 'Velocity %', 'Status'];
               const rows = allCropYears.map(cy => {
                 const cyR = reports.filter(r => r.crop_year === cy);
                 const last = cyR[cyR.length - 1];
@@ -497,13 +527,13 @@ export default function Supply() {
                 const uncommittedPct = last.total_supply_lbs > 0 ? (last.uncommitted_lbs / last.total_supply_lbs * 100).toFixed(1) : '0';
                 const velocity = last.uncommitted_lbs > 0 && last.total_new_commitments_lbs > 0 ? (last.total_new_commitments_lbs / last.uncommitted_lbs * 100).toFixed(1) : '0';
                 const status = parseFloat(uncommittedPct) < 15 ? 'Tight' : parseFloat(uncommittedPct) < 30 ? 'Balanced' : 'Loose';
-                return [cy, last.total_supply_lbs, commitPct, shipPct, uncommittedPct, velocity, status];
+                return [cy, metric.transform(toNum(last.total_supply_lbs)).toFixed(2), commitPct, shipPct, uncommittedPct, velocity, status];
               }).filter(Boolean);
               const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
               const blob = new Blob([csv], { type: 'text/csv' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
-              a.href = url; a.download = 'cropsintel_supply_health.csv'; a.click();
+              a.href = url; a.download = `cropsintel_supply_health_${metric.key}.csv`; a.click();
               URL.revokeObjectURL(url);
             }}
             className="text-xs text-gray-500 hover:text-green-400 transition-colors px-2 py-1 rounded border border-gray-800 hover:border-green-500/30"
@@ -516,7 +546,7 @@ export default function Supply() {
             <thead>
               <tr className="border-b border-gray-700">
                 <th className="text-left py-2 px-3 text-gray-400 text-xs">Crop Year</th>
-                <th className="text-right py-2 px-3 text-gray-400 text-xs">Supply</th>
+                <th className="text-right py-2 px-3 text-gray-400 text-xs">Supply ({metric.short})</th>
                 <th className="text-right py-2 px-3 text-gray-400 text-xs">Commit %</th>
                 <th className="text-right py-2 px-3 text-gray-400 text-xs">Ship %</th>
                 <th className="text-right py-2 px-3 text-gray-400 text-xs">Uncommitted</th>
@@ -546,7 +576,7 @@ export default function Supply() {
                       <span className="text-white text-xs font-medium">{cy}</span>
                       <span className="text-gray-600 text-[10px] ml-1">({cyReports.length}mo)</span>
                     </td>
-                    <td className="py-2 px-3 text-right text-gray-300 text-xs">{(last.total_supply_lbs / 1e9).toFixed(2)}B</td>
+                    <td className="py-2 px-3 text-right text-gray-300 text-xs">{metric.formatter(toNum(last.total_supply_lbs))}</td>
                     <td className="py-2 px-3 text-right text-blue-400 text-xs">{commitPct.toFixed(1)}%</td>
                     <td className="py-2 px-3 text-right text-cyan-400 text-xs">{shipPct.toFixed(1)}%</td>
                     <td className="py-2 px-3 text-right text-amber-400 text-xs">{uncommittedPct.toFixed(1)}%</td>
