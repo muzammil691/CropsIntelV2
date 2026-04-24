@@ -7,6 +7,7 @@ import { seedAiAnalyses } from '../lib/seed-ai-analyses';
 import { getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 import PersonaBanner from '../components/PersonaBanner';
 import PersonaInsights from '../components/PersonaInsights';
+import MarketPulseBand from '../components/MarketPulseBand';
 import Card from '../components/Card';
 import { useAuth } from '../lib/auth';
 import { isInternal } from '../lib/permissions';
@@ -42,12 +43,12 @@ function StatCard({ title, value, subtitle, trend, color = 'green' }) {
   const textColor = { green: 'text-green-400', blue: 'text-blue-400', amber: 'text-amber-400', red: 'text-red-400' };
 
   return (
-    <div className={`bg-gradient-to-br ${colorMap[color]} border rounded-xl p-5`}>
-      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">{title}</p>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+    <div className={`bg-gradient-to-br ${colorMap[color]} border rounded-xl p-4`}>
+      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">{title}</p>
+      <p className="text-xl lg:text-2xl font-bold text-white leading-tight">{value}</p>
+      {subtitle && <p className="text-[10px] text-gray-500 mt-1 truncate">{subtitle}</p>}
       {trend !== undefined && trend !== null && (
-        <p className={`text-xs mt-2 font-medium ${trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+        <p className={`text-[11px] mt-1.5 font-medium ${trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-gray-400'}`}>
           {trend > 0 ? '+' : ''}{trend}% YoY
         </p>
       )}
@@ -356,6 +357,11 @@ export default function Dashboard() {
   const [analyses, setAnalyses] = useState([]);
   const [scrapeLogs, setScrapeLogs] = useState([]);
   const [latestPrices, setLatestPrices] = useState([]);
+  // 2026-04-24 Dashboard redesign: price history for the Market Pulse band's
+  // WoW price delta. Pulls ~30 days of all Strata prices so we can find
+  // each variety's 7-day-ago snapshot without extra round-trips.
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [priorMonthReport, setPriorMonthReport] = useState(null);
   const [recentNews, setRecentNews] = useState([]);
   const [aiStatus, setAiStatus] = useState(null);
   const [intelInsights, setIntelInsights] = useState([]);
@@ -384,6 +390,10 @@ export default function Dashboard() {
             r.report_year === reports[0].report_year - 1
           );
           if (py) setPriorYearReport(py);
+          // Prior month report — for MoM deltas in the Market Pulse band.
+          // Reports are sorted DESC by year+month, so reports[1] is prior
+          // month of prior crop-year transition (handled naturally).
+          if (reports.length >= 2) setPriorMonthReport(reports[1]);
         }
 
         // Fetch AI analyses
@@ -433,18 +443,22 @@ export default function Dashboard() {
           setScrapeLogs(Object.values(byName));
         }
 
-        // Fetch latest Strata prices (one per variety, most recent)
+        // Fetch 60 days of Strata prices — covers the Market Pulse band's
+        // WoW + MoM delta math AND the Live Prices widget (most-recent per
+        // variety). One query, two consumers, no extra round-trip.
         const { data: prices } = await supabase
           .from('strata_prices')
           .select('*')
           .order('price_date', { ascending: false })
-          .limit(30);
+          .limit(300);
 
         if (prices && prices.length > 0) {
+          setPriceHistory(prices);
           const byVariety = {};
           prices.forEach(p => { if (!byVariety[p.variety]) byVariety[p.variety] = p; });
           setLatestPrices(Object.values(byVariety).slice(0, 6));
         } else {
+          setPriceHistory([]);
           setLatestPrices([]);
         }
 
@@ -508,6 +522,7 @@ export default function Dashboard() {
 
   const lr = latestReport;
   const py = priorYearReport;
+  const pm = priorMonthReport;
 
   // Get the featured brief and signal for the Market Brief card
   const featuredBrief = analyses.find(a => a.analysis_type === 'monthly_brief');
@@ -517,6 +532,149 @@ export default function Dashboard() {
     .filter(a => a.id !== featuredBrief?.id && a.id !== featuredSignal?.id)
     .slice(0, 4);
 
+  // ── Market Pulse momentum pulses (2026-04-24 Dashboard redesign) ──
+  // Each pulse = {label, value, delta, tone, hint, href?}. Passed to
+  // MarketPulseBand below. Externally-visible: no market/margin leakage
+  // (the price pulse uses the offer price, not Strata market).
+  const pulses = [];
+  if (lr) {
+    // 1. Monthly shipment delta (cumulative YTD - prior YTD = this month's new flow)
+    const monthlyShipped = pm ? (toNum(lr.total_shipped_lbs) - toNum(pm.total_shipped_lbs)) : null;
+    const priorMonthlyShipped = pm && allReports.length >= 3
+      ? (toNum(pm.total_shipped_lbs) - toNum(allReports[2].total_shipped_lbs))
+      : null;
+    let monthlyDelta = null;
+    if (monthlyShipped != null && priorMonthlyShipped != null && priorMonthlyShipped > 0) {
+      const pct = ((monthlyShipped - priorMonthlyShipped) / priorMonthlyShipped) * 100;
+      monthlyDelta = pct;
+    }
+    pulses.push({
+      label: 'Monthly Ship',
+      value: monthlyShipped != null ? formatLbs(monthlyShipped) : '--',
+      delta: monthlyDelta != null ? `${monthlyDelta > 0 ? '+' : ''}${monthlyDelta.toFixed(1)}%` : null,
+      deltaLabel: 'MoM',
+      tone: monthlyDelta == null ? 'neutral' : monthlyDelta > 2 ? 'bullish' : monthlyDelta < -2 ? 'bearish' : 'neutral',
+      hint: `Prior month: ${priorMonthlyShipped != null ? formatLbs(priorMonthlyShipped) : '--'}`,
+      href: '/analysis',
+    });
+
+    // 2. Commit rate — a key pricing-power indicator. Rising commit rate
+    // means the handler's unsold position is shrinking = sellers tighten.
+    const commitRate = toNum(lr.total_supply_lbs) > 0
+      ? (toNum(lr.total_committed_lbs) / toNum(lr.total_supply_lbs)) * 100
+      : null;
+    const pyCommitRate = py && toNum(py.total_supply_lbs) > 0
+      ? (toNum(py.total_committed_lbs) / toNum(py.total_supply_lbs)) * 100
+      : null;
+    const commitDelta = (commitRate != null && pyCommitRate != null)
+      ? (commitRate - pyCommitRate) : null;
+    pulses.push({
+      label: 'Commit Rate',
+      value: commitRate != null ? `${commitRate.toFixed(1)}%` : '--',
+      delta: commitDelta != null ? `${commitDelta > 0 ? '+' : ''}${commitDelta.toFixed(1)}pp` : null,
+      deltaLabel: 'YoY',
+      tone: commitDelta == null ? 'neutral' : commitDelta > 0 ? 'bullish' : 'bearish',
+      hint: 'Higher = tighter supply (bullish)',
+      href: '/supply',
+    });
+
+    // 3. Uncommitted YoY — the "what's left to sell" number.
+    const unYoy = yoyPct(lr.uncommitted_lbs, py?.uncommitted_lbs);
+    pulses.push({
+      label: 'Uncommitted',
+      value: formatLbs(lr.uncommitted_lbs),
+      delta: unYoy != null ? `${unYoy > 0 ? '+' : ''}${unYoy}%` : null,
+      deltaLabel: 'YoY',
+      // Counter-intuitive: LESS uncommitted is BULLISH (pricing power)
+      tone: unYoy == null ? 'neutral' : unYoy < 0 ? 'bullish' : 'bearish',
+      hint: 'Available inventory — lower = tighter',
+      href: '/supply',
+    });
+  }
+
+  // 4. Price pulse — Nonpareil variety, latest vs ~7 days ago.
+  // Respects info-walls: externals see offer price (maxons_price_per_lb),
+  // internals see market price (price_usd_per_lb).
+  if (priceHistory.length > 0) {
+    const priceField = internal ? 'price_usd_per_lb' : 'maxons_price_per_lb';
+    const fallbackFn = (row) => internal
+      ? parseFloat(row.price_usd_per_lb || 0)
+      : parseFloat(row.maxons_price_per_lb || (row.price_usd_per_lb || 0) * 1.03);
+
+    const nonpareilRows = priceHistory.filter(p =>
+      (p.variety || '').toLowerCase().includes('nonpareil')
+    );
+    if (nonpareilRows.length > 0) {
+      const latestRow = nonpareilRows[0];
+      const latestPrice = parseFloat(latestRow[priceField]) || fallbackFn(latestRow);
+      // Find a row from ~7 days before
+      const latestDate = latestRow.price_date ? new Date(latestRow.price_date) : new Date();
+      const weekAgoTarget = new Date(latestDate.getTime() - 7 * 86400000);
+      const weekAgoRow = nonpareilRows.find(p => {
+        if (!p.price_date) return false;
+        const d = new Date(p.price_date);
+        return d <= weekAgoTarget;
+      });
+      const priorPrice = weekAgoRow ? (parseFloat(weekAgoRow[priceField]) || fallbackFn(weekAgoRow)) : null;
+      const priceDelta = (latestPrice && priorPrice)
+        ? ((latestPrice - priorPrice) / priorPrice) * 100 : null;
+      pulses.push({
+        label: 'Nonpareil $/lb',
+        value: `$${latestPrice.toFixed(2)}`,
+        delta: priceDelta != null ? `${priceDelta > 0 ? '+' : ''}${priceDelta.toFixed(1)}%` : null,
+        deltaLabel: 'WoW',
+        tone: priceDelta == null ? 'neutral' : priceDelta > 0.5 ? 'bullish' : priceDelta < -0.5 ? 'bearish' : 'neutral',
+        hint: priorPrice ? `7d ago: $${priorPrice.toFixed(2)}` : 'No 7d prior sample',
+        href: '/pricing',
+      });
+    }
+  }
+
+  // 5. News mood — % bullish among recent items with sentiment.
+  if (recentNews.length > 0) {
+    const scored = recentNews.filter(n => n.ai_sentiment || n.sentiment);
+    const bull = scored.filter(n => (n.ai_sentiment || n.sentiment) === 'bullish').length;
+    const bear = scored.filter(n => (n.ai_sentiment || n.sentiment) === 'bearish').length;
+    const total = scored.length;
+    const bullPct = total > 0 ? Math.round((bull / total) * 100) : null;
+    const mood = bullPct == null ? 'Mixed' : bullPct >= 60 ? 'Bullish' : bullPct <= 40 ? 'Bearish' : 'Neutral';
+    pulses.push({
+      label: 'News Mood',
+      value: mood,
+      delta: bullPct != null ? `${bullPct}%` : null,
+      deltaLabel: 'bull share',
+      tone: mood === 'Bullish' ? 'bullish' : mood === 'Bearish' ? 'bearish' : 'neutral',
+      hint: total > 0 ? `${bull} bull / ${bear} bear / ${total - bull - bear} neutral of ${total}` : '',
+      href: '/news',
+    });
+  }
+
+  // 6. Active AI signals — what Zyra is flagging right now
+  const tradeSignals = analyses.filter(a => a.analysis_type === 'trade_signal');
+  const topSignal = tradeSignals[0];
+  if (topSignal) {
+    const sig = topSignal.data_context?.signal || 'neutral';
+    pulses.push({
+      label: 'AI Signal',
+      value: sig.toUpperCase(),
+      delta: topSignal.confidence ? `${Math.round(topSignal.confidence * 100)}%` : null,
+      deltaLabel: 'confidence',
+      tone: sig === 'bullish' ? 'bullish' : sig === 'bearish' ? 'bearish' : 'neutral',
+      hint: topSignal.title || 'Latest trade signal from Zyra',
+      href: '/intelligence',
+    });
+  } else {
+    // Fallback: show data coverage
+    pulses.push({
+      label: 'Data Coverage',
+      value: `${allReports.length} mo`,
+      delta: null,
+      tone: 'neutral',
+      hint: 'ABC position reports loaded',
+      href: '/reports',
+    });
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl">
       {/* Phase D MVP: role-aware welcome + shortcuts */}
@@ -524,29 +682,29 @@ export default function Dashboard() {
       {/* Phase D2/D3: persona-specific live numeric insights */}
       <PersonaInsights />
 
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between">
+      {/* Header (compact — persona banner above already introduces the user) */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h2 className="text-2xl font-bold text-white">Market Dashboard</h2>
-            <p className="text-gray-500 text-sm mt-1">
+            <h2 className="text-xl font-bold text-white">Market Dashboard</h2>
+            <p className="text-gray-500 text-xs mt-0.5">
               {lr
-                ? `${lr.crop_year} crop year | Report: ${lr.report_year}/${String(lr.report_month).padStart(2, '0')} | ${allReports.length} months loaded`
+                ? `${lr.crop_year} crop year · Report ${lr.report_year}/${String(lr.report_month).padStart(2, '0')} · ${allReports.length} months loaded`
                 : 'No data yet - run the scraper to populate'
               }
             </p>
           </div>
           {lr && (
-            <div className="hidden md:flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
+            <div className="hidden md:flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-gray-400">Last update: {lr.report_year}/{String(lr.report_month).padStart(2, '0')}</span>
+              <span className="text-xs text-gray-400">Live · {lr.report_year}/{String(lr.report_month).padStart(2, '0')}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Key Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {/* Key Metrics Row (tighter gap) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <StatCard
           title="Total Shipments"
           value={formatLbs(lr?.total_shipped_lbs)}
@@ -577,9 +735,12 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Market Pulse — momentum indicators (2026-04-24 redesign) */}
+      <MarketPulseBand pulses={pulses} />
+
       {/* Market Brief - concise executive summary */}
       {(featuredBrief || featuredSignal) && (
-        <div className="mb-6 bg-gradient-to-r from-green-500/10 via-blue-500/5 to-transparent border border-green-500/20 rounded-xl p-5">
+        <div className="mb-4 bg-gradient-to-r from-green-500/10 via-blue-500/5 to-transparent border border-green-500/20 rounded-xl p-4">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
               <span className="text-green-400 font-bold text-sm">AI</span>
@@ -618,8 +779,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Second row: Supply Position + Shipment trend */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* Second row: Supply Position + Shipment trend (tighter) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Crop Sold Progress — correct concept: completion bar with prior year reference */}
         <SupplyPositionWidget current={lr} prior={py} />
 
@@ -629,29 +790,31 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* AI Insights + System Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* AI Insights + System Status (tighter gap) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* AI Insights (2 columns) */}
         <div className="lg:col-span-2">
-          <h3 className="text-lg font-semibold text-white mb-4">
-            AI Insights
-            <span className="text-xs text-gray-500 font-normal ml-2">{analyses.length} total</span>
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-white">
+              AI Insights
+              <span className="text-xs text-gray-500 font-normal ml-2">{analyses.length} total</span>
+            </h3>
+            <Link to="/intelligence" className="text-xs text-green-400 hover:text-green-300">All &rarr;</Link>
+          </div>
           {insightCards.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {insightCards.map(a => <InsightCard key={a.id} analysis={a} />)}
             </div>
           ) : (
-            <div className="border border-gray-800 rounded-lg p-8 text-center">
-              <p className="text-gray-500">No additional insights</p>
-              <p className="text-xs text-gray-600 mt-1">Run the autonomous scraper to generate more insights</p>
+            <div className="border border-gray-800 rounded-lg p-4 text-center">
+              <p className="text-xs text-gray-500">No additional insights yet &mdash; scraper will generate more on next run.</p>
             </div>
           )}
         </div>
 
         {/* System Status */}
         <div>
-          <h3 className="text-lg font-semibold text-white mb-4">System Status</h3>
+          <h3 className="text-base font-semibold text-white mb-3">System Status</h3>
           <div className="space-y-2">
             {/* Data freshness */}
             <div className="bg-gray-900 rounded-lg px-4 py-3 border border-gray-800">
@@ -743,8 +906,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Live Pricing, News Feed, System Pipeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      {/* Live Pricing, News Feed, System Pipeline (tighter gap) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
         {/* Live Pricing Widget */}
         <Card>
           <div className="flex items-center justify-between mb-4">
