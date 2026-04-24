@@ -6,6 +6,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import FilterBar from '../components/FilterBar';
+import { useAuth } from '../lib/auth';
+import { isInternal } from '../lib/permissions';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -40,7 +42,7 @@ function ChartCard({ title, subtitle, insight, children }) {
 }
 
 
-function PriceCard({ variety, price, maxonsPrice, grade, form, date, trend }) {
+function PriceCard({ variety, price, maxonsPrice, grade, form, date, trend, internal }) {
   const trendColor = trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-gray-400';
   const trendIcon = trend > 0 ? '↑' : trend < 0 ? '↓' : '→';
 
@@ -55,24 +57,34 @@ function PriceCard({ variety, price, maxonsPrice, grade, form, date, trend }) {
           {trendIcon} {trend ? `${Math.abs(trend).toFixed(1)}%` : '—'}
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-3 mt-3">
-        <div>
-          <p className="text-[10px] text-gray-600 uppercase tracking-wide">Market</p>
-          <p className="text-lg font-bold text-white">${price?.toFixed(2)}</p>
+      {internal ? (
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wide">Market</p>
+            <p className="text-lg font-bold text-white">${price?.toFixed(2)}</p>
+            <p className="text-[10px] text-gray-500">per lb</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-green-600 uppercase tracking-wide">MAXONS</p>
+            <p className="text-lg font-bold text-green-400">${maxonsPrice?.toFixed(2)}</p>
+            <p className="text-[10px] text-gray-500">per lb (+3%)</p>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <p className="text-[10px] text-gray-600 uppercase tracking-wide">Price</p>
+          <p className="text-2xl font-bold text-green-400">${maxonsPrice?.toFixed(2)}</p>
           <p className="text-[10px] text-gray-500">per lb</p>
         </div>
-        <div>
-          <p className="text-[10px] text-green-600 uppercase tracking-wide">MAXONS</p>
-          <p className="text-lg font-bold text-green-400">${maxonsPrice?.toFixed(2)}</p>
-          <p className="text-[10px] text-gray-500">per lb (+3%)</p>
-        </div>
-      </div>
+      )}
       <p className="text-[10px] text-gray-600 mt-2">Updated: {date}</p>
     </div>
   );
 }
 
 export default function Pricing() {
+  const { profile } = useAuth();
+  const internal = isInternal(profile);
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table' | 'chart' | 'compare'
@@ -135,13 +147,15 @@ export default function Pricing() {
   const toggleVariety = v => setComparedVarieties(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
   const toggleGrade = g => setComparedGrades(p => p.includes(g) ? p.filter(x => x !== g) : [...p, g]);
 
-  // Phase C3: history trend for compared varieties, filtered to compared grades
+  // Phase C3: history trend for compared varieties, filtered to compared grades.
+  // Non-internal users see the offered price (maxons) \u2014 internals see market.
   const compareHistory = useMemo(() => {
     if (comparedVarieties.length === 0) return [];
+    const priceField = internal ? 'price_usd_per_lb' : 'maxons_price_per_lb';
     const filtered = prices.filter(p =>
       p.variety && comparedVarieties.includes(p.variety) &&
       (comparedGrades.length === 0 || (p.grade && comparedGrades.includes(p.grade))) &&
-      p.price_usd_per_lb
+      p[priceField]
     );
     // Group by date, aggregate per variety (average across grades if multiple)
     const byDate = {};
@@ -149,7 +163,7 @@ export default function Pricing() {
       if (!byDate[p.price_date]) byDate[p.price_date] = { date: p.price_date };
       const k = p.variety;
       if (!byDate[p.price_date][`${k}_sum`]) { byDate[p.price_date][`${k}_sum`] = 0; byDate[p.price_date][`${k}_n`] = 0; }
-      byDate[p.price_date][`${k}_sum`] += p.price_usd_per_lb;
+      byDate[p.price_date][`${k}_sum`] += p[priceField];
       byDate[p.price_date][`${k}_n`] += 1;
     }
     return Object.values(byDate).map(row => {
@@ -159,7 +173,7 @@ export default function Pricing() {
       }
       return out;
     }).sort((a, b) => a.date.localeCompare(b.date));
-  }, [prices, comparedVarieties, comparedGrades]);
+  }, [prices, comparedVarieties, comparedGrades, internal]);
 
   // Phase C3: current-level table — latest price per (variety, grade) cross-tab
   const crossTable = useMemo(() => {
@@ -232,7 +246,9 @@ export default function Pricing() {
             Live Pricing
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Strata Markets almond prices with MAXONS 3% margin applied
+            {internal
+              ? 'Strata Markets almond prices with MAXONS 3% margin applied'
+              : 'Live almond pricing \u2014 updated on each autonomous cycle'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -262,12 +278,20 @@ export default function Pricing() {
           {/* CSV Export */}
           <button
             onClick={() => {
-              const rows = [['Date','Variety','Grade','Form','Market_USD_per_lb','MAXONS_USD_per_lb','Bid','Ask']];
-              filteredPrices.forEach(p => rows.push([
-                p.price_date, p.variety, p.grade || '', p.form || '',
-                p.price_usd_per_lb, p.maxons_price_per_lb || '',
-                p.bid_price || '', p.ask_price || ''
-              ]));
+              const rows = internal
+                ? [['Date','Variety','Grade','Form','Market_USD_per_lb','MAXONS_USD_per_lb','Bid','Ask']]
+                : [['Date','Variety','Grade','Form','Price_USD_per_lb']];
+              filteredPrices.forEach(p => rows.push(internal
+                ? [
+                    p.price_date, p.variety, p.grade || '', p.form || '',
+                    p.price_usd_per_lb, p.maxons_price_per_lb || '',
+                    p.bid_price || '', p.ask_price || ''
+                  ]
+                : [
+                    p.price_date, p.variety, p.grade || '', p.form || '',
+                    p.maxons_price_per_lb || ''
+                  ]
+              ));
               const csv = rows.map(r => r.join(',')).join('\n');
               const blob = new Blob([csv], { type: 'text/csv' });
               const url = URL.createObjectURL(blob);
@@ -286,24 +310,27 @@ export default function Pricing() {
       <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-white mb-2">How to Read This Page</h3>
         <p className="text-xs text-gray-400 leading-relaxed">
-          Prices come from Strata Markets, the primary exchange for California almond trading. Each variety card shows the latest market price alongside the MAXONS price (market + 3% margin).
-          The trend arrow shows direction vs. the previous data point. Switch between card, table, and chart views to analyze from different angles.
+          {internal
+            ? `Prices come from Strata Markets, the primary exchange for California almond trading. Each variety card shows the latest market price alongside the MAXONS price (market + 3% margin). The trend arrow shows direction vs. the previous data point. Switch between card, table, and chart views to analyze from different angles.`
+            : `Each variety card shows the latest CropsIntel offered price, per pound, for the indicated grade and form. The trend arrow shows direction vs. the previous data point. Switch between card, table, and chart views to analyze from different angles.`}
           {varieties.length > 0 ? ` Currently tracking ${varieties.length} varieties across ${prices.length} data points.` : ''}
         </p>
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className={`grid grid-cols-2 gap-3 ${internal ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
           <p className="text-xs text-gray-500">Varieties Tracked</p>
           <p className="text-xl font-bold text-white">{varieties.length}</p>
         </div>
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
-          <p className="text-xs text-gray-500">Avg Market Price</p>
-          <p className="text-xl font-bold text-white">${avgPrice.toFixed(2)}/lb</p>
-        </div>
+        {internal && (
+          <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+            <p className="text-xs text-gray-500">Avg Market Price</p>
+            <p className="text-xl font-bold text-white">${avgPrice.toFixed(2)}/lb</p>
+          </div>
+        )}
         <div className="bg-gray-900/50 border border-green-500/20 rounded-xl p-4">
-          <p className="text-xs text-green-600">Avg MAXONS Price</p>
+          <p className="text-xs text-green-600">{internal ? 'Avg MAXONS Price' : 'Avg Price'}</p>
           <p className="text-xl font-bold text-green-400">${avgMaxons.toFixed(2)}/lb</p>
         </div>
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
@@ -325,6 +352,7 @@ export default function Pricing() {
               form={p.form}
               date={p.price_date}
               trend={p.trend}
+              internal={internal}
             />
           )) : (
             <div className="col-span-full flex items-center justify-center h-48 text-gray-600">
@@ -339,7 +367,13 @@ export default function Pricing() {
       )}
 
       {viewMode === 'table' && (
-        <ChartCard title="Price History" subtitle="All recorded prices with MAXONS margin" insight="The full price history shows how each variety's price has moved over time. Watch the spread between bid and ask prices — a narrow spread means a liquid, active market. Wide spreads suggest uncertainty. The MAXONS column shows your selling price with the 3% margin pre-applied.">
+        <ChartCard
+          title="Price History"
+          subtitle={internal ? "All recorded prices with MAXONS margin" : "All recorded prices"}
+          insight={internal
+            ? "The full price history shows how each variety's price has moved over time. Watch the spread between bid and ask prices \u2014 a narrow spread means a liquid, active market. Wide spreads suggest uncertainty. The MAXONS column shows your selling price with the 3% margin pre-applied."
+            : "The full price history shows how each variety's price has moved over time. Use this to track direction per variety and plan order timing."}
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -347,10 +381,10 @@ export default function Pricing() {
                   <th className="text-left py-2 px-2 text-gray-500 font-medium">Date</th>
                   <th className="text-left py-2 px-2 text-gray-500 font-medium">Variety</th>
                   <th className="text-left py-2 px-2 text-gray-500 font-medium">Grade</th>
-                  <th className="text-right py-2 px-2 text-gray-500 font-medium">Market $/lb</th>
-                  <th className="text-right py-2 px-2 text-green-600 font-medium">MAXONS $/lb</th>
-                  <th className="text-right py-2 px-2 text-gray-500 font-medium">Bid</th>
-                  <th className="text-right py-2 px-2 text-gray-500 font-medium">Ask</th>
+                  {internal && <th className="text-right py-2 px-2 text-gray-500 font-medium">Market $/lb</th>}
+                  <th className="text-right py-2 px-2 text-green-600 font-medium">{internal ? 'MAXONS $/lb' : '$/lb'}</th>
+                  {internal && <th className="text-right py-2 px-2 text-gray-500 font-medium">Bid</th>}
+                  {internal && <th className="text-right py-2 px-2 text-gray-500 font-medium">Ask</th>}
                 </tr>
               </thead>
               <tbody>
@@ -358,18 +392,18 @@ export default function Pricing() {
                   <tr key={i} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                     <td className="py-2 px-2 text-gray-400">{p.price_date}</td>
                     <td className="py-2 px-2 text-white">{p.variety}</td>
-                    <td className="py-2 px-2 text-gray-400">{p.grade || '—'}</td>
-                    <td className="py-2 px-2 text-right text-white font-mono">${p.price_usd_per_lb?.toFixed(4)}</td>
+                    <td className="py-2 px-2 text-gray-400">{p.grade || '\u2014'}</td>
+                    {internal && <td className="py-2 px-2 text-right text-white font-mono">${p.price_usd_per_lb?.toFixed(4)}</td>}
                     <td className="py-2 px-2 text-right text-green-400 font-mono">${p.maxons_price_per_lb?.toFixed(4)}</td>
-                    <td className="py-2 px-2 text-right text-gray-400 font-mono">{p.bid_price ? `$${p.bid_price.toFixed(4)}` : '—'}</td>
-                    <td className="py-2 px-2 text-right text-gray-400 font-mono">{p.ask_price ? `$${p.ask_price.toFixed(4)}` : '—'}</td>
+                    {internal && <td className="py-2 px-2 text-right text-gray-400 font-mono">{p.bid_price ? `$${p.bid_price.toFixed(4)}` : '\u2014'}</td>}
+                    {internal && <td className="py-2 px-2 text-right text-gray-400 font-mono">{p.ask_price ? `$${p.ask_price.toFixed(4)}` : '\u2014'}</td>}
                   </tr>
                 ))}
               </tbody>
             </table>
             {filteredPrices.length === 0 && (
               <div className="text-center py-8 text-gray-600 text-sm">
-                No pricing data yet — Strata scraper will populate this automatically
+                No pricing data yet &mdash; Strata scraper will populate this automatically
               </div>
             )}
           </div>
@@ -377,7 +411,13 @@ export default function Pricing() {
       )}
 
       {viewMode === 'chart' && (
-        <ChartCard title="Price Trends" subtitle="Market prices over time by variety" insight="Price trends reveal the direction of the market. Parallel lines mean varieties are moving together (macro-driven). Diverging lines suggest variety-specific demand shifts — Nonpareil premium may widen or narrow vs. other varieties. Time your purchases when lines are trending down and sell positions when they curve up.">
+        <ChartCard
+          title="Price Trends"
+          subtitle={internal ? "Market prices over time by variety" : "Prices over time by variety"}
+          insight={internal
+            ? "Price trends reveal the direction of the market. Parallel lines mean varieties are moving together (macro-driven). Diverging lines suggest variety-specific demand shifts \u2014 Nonpareil premium may widen or narrow vs. other varieties. Time your purchases when lines are trending down and sell positions when they curve up."
+            : "Price trends reveal direction by variety. Parallel lines mean varieties are moving together. Diverging lines suggest variety-specific demand shifts \u2014 Nonpareil premium may widen or narrow vs. other varieties. Consider timing orders when lines are trending down."}
+        >
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={chartData}>
@@ -394,7 +434,7 @@ export default function Pricing() {
                   <Line
                     key={v}
                     type="monotone"
-                    dataKey={v}
+                    dataKey={internal ? v : `${v}_maxons`}
                     stroke={VARIETY_COLORS[v] || COLORS.green}
                     name={v}
                     strokeWidth={2}
@@ -505,8 +545,8 @@ export default function Pricing() {
                       <th className="text-left py-2 px-3 text-gray-400">Variety</th>
                       <th className="text-left py-2 px-3 text-gray-400">Grade</th>
                       <th className="text-left py-2 px-3 text-gray-400">Form</th>
-                      <th className="text-right py-2 px-3 text-gray-400">Market $/lb</th>
-                      <th className="text-right py-2 px-3 text-green-400">MAXONS $/lb</th>
+                      {internal && <th className="text-right py-2 px-3 text-gray-400">Market $/lb</th>}
+                      <th className="text-right py-2 px-3 text-green-400">{internal ? 'MAXONS $/lb' : '$/lb'}</th>
                       <th className="text-right py-2 px-3 text-gray-400">As of</th>
                     </tr>
                   </thead>
@@ -521,7 +561,7 @@ export default function Pricing() {
                         </td>
                         <td className="py-2 px-3 text-gray-300">{p.grade || '—'}</td>
                         <td className="py-2 px-3 text-gray-300">{p.form || '—'}</td>
-                        <td className="py-2 px-3 text-right text-white font-mono">${p.price_usd_per_lb?.toFixed(4)}</td>
+                        {internal && <td className="py-2 px-3 text-right text-white font-mono">${p.price_usd_per_lb?.toFixed(4)}</td>}
                         <td className="py-2 px-3 text-right text-green-400 font-mono">${p.maxons_price_per_lb?.toFixed(4)}</td>
                         <td className="py-2 px-3 text-right text-gray-500 font-mono">{p.price_date}</td>
                       </tr>
@@ -534,18 +574,23 @@ export default function Pricing() {
         </div>
       )}
 
-      {/* MAXONS Margin Info */}
-      <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <h3 className="text-sm font-medium text-green-400">MAXONS Pricing Policy</h3>
+      {/* MAXONS Margin Info \u2014 INTERNAL ONLY.
+          Information-walls rule: customers/suppliers/brokers never see cost basis,
+          margin, or the source exchange. See src/lib/permissions.js. */}
+      {internal && (
+        <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <h3 className="text-sm font-medium text-green-400">MAXONS Pricing Policy</h3>
+            <span className="ml-auto text-[10px] text-green-500/70 uppercase tracking-wide">Internal only</span>
+          </div>
+          <p className="text-xs text-gray-400">
+            All prices include MAXONS 3% margin automatically applied. Market prices are sourced from
+            Strata Markets (online.stratamarkets.com) and updated on each autonomous cycle.
+            Formula: MAXONS Price = Market Price &times; 1.03
+          </p>
         </div>
-        <p className="text-xs text-gray-400">
-          All prices include MAXONS 3% margin automatically applied. Market prices are sourced from
-          Strata Markets (online.stratamarkets.com) and updated on each autonomous cycle.
-          Formula: MAXONS Price = Market Price × 1.03
-        </p>
-      </div>
+      )}
     </div>
   );
 }

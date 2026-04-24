@@ -221,11 +221,17 @@ export default function ZyraWidget() {
         }
 
         if (prices?.length) {
-          ctx += 'CURRENT STRATA PRICES:\n';
+          // Information-walls rule: externals never see market vs MAXONS split.
+          // For non-internal tiers, send ONLY the offered price (maxons_price_per_lb).
+          const isInternalTier = userTier === 'maxons';
+          ctx += isInternalTier ? 'CURRENT STRATA PRICES:\n' : 'CURRENT PRICING:\n';
           const byVariety = {};
           prices.forEach(p => { if (!byVariety[p.variety]) byVariety[p.variety] = p; });
           Object.values(byVariety).forEach(p => {
-            ctx += `- ${p.variety} ${p.grade || ''}: $${parseFloat(p.price_usd_per_lb).toFixed(2)}/lb (MAXONS: $${parseFloat(p.maxons_price_per_lb || p.price_usd_per_lb * 1.03).toFixed(2)})\n`;
+            const offered = parseFloat(p.maxons_price_per_lb || p.price_usd_per_lb * 1.03).toFixed(2);
+            ctx += isInternalTier
+              ? `- ${p.variety} ${p.grade || ''}: $${parseFloat(p.price_usd_per_lb).toFixed(2)}/lb (MAXONS: $${offered})\n`
+              : `- ${p.variety} ${p.grade || ''}: $${offered}/lb\n`;
           });
           ctx += '\n';
         }
