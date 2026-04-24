@@ -1,9 +1,9 @@
 {
-  "lastUpdated": "2026-04-24T21:10:00Z",
-  "updatedBy": "Claude AI \u2014 F4 ABC audit results (106 rows, 7 gap years; 2020/21 worst at 3/12)",
+  "lastUpdated": "2026-04-24T23:20:00Z",
+  "updatedBy": "Claude AI \u2014 continent hierarchy + MarketPulseBand + multi-metric rollout across Destinations/Dashboard/Supply/Forecasts",
   "sessionStatus": "autonomous-launch-polish",
-  "overallPercent": 62,
-  "launchReadinessPercent": 85,
+  "overallPercent": 63,
+  "launchReadinessPercent": 87,
   "metricsExplainer": {
     "overallPercent": "Phase-weighted average across all 10 phases (full MAXONS vision). Phases 7-10 are queued/active so honest total is ~60%.",
     "launchReadinessPercent": "Narrower metric \u2014 how ready Phases 1-6 are for the launch-first scope. Email/gdrive code landed but not activated (deps install step pending), UI polish in flight, so 85% not 100%.",
@@ -735,6 +735,30 @@
   ],
   "recentCommits": [
     {
+      "sha": "pending-multi-metric",
+      "date": "2026-04-24",
+      "subject": "supply+forecasts: multi-metric volume toggle (lbs/containers/MT/kernels) + progress.json bump",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "3dbff61",
+      "date": "2026-04-24",
+      "subject": "feat(dashboard): Market Pulse band + compact layout",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "dd57f5a",
+      "date": "2026-04-24",
+      "subject": "feat(destinations): continent hierarchy + multi-metric toggle",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "205eb82",
+      "date": "2026-04-24",
+      "subject": "feat: enforce info-walls across pricing surfaces (leak kill)",
+      "author": "Claude AI"
+    },
+    {
       "sha": "pending-wave6",
       "date": "2026-04-24",
       "subject": "ui: premium Card retrofit across Dashboard + Destinations + Supply (Wave 6)",
@@ -998,9 +1022,9 @@
       "id": 6,
       "name": "Honesty + Completion Sprint",
       "status": "active",
-      "percent": 92,
+      "percent": 95,
       "completedDate": null,
-      "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. UI polish (sidebar reorg + shared Card component + premium page treatment) in flight. Wave 3 (2026-04-24 evening): Zyra unified across bubble + /intelligence full-page via src/lib/zyra-prompts.js; removed anti-human keyword-routing fallback on /intelligence; added trainer thumbs + multilingual pill. Launch-blocker F1\u2013F6 audit (2026-04-24 night): all 6 fixes verified already-shipped or non-issue (whatsapp-login orphan/mutex/OTP, Destinations country filter + slice caps, Supply FilterBar+VarietySection+CountySection+last-5, team-verify Settings panel + RLS/trigger migration). APPLY_ALL_2026-04-24.sql extended with widget_configs + team_can_verify_users sections so one paste applies both remaining DB migrations. permissions.js got isTeamMember/canVerifyUsers/isAdminUser helpers."
+      "summary": "20+ phases shipped. Honesty pass, /map command center, scraper fixes, Variety/Forecast/County/Almanac Intelligence, FilterBar kit + 4 page retrofits, Destinations/Pricing/News compare modes, Pricing 4th view, CRM dual-channel invite + tier filter + admin Verify User, Persona Banner MVP, V1 Returning-User Popup, scraper default mode \u2192 'all'. Email pipeline (nodemailer flusher) + Google Drive storage (archive + backups) CODE LANDED but awaiting user `npm install nodemailer googleapis` + Drive-folder share to activate. UI polish (sidebar reorg + shared Card component + premium page treatment) in flight. Wave 3 (2026-04-24 evening): Zyra unified across bubble + /intelligence full-page via src/lib/zyra-prompts.js; removed anti-human keyword-routing fallback on /intelligence; added trainer thumbs + multilingual pill. Launch-blocker F1\u2013F6 audit (2026-04-24 night): all 6 fixes verified already-shipped or non-issue (whatsapp-login orphan/mutex/OTP, Destinations country filter + slice caps, Supply FilterBar+VarietySection+CountySection+last-5, team-verify Settings panel + RLS/trigger migration). APPLY_ALL_2026-04-24.sql extended with widget_configs + team_can_verify_users sections so one paste applies both remaining DB migrations. permissions.js got isTeamMember/canVerifyUsers/isAdminUser helpers. Wave 7 (2026-04-24 late night): info-walls leak-kill across Pricing/Welcome/Zyra/PersonaBanner (205eb82) + Destinations continent hierarchy (CONTINENT_ORDER/COUNTRY_TO_CONTINENT/CONTINENT_COLORS, multi-continent chip filter, continent-rollup hero chart, country color-coded by continent) + reusable VOLUME_METRICS (lbs/40HC containers/MT/kernel-K) with MetricToggle chip-bar component. Dashboard MarketPulseBand (3dbff61) \u2014 6-cell top strip showing what MOVED since last update (monthly ship delta, commit rate YoY, uncommitted YoY, Nonpareil $/lb WoW w/ info-walls, news sentiment mood, AI signal). Multi-metric toggle propagated to Destinations (dd57f5a), Supply (Supply Balance Timeline + crop-year health table + MetricCards + CSV) and Forecasts (crop production bar chart + receipt cards + summary table + CSV)."
     },
     {
       "id": 7,
@@ -2657,10 +2681,14 @@
   ],
   "subsystems": {
     "team-user-mgmt": 100,
-    "widget-interactivity": 92,
+    "widget-interactivity": 96,
     "offers-multi-product": 90,
-    "destinations-filters": 70,
+    "destinations-filters": 95,
     "supply-filters": 100,
+    "continent-hierarchy": 100,
+    "market-pulse-band": 100,
+    "multi-metric-rollout": 85,
+    "info-walls-enforcement": 100,
     "whatsapp-otp": 100,
     "email-pipeline": 85,
     "gdrive-storage": 80,

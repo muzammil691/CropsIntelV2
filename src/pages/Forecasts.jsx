@@ -10,6 +10,8 @@ import VarietySection from '../components/VarietySection';
 import ForecastsComparisonSection from '../components/ForecastsComparisonSection';
 import CountySection from '../components/CountySection';
 import AlmanacSection from '../components/AlmanacSection';
+import MetricToggle from '../components/MetricToggle';
+import { VOLUME_METRICS, getMetric } from '../lib/continents';
 
 const COLORS = {
   green: '#22c55e', blue: '#3b82f6', amber: '#f59e0b', red: '#ef4444',
@@ -83,6 +85,12 @@ export default function Forecasts() {
   const [acreage] = useState(ACREAGE_DATA);
   const [sentiment, setSentiment] = useState([]);
   const [loading, setLoading] = useState(true);
+  // User directive 2026-04-24: "the multi metric view should we in all the
+  // widgets..". Volume units (lbs / containers / MT / kernel-K) apply to
+  // the crop-production bar chart + Latest + Prior receipt cards + CSV
+  // export. Acreage chart stays in acres (different unit entirely).
+  const [selectedMetric, setSelectedMetric] = useState('lbs');
+  const metric = getMetric(selectedMetric);
 
   useEffect(() => {
     loadData();
@@ -175,11 +183,12 @@ export default function Forecasts() {
           </span>
           <button
             onClick={() => {
-              const rows = [['Crop_Year','New_Crop_Receipts_Lbs','Bearing_Acres','Non_Bearing_Acres','Total_Acres']];
+              const rows = [['Crop_Year', `New_Crop_Receipts_${metric.csvLabel}`, 'Bearing_Acres', 'Non_Bearing_Acres', 'Total_Acres']];
               production.forEach(p => {
                 const ac = acreage.find(a => String(a.report_year) === String(p.crop_year).split('/')[0]);
                 rows.push([
-                  p.crop_year, p.actual_lbs || '',
+                  p.crop_year,
+                  p.actual_lbs ? metric.transform(p.actual_lbs).toFixed(2) : '',
                   ac?.bearing_acres || '', ac?.non_bearing_acres || '', ac?.total_acres || ''
                 ]);
               });
@@ -187,7 +196,7 @@ export default function Forecasts() {
               const blob = new Blob([csv], { type: 'text/csv' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
-              a.href = url; a.download = 'cropsintel_forecasts.csv'; a.click();
+              a.href = url; a.download = `cropsintel_forecasts_${metric.key}.csv`; a.click();
               URL.revokeObjectURL(url);
             }}
             className="text-xs text-gray-500 hover:text-green-400 transition-colors px-2 py-1 rounded border border-gray-800 hover:border-green-500/30"
@@ -195,6 +204,25 @@ export default function Forecasts() {
             Export CSV
           </button>
         </div>
+      </div>
+
+      {/* Multi-metric toggle (2026-04-24): volume widgets (receipt cards,
+          crop-production bar chart, summary table, CSV export) repaint in
+          lbs / 40HC containers / metric tons / kernel K-lbs. Acreage line
+          chart is in acres — unaffected. */}
+      <div className="flex items-center gap-3 flex-wrap -mt-1">
+        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+          Volume unit
+        </span>
+        <MetricToggle
+          metrics={VOLUME_METRICS}
+          value={selectedMetric}
+          onChange={setSelectedMetric}
+          compact
+        />
+        <span className="text-[10px] text-gray-600">
+          applies to crop-receipt cards, production chart, summary table &amp; CSV
+        </span>
       </div>
 
       {/* How to Read This Page */}
@@ -210,14 +238,14 @@ export default function Forecasts() {
       {/* Top Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
-          title="Latest Crop Receipts"
-          value={latestProd ? `${(latestProd.actual_lbs / 1e9).toFixed(2)}B lbs` : 'N/A'}
+          title={`Latest Crop Receipts (${metric.short})`}
+          value={latestProd ? metric.formatter(latestProd.actual_lbs) : 'N/A'}
           subtitle={latestProd ? `${latestProd.crop_year} (in progress)` : ''}
           color="green"
         />
         <MetricCard
-          title="Prior Year"
-          value={prevProd ? `${(prevProd.actual_lbs / 1e9).toFixed(2)}B lbs` : 'N/A'}
+          title={`Prior Year (${metric.short})`}
+          value={prevProd ? metric.formatter(prevProd.actual_lbs) : 'N/A'}
           subtitle={prevProd ? `${prevProd.crop_year} (final)` : ''}
           color="blue"
         />
@@ -237,21 +265,24 @@ export default function Forecasts() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Actual Crop Production */}
-        <ChartCard title="Actual Crop Production by Year" subtitle="New crop marketable receipts from ABC Position Reports" insight="Each bar shows actual new crop marketable receipts (lbs) for that crop year. The 2020/21 crop was a record at 3.1B lbs. Since then, production has declined as growers removed acreage due to water costs and low returns. The current 2025/26 crop year is still in progress — final receipts won't be known until the July 2026 report.">
+        {/* Actual Crop Production — multi-metric aware (2026-04-24).
+            Series stays in lbs; YAxis + tooltip + avg-line label pull
+            their format from the active metric, so the chart repaints
+            without re-fetching. */}
+        <ChartCard title={`Actual Crop Production by Year (${metric.short})`} subtitle="New crop marketable receipts from ABC Position Reports" insight="Each bar shows actual new crop marketable receipts for that crop year. The 2020/21 crop was a record ~3.1B lbs. Since then, production has declined as growers removed acreage due to water costs and low returns. The current 2025/26 crop year is still in progress — final receipts won't be known until the July 2026 report. Toggle the volume unit above to view in containers, metric tons, or kernel-lbs.">
           {productionChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={productionChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="year" tick={{ fill: '#9ca3af', fontSize: 10 }} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={v => `${(v / 1e9).toFixed(1)}B`} />
+                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={metric.tickFormatter} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
                   labelStyle={{ color: '#9ca3af' }}
-                  formatter={v => [`${(v / 1e9).toFixed(2)}B lbs`]}
+                  formatter={v => [metric.tooltipFormatter(v)]}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <ReferenceLine y={avgProduction} stroke={COLORS.amber} strokeDasharray="5 5" label={{ value: `Avg: ${(avgProduction / 1e9).toFixed(2)}B`, fill: '#f59e0b', fontSize: 10, position: 'right' }} />
+                <ReferenceLine y={avgProduction} stroke={COLORS.amber} strokeDasharray="5 5" label={{ value: `Avg: ${metric.formatter(avgProduction)}`, fill: '#f59e0b', fontSize: 10, position: 'right' }} />
                 <Bar dataKey="actual" fill={COLORS.green} name="Actual Receipts (ABC)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -340,7 +371,7 @@ export default function Forecasts() {
                 <tr className="border-b border-gray-800">
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">Crop Year</th>
                   <th className="text-right py-2 px-3 text-gray-500 font-medium">Receipts (lbs)</th>
-                  <th className="text-right py-2 px-3 text-gray-500 font-medium">Receipts (B)</th>
+                  <th className="text-right py-2 px-3 text-gray-500 font-medium">Receipts ({metric.short})</th>
                   <th className="text-right py-2 px-3 text-gray-500 font-medium">YoY Change</th>
                   <th className="text-center py-2 px-3 text-gray-500 font-medium">vs Average</th>
                 </tr>
@@ -354,7 +385,7 @@ export default function Forecasts() {
                     <tr key={p.crop_year} className="border-b border-gray-800/50 hover:bg-gray-800/30">
                       <td className="py-2 px-3 text-white font-medium">{p.crop_year}</td>
                       <td className="py-2 px-3 text-right text-gray-300 font-mono">{p.actual_lbs.toLocaleString()}</td>
-                      <td className="py-2 px-3 text-right text-white font-mono font-bold">{(p.actual_lbs / 1e9).toFixed(2)}B</td>
+                      <td className="py-2 px-3 text-right text-white font-mono font-bold">{metric.formatter(p.actual_lbs)}</td>
                       <td className={`py-2 px-3 text-right font-mono ${chg === null ? 'text-gray-600' : chg > 0 ? 'text-red-400' : 'text-green-400'}`}>
                         {chg !== null ? `${chg > 0 ? '+' : ''}${chg.toFixed(1)}%` : '—'}
                       </td>
