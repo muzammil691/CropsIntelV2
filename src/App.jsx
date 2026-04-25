@@ -38,6 +38,12 @@ const ProjectMap = lazy(() => import('./pages/ProjectMap'));
 const Brokers = lazy(() => import('./pages/Brokers'));
 const Suppliers = lazy(() => import('./pages/Suppliers'));
 
+// V3 Preview tree — opt-in redesign at /v3-preview/* (team-gated entry from
+// the sidebar pill). Lives in src/pages/v3preview/. See docs/V2_GAP_AUDIT.md
+// for the gap-by-gap plan and per-page approval cadence.
+const V3DataHub = lazy(() => import('./pages/v3preview/DataHub'));
+const V3ComingSoon = lazy(() => import('./pages/v3preview/ComingSoon'));
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-64">
@@ -314,6 +320,24 @@ function Sidebar() {
         </div>
       </div>
 
+      {/* V3 Preview pill — team-only entry point to /v3-preview tree.
+          See docs/V2_GAP_AUDIT.md §9 for the per-page approval cadence. */}
+      {!profileLoading && isTeam && (
+        <div className="px-3 pt-3">
+          <Link
+            to="/v3-preview/data-hub"
+            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-gradient-to-br from-purple-500/10 to-fuchsia-500/10 hover:from-purple-500/15 hover:to-fuchsia-500/15 border border-purple-500/30 hover:border-purple-400/50 transition-all"
+          >
+            <span className="text-base">🧪</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-purple-300 leading-tight">View V3 preview</p>
+              <p className="text-[9px] text-purple-400/60 leading-tight">Data Hub & redesigned IA</p>
+            </div>
+            <span className="text-purple-400 group-hover:translate-x-0.5 transition-transform">↗</span>
+          </Link>
+        </div>
+      )}
+
       {/* Navigation — grouped into labeled sections */}
       <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
         {/* Profile-load skeleton — prevents the buyer-role flash for team
@@ -547,11 +571,16 @@ function usePageTitle() {
 
 // Full-page routes (no sidebar/nav chrome)
 const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password', '/set-password', '/map', '/accept-invite'];
+// V3 preview tree — its own self-contained sidebar/header lives in
+// src/pages/v3preview/Layout.jsx, so no main-app chrome is rendered.
+const STANDALONE_PREFIXES = ['/v3-preview'];
 
 export default function App() {
   usePageTitle();
   const location = useLocation();
-  const isStandalone = STANDALONE_ROUTES.includes(location.pathname);
+  const isStandalone =
+    STANDALONE_ROUTES.includes(location.pathname) ||
+    STANDALONE_PREFIXES.some(p => location.pathname.startsWith(p + '/') || location.pathname === p);
 
   // Standalone pages (Welcome, Login, Register) — no sidebar/nav
   if (isStandalone) {
@@ -566,6 +595,12 @@ export default function App() {
           <Route path="/set-password" element={<SetPassword />} />
           <Route path="/accept-invite" element={<AcceptInvite />} />
           <Route path="/map" element={<ProjectMap />} />
+          {/* V3 preview tree — TeamRoute gates each so buyers landing here are
+              kicked back to /dashboard. Each preview lives at
+              /v3-preview/<slug>; everything else falls through to ComingSoon. */}
+          <Route path="/v3-preview" element={<TeamRoute><V3ComingSoon /></TeamRoute>} />
+          <Route path="/v3-preview/data-hub" element={<TeamRoute><V3DataHub /></TeamRoute>} />
+          <Route path="/v3-preview/*" element={<TeamRoute><V3ComingSoon /></TeamRoute>} />
         </Routes>
       </Suspense>
     );
