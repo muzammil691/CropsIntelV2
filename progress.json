@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-25T23:55:00Z",
-  "updatedBy": "Claude AI \u2014 V3 preview tree shipped (commit b7bbfd5). Option B execution: instead of forking a parallel rebuild, mounted a preview tree inside V2 at /v3-preview/* with redesigned IA sidebar (WORK / MARKET / INTEL / DATA / ADMIN). User reviews each preview page \u2192 approval merges it into the production page. (0) docs/V2_GAP_AUDIT.md (251 lines) decodes 4 verbatim user complaints (\"products not arranged well\", \"freight\", \"crm contractual\", \"i dont know where to upload report\") into V2-FIT vs V3-SCOPE buckets with severity 1\u20133 + per-page enhancement plan. (1) src/pages/v3preview/Layout.jsx self-contained shell with PREVIEW_NAV (5 sections, 17 items), purple accent gradient (vs production green), \"\ud83e\uddea V3 PREVIEW\" pill in top bar, \"\u2190 Back to current app\" + \"\u2190 Exit preview\" exits, bottom feedback banner explaining the approval cadence. (2) src/pages/v3preview/DataHub.jsx (547 lines) addresses verbatim user pain \"i dont know where to upload report\" \u2014 3 tabs Upload/Coverage/Sources, drag-drop file zone, 11 source types (abc_position_report\u2026manual_correction\u2026supplier_offer_sheet\u2026freight_rate_sheet [v3]\u2026contract_document [v3]\u2026other), CoverageTab queries 6 ABC tables and renders summary table + year-by-year heatmap (2015\u20132025), SourcesTab lists scrapers with health pointers, PGRST205 detection auto-shows actionable migration-pending banner if data_uploads table not yet applied. (3) src/pages/v3preview/ComingSoon.jsx generic placeholder for /v3-preview/<slug> stubs that aren't built yet \u2014 ROADMAP shows live (data-hub) / next (layout) / queued (dashboard, crm, trading, destinations, reports, sources). (4) src/App.jsx mounted 3 routes inside standalone Suspense block (TeamRoute-gated): /v3-preview, /v3-preview/data-hub, /v3-preview/* fallback; STANDALONE_PREFIXES added so the v3 tree bypasses the production sidebar. (5) Sidebar gets a team-gated \"\ud83e\uddea View V3 preview \u2197\" pill just under the brand header (purple gradient, conditional on !profileLoading && isTeam). (6) supabase/migrations/20260425_data_uploads.sql committed BUT NOT YET APPLIED \u2014 creates data_uploads audit table (11-value source_type CHECK, status enum, parse_result JSONB), data-uploads private storage bucket (100MB, PDF/CSV/XLS/XLSX/JSON/TXT/PNG/JPEG), RLS policies (team insert, own+admin select, admin update), storage policies (team insert, owner+admin select). User must apply via Supabase Dashboard SQL Editor before Upload tab is functional; Coverage + Sources tabs work without it. Earlier same session: app locale lock revert (4ea1443/faf2123) per user directive \"i dont need this currently i need only english not multiple plus i need ltr text alignment\". USER NEXT: walk through /v3-preview/data-hub on cropsintel.com, give thumbs up / change requests, then I build the next preview page (queued: layout reorg).",
+  "lastUpdated": "2026-04-27T12:00:00Z",
+  "updatedBy": "Claude AI \u2014 V2 launch-worthiness sprint W1-W9 landed (2026-04-27). After user pivoted away from V3 with \"before moving to V3, did we make the V2 launch worthy?\", three Explore-agent audits confirmed code-anchored gaps in destinations, dashboard, and access control. Executed nine workstreams: W1 single-source-of-truth role taxonomy in src/lib/roleConstants.js (eliminated drift across ProtectedRoute/App.jsx/Settings.jsx/zyra-prompts that left super_admin denied admin access and 11 spec team roles denied team access); W2 Settings.jsx admin-vs-team panel separation tightened with isAdminUser/isTeamMember helpers; W3 sidebar role-gating cleanup (no infrastructure leakage to buyers); W4 Dashboard de-redundancy (dropped quad-redundant Key Metrics row, role-gated Pipeline Status + System Status + scraper copy behind isInternal, role-gated commit/uncommitted pulses behind sellerSide, ShipmentTrend backstop, Intel Alerts CTA empty state, PersonaInsights fallback covering all 14 spec internal roles); W5 SearchableMultiSelect.jsx component (190 LOC, no deps, full keyboard support) wired into Destinations with Top 5 / Top 10 / Top 20 / All quick actions, killed hardcoded slice(0,5) caps so the monthly-flow chart respects user picks, lifted continent grid cap; W6 EXPORT_DISTRIBUTION expanded from 20 to 45 countries (was silently dropping Indonesia/Thailand/Taiwan/Belgium/Chile/Brazil/Israel/Egypt/Poland/Russia/etc into the Other bucket); W7 Data Hub graduated from /v3-preview/data-hub to /data-hub with green V2 styling and team-gated route; W8 V3-preview tree torn down (deleted Layout.jsx + ComingSoon.jsx + sidebar pill + STANDALONE_PREFIXES + lazy imports). Five commits pushed sequentially with /map narrating live state: 961d3c0 (W1-W3 access spine), c61ea95 (W4 dashboard), c70615c (W5 country picker), 90ceace (W6 45 countries), af7f8a8 (W7+W8 data hub graduation + V3 teardown).",
   "v2Scope": "Welcome \u2192 CRM (full polish). Trade Hub full lifecycle (4 portals, offers/deals/contracts/shipments/payments, per-entity ledgers, WhatsApp catalogue, 6 shipment modes) = V3 / Phase 7+. Per user directive 2026-04-25.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 62,
@@ -238,16 +238,80 @@
         "auditResults2026-04-24": {
           "totalRowsPresent": 106,
           "expectedWhenFullyBackfilled": 128,
-          "completeCropYears": ["2017/18", "2018/19", "2024/25"],
+          "completeCropYears": [
+            "2017/18",
+            "2018/19",
+            "2024/25"
+          ],
           "cropYearsWithGaps": {
-            "2015/16": { "rowsPresent": 7, "missingReportMonths": [8, 9, 10, 11, 12] },
-            "2016/17": { "rowsPresent": 10, "missingReportMonths": [4, 12] },
-            "2019/20": { "rowsPresent": 9, "missingReportMonths": [7, 8, 10] },
-            "2020/21": { "rowsPresent": 3, "missingReportMonths": [1, 2, 4, 5, 8, 9, 10, 11, 12], "note": "biggest hole \u2014 prioritize" },
-            "2021/22": { "rowsPresent": 11, "missingReportMonths": [2] },
-            "2022/23": { "rowsPresent": 11, "missingReportMonths": [8] },
-            "2023/24": { "rowsPresent": 11, "missingReportMonths": [10] },
-            "2025/26": { "rowsPresent": 8, "missingReportMonths": [4, 5, 6, 7], "note": "live year \u2014 months 4-7 expected Nov-Feb per ABC calendar; not yet due" }
+            "2015/16": {
+              "rowsPresent": 7,
+              "missingReportMonths": [
+                8,
+                9,
+                10,
+                11,
+                12
+              ]
+            },
+            "2016/17": {
+              "rowsPresent": 10,
+              "missingReportMonths": [
+                4,
+                12
+              ]
+            },
+            "2019/20": {
+              "rowsPresent": 9,
+              "missingReportMonths": [
+                7,
+                8,
+                10
+              ]
+            },
+            "2020/21": {
+              "rowsPresent": 3,
+              "missingReportMonths": [
+                1,
+                2,
+                4,
+                5,
+                8,
+                9,
+                10,
+                11,
+                12
+              ],
+              "note": "biggest hole \u2014 prioritize"
+            },
+            "2021/22": {
+              "rowsPresent": 11,
+              "missingReportMonths": [
+                2
+              ]
+            },
+            "2022/23": {
+              "rowsPresent": 11,
+              "missingReportMonths": [
+                8
+              ]
+            },
+            "2023/24": {
+              "rowsPresent": 11,
+              "missingReportMonths": [
+                10
+              ]
+            },
+            "2025/26": {
+              "rowsPresent": 8,
+              "missingReportMonths": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "note": "live year \u2014 months 4-7 expected Nov-Feb per ABC calendar; not yet due"
+            }
           },
           "auditMethod": "REST query against abc_position_reports using anon key extracted from production bundle; grouped by crop_year, min/max report_month."
         },
@@ -456,13 +520,10 @@
     "executionRule": "No skipping. Verify each task via SQL count + UI screenshot + curl before marking complete. Record each verification in currentWork.description."
   },
   "currentWork": {
-    "phase": "Honesty + Premium pass landed \u2014 pivoting to scraper verification",
-    "step": "User directive 2026-04-24 12:30Z: scrapers first with extensive verification \u2192 Zyra \u2192 Destinations \u2192 Reports completeness",
-    "description": "Three-task honesty + premium pass landed. (1) /map honesty: overallPercent 99\u219260 (honest 10-phase average 59.5\u219260); Phase 6 95\u219285 since email+gdrive code landed but user hasn't activated (`npm install nodemailer googleapis`); new launchReadinessPercent=85 separates launch-scope from full-vision metric; metricsExplainer block added so /map visitors see the math. (2) Sidebar reorg: NAV_SECTIONS constant added \u2014 Main (Dashboard+Analysis clubbed), Market Data, AI & Intelligence, Relationships, Admin (Team+Broadcast+Autonomous+Settings clubbed). Uppercase section labels, priority-sort within section only, active-state glow dot, scroll overflow on long lists. (3) Premium Card component: src/components/Card.jsx with Card.Stat + Card.Section subexports, glass-dark surface with top-highlight gradient, 6 tone variants (default/green/amber/red/blue/indigo/flush), 5 padding sizes. Now the user's new directive kicks in: scrapers first with extensive verification, then Zyra priority, then Destinations display fix, then Reports completeness. See priorityQueue above.",
-    "phaseProgress": 60,
-    "startedAt": "2026-04-24T12:00:00Z",
-    "endedAt": null,
-    "claudeSession": "honesty-premium-then-scrapers"
+    "phase": "V2 launch-worthiness sprint W1-W9 landed (2026-04-27) \u2014 paused for user sign-off",
+    "step": "All nine workstreams pushed across five commits 961d3c0 \u2192 af7f8a8. Per master plan: pause for buyer/team/admin walkthrough before further V3-direction work.",
+    "description": "Single-source-of-truth role taxonomy (W1-W3); Dashboard de-redundancy + role-gating (W4); SearchableMultiSelect + Destinations slice-cap removal (W5); EXPORT_DISTRIBUTION expanded to 45 countries (W6); Data Hub graduated to /data-hub (W7); V3-preview tree torn down (W8); progress.json honesty pass (W9). Verification checklist per plan: log in as buyer/team/admin/super_admin \u2192 confirm no infra leakage, /v3-preview returns 404, /data-hub renders, country picker types-to-search.",
+    "lastUpdate": "2026-04-27T12:00:00Z"
   },
   "nightShiftPlan": {
     "note": "PIVOT 2026-04-24 night \u2014 user redirected to launch-first. Phase-7 vision blocks 6-10 parked; active work now follows launchFocusPlan below.",
@@ -568,16 +629,15 @@
   "markedForLater": [
     {
       "id": "v3-preview-workstream",
-      "item": "V3 Preview track \u2014 user chose Option B (audit-first, preview-tab build inside V2). docs/V2_GAP_AUDIT.md maps every gap as V2-FIT / V3-SCOPE / IA. /v3-preview/* tree shipped with new sidebar IA (WORK / MARKET / INTEL / DATA / ADMIN). First preview page: Data Hub (drag-drop upload + coverage grid + scraper health). User reviews each preview page \u2192 approves \u2192 preview replaces current production page in next push.",
-      "currentWorkaround": "Active dev workstream. Roadmap (in priority order): data-hub (live), layout (next), dashboard, crm-contracts-tab, trading-honest-copy, destinations-modeled-banner, reports-flag-row, sources. Per-page approval cadence in V2_GAP_AUDIT.md \u00a79.",
+      "item": "V3 Preview track \u2014 closed 2026-04-27. After three Explore-agent audits confirmed V2 launch-worthiness gaps were code-anchored, user pulled the rope: \"i think we are going to the wrong direction\u2026 before moving to V3, did we make the V2 launch worthy?\" Sprint W1-W9 executed instead. Data Hub graduated to /data-hub as a real V2 page; rest of /v3-preview tree (Layout + ComingSoon stubs + sidebar pill) deleted. V3 framing officially paused.",
+      "currentWorkaround": "Closed. Resolution: graduated Data Hub to V2 (commit af7f8a8); dropped V3-preview shell + ComingSoon stubs; sidebar pill removed. Per-page approval cadence superseded by W1-W9 launch-worthiness sprint.",
       "markedDate": "2026-04-25",
+      "closedDate": "2026-04-27",
       "category": "ux-redesign",
-      "status": "active",
-      "priority": "after-launch-blockers",
-      "auditDoc": "docs/V2_GAP_AUDIT.md",
-      "previewRoot": "/v3-preview/data-hub",
-      "previewPagesDelivered": ["data-hub"],
-      "previewPagesQueued": ["layout","dashboard","crm","trading","destinations","reports","sources"]
+      "status": "closed",
+      "priority": "closed",
+      "resolution": "V3 framing paused; Data Hub became a regular V2 page at /data-hub; rest of preview tree dropped.",
+      "replacedBy": "V2-launch-worthiness-sprint W1-W9 (commits 961d3c0 \u2192 af7f8a8)"
     },
     {
       "id": "data-uploads-migration-apply",
@@ -596,8 +656,8 @@
     },
     {
       "id": "multilingual-app-ui-approval",
-      "item": "App-wide multilingual rollout (nav + page copy in ar/hi/tr/es + RTL support) — requires user render review + approval before re-enabling.",
-      "currentWorkaround": "App locked to English + LTR via ENFORCED_LOCALE in src/contexts/LocaleContext.jsx (commit 4ea1443). User reported: visual RTL flip on non-English IP locales even though copy stayed English — half-translated state. Zyra's IP-first greeting + WhatsApp per-country templates remain locale-aware (independent codepaths). LocaleSwitcher component preserved at src/components/LocaleSwitcher.jsx; restore points marked in App.jsx (two top-bar blocks) and Settings.jsx (Language section). DICT in src/lib/locale.js still carries en/ar/hi/tr/es keys \u2014 ready to re-enable once copy review + layout pass is approved.",
+      "item": "App-wide multilingual rollout (nav + page copy in ar/hi/tr/es + RTL support) \u2014 requires user render review + approval before re-enabling.",
+      "currentWorkaround": "App locked to English + LTR via ENFORCED_LOCALE in src/contexts/LocaleContext.jsx (commit 4ea1443). User reported: visual RTL flip on non-English IP locales even though copy stayed English \u2014 half-translated state. Zyra's IP-first greeting + WhatsApp per-country templates remain locale-aware (independent codepaths). LocaleSwitcher component preserved at src/components/LocaleSwitcher.jsx; restore points marked in App.jsx (two top-bar blocks) and Settings.jsx (Language section). DICT in src/lib/locale.js still carries en/ar/hi/tr/es keys \u2014 ready to re-enable once copy review + layout pass is approved.",
       "markedDate": "2026-04-25",
       "category": "ux-polish",
       "status": "feature-flagged",
@@ -704,8 +764,14 @@
       "migrationApplied": "2026-04-25 via aws-1-ap-northeast-1.pooler.supabase.com",
       "syncFunctional": true,
       "templatesHydrated": 14,
-      "adminAuthoredCreatePathShipped": "2026-04-25 — whatsapp-template-create edge fn + Settings panel Create button + createWhatsAppTemplate() helper. Proof-shipped account_action (HX0514364db4b3a3430dd1de75620e701c, submitted for Meta approval).",
-      "remainingSeedsWithoutContentSid": ["invite_supplier", "invite_broker", "invite_team", "offer_new", "zyra_digest"],
+      "adminAuthoredCreatePathShipped": "2026-04-25 \u2014 whatsapp-template-create edge fn + Settings panel Create button + createWhatsAppTemplate() helper. Proof-shipped account_action (HX0514364db4b3a3430dd1de75620e701c, submitted for Meta approval).",
+      "remainingSeedsWithoutContentSid": [
+        "invite_supplier",
+        "invite_broker",
+        "invite_team",
+        "offer_new",
+        "zyra_digest"
+      ],
       "remainingSeedsGuidance": "invite_supplier/broker/team are covered by the invite_buyer funnel (CONTACT_TYPE_TEMPLATE in src/lib/whatsapp-templates.js). offer_new is for MAXONS trading (Phase 8+). zyra_digest is for unsolicited daily pushes (post-launch). All can be created via the Settings \u2192 WhatsApp Templates \u2192 \"Create in Twilio\" button when their owning feature activates.",
       "orphanTwilioRowsRetained": 7,
       "unblocksWhenApproved": [
@@ -931,6 +997,36 @@
     }
   ],
   "recentCommits": [
+    {
+      "sha": "af7f8a8",
+      "date": "2026-04-27",
+      "subject": "data-hub: graduate to V2 + tear down V3-preview tree (W7+W8)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "90ceace",
+      "date": "2026-04-27",
+      "subject": "shipments: synthesize all 45 export destinations (W6)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "c70615c",
+      "date": "2026-04-27",
+      "subject": "destinations: searchable multi-select country picker (W5)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "c61ea95",
+      "date": "2026-04-27",
+      "subject": "dashboard: de-redundancy + role-gate infra widgets (W4)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "961d3c0",
+      "date": "2026-04-27",
+      "subject": "access: single-source-of-truth role taxonomy (W1-W3)",
+      "author": "Claude AI"
+    },
     {
       "sha": "b7bbfd5",
       "date": "2026-04-25",
@@ -2982,9 +3078,6 @@
     "preferred-language-column": 100,
     "nav-i18n-coverage": 0,
     "app-locale-lock-enforced": 100,
-    "v3-preview-shell": 100,
-    "v3-preview-data-hub": 80,
-    "v3-preview-coming-soon-stubs": 100,
     "v2-gap-audit-doc": 100,
     "data-uploads-migration": 0,
     "login-blocker-audit": 100,
@@ -3025,7 +3118,13 @@
     "offer-builder-rebuild": 95,
     "scraper-verification": 40,
     "news-scraper-urls": 100,
-    "trading-portal": 85
+    "trading-portal": 85,
+    "access-control-spine": 100,
+    "dashboard-deredundancy": 100,
+    "searchable-multiselect": 100,
+    "destinations-country-picker": 100,
+    "destinations-45-countries": 100,
+    "data-hub-v2": 90
   },
   "offerBuilderRebuild": {
     "note": "User 2026-04-24 13:10Z: 'offer builder in v2 is not practical, check how we made it in V1, and have to make it cleanly better.'",
