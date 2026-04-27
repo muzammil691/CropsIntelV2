@@ -1,7 +1,10 @@
-// CropsIntel V2 — V3 Preview · Data Hub
-// 2026-04-25 · Mini-Phase 6
+// CropsIntel V2 — Data Hub
+// W7 (2026-04-27): graduated from /v3-preview/data-hub to /data-hub.
+// V3 framing dropped (no purple, no V3PreviewLayout) — this page now
+// renders inside the regular V2 shell with the green accent palette.
 //
-// Addresses verbatim user pain (2026-04-25): "i dont know where to upload report"
+// Addresses verbatim user pain (2026-04-25): "i dont know where to upload
+// report".
 //
 // Three tabs:
 //   1. Upload   — drag-drop PDF/CSV, source-type picker, audit row in data_uploads
@@ -15,9 +18,8 @@
 //     abc_crop_receipts, abc_forecasts, abc_acreage, industry_news, strata_prices
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import V3PreviewLayout from './Layout';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../lib/auth';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
 
 const SOURCE_TYPES = [
   { value: 'abc_position_report',    label: 'ABC Position Report (PDF)',     icon: '📊', backend: 'parsePositionReport',  table: 'abc_position_reports' },
@@ -28,23 +30,23 @@ const SOURCE_TYPES = [
   { value: 'abc_almanac',            label: 'ABC Almanac (PDF)',             icon: '📚', backend: 'parseAlmanac',         table: 'abc_almanac' },
   { value: 'manual_correction',      label: 'Manual data correction (CSV/JSON)', icon: '✏️', backend: 'applyManualPatch', table: '*' },
   { value: 'supplier_offer_sheet',   label: 'Supplier offer sheet (PDF)',    icon: '📋', backend: 'parseSupplierOffer',   table: 'offers_raw' },
-  { value: 'freight_rate_sheet',     label: 'Freight rate sheet (CSV) — V3', icon: '🚚', backend: null,                   table: null, v3Only: true },
-  { value: 'contract_document',      label: 'Contract document (PDF) — V3',  icon: '📄', backend: null,                   table: null, v3Only: true },
+  { value: 'freight_rate_sheet',     label: 'Freight rate sheet (CSV) — Phase 7', icon: '🚚', backend: null,              table: null, futurePhase: true },
+  { value: 'contract_document',      label: 'Contract document (PDF) — Phase 7',  icon: '📄', backend: null,              table: null, futurePhase: true },
   { value: 'other',                  label: 'Other / unsorted',              icon: '📦', backend: null,                   table: null },
 ];
 
 const COVERAGE_TARGETS = [
-  { source: 'abc_position_report',  table: 'abc_position_reports',  yearCol: 'crop_year', expectedYears: 11, expectedPerYear: 12, label: 'ABC Position Reports' },
-  { source: 'abc_shipment_report',  table: 'abc_shipment_reports',  yearCol: 'crop_year', expectedYears: 11, expectedPerYear: 12, label: 'ABC Shipment Reports' },
-  { source: 'abc_crop_receipts',    table: 'abc_crop_receipts',     yearCol: 'crop_year', expectedYears: 11, expectedPerYear: 12, label: 'ABC Crop Receipts' },
+  { source: 'abc_position_report',  table: 'abc_position_reports',  yearCol: 'crop_year',     expectedYears: 11, expectedPerYear: 12, label: 'ABC Position Reports' },
+  { source: 'abc_shipment_report',  table: 'abc_shipment_reports',  yearCol: 'crop_year',     expectedYears: 11, expectedPerYear: 12, label: 'ABC Shipment Reports' },
+  { source: 'abc_crop_receipts',    table: 'abc_crop_receipts',     yearCol: 'crop_year',     expectedYears: 11, expectedPerYear: 12, label: 'ABC Crop Receipts' },
   { source: 'abc_forecasts',        table: 'abc_forecasts',         yearCol: 'forecast_year', expectedYears: 11, expectedPerYear: 2,  label: 'ABC Forecasts (subj+obj)' },
-  { source: 'abc_acreage',          table: 'abc_acreage',           yearCol: 'crop_year', expectedYears: 11, expectedPerYear: 1,  label: 'ABC Acreage' },
-  { source: 'abc_almanac',          table: 'abc_almanac',           yearCol: 'crop_year', expectedYears: 11, expectedPerYear: 1,  label: 'ABC Almanac' },
+  { source: 'abc_acreage',          table: 'abc_acreage',           yearCol: 'crop_year',     expectedYears: 11, expectedPerYear: 1,  label: 'ABC Acreage' },
+  { source: 'abc_almanac',          table: 'abc_almanac',           yearCol: 'crop_year',     expectedYears: 11, expectedPerYear: 1,  label: 'ABC Almanac' },
 ];
 
 const SCRAPER_HEALTH = [
   { name: 'abc-scraper.js',       script: 'src/scrapers/abc-scraper.js',       cadence: 'on push to main + manual', tables: ['abc_position_reports','abc_forecasts'], status: 'active' },
-  { name: 'shipment-parser.js',   script: 'src/scrapers/shipment-parser.js',   cadence: 'on push to main',           tables: ['abc_shipment_reports'],                  status: 'dormant' },
+  { name: 'shipment-parser.js',   script: 'src/scrapers/shipment-parser.js',   cadence: 'on push to main',           tables: ['abc_shipment_reports'],                  status: 'active' },
   { name: 'receipts-parser.js',   script: 'src/scrapers/receipts-parser.js',   cadence: 'on push to main',           tables: ['abc_crop_receipts'],                     status: 'active' },
   { name: 'news-scraper.js',      script: 'src/scrapers/news-scraper.js',      cadence: 'daily cron',                tables: ['industry_news'],                         status: 'active' },
   { name: 'strata-scraper.js',    script: 'src/scrapers/strata-scraper.js',    cadence: 'manual',                    tables: ['strata_prices'],                         status: 'active' },
@@ -52,10 +54,10 @@ const SCRAPER_HEALTH = [
 ];
 
 export default function DataHub() {
-  const [tab, setTab] = useState('upload');
+  const [tab, setTab] = useState('coverage');
 
   return (
-    <V3PreviewLayout>
+    <div className="p-6 lg:p-8 max-w-7xl">
       {/* Page header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white mb-1">Data Hub</h1>
@@ -76,7 +78,7 @@ export default function DataHub() {
             onClick={() => setTab(t.key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               tab === t.key
-                ? 'text-purple-300 border-purple-500'
+                ? 'text-green-300 border-green-500'
                 : 'text-gray-500 border-transparent hover:text-gray-300'
             }`}
           >
@@ -89,7 +91,7 @@ export default function DataHub() {
       {tab === 'upload' && <UploadTab />}
       {tab === 'coverage' && <CoverageTab />}
       {tab === 'sources' && <SourcesTab />}
-    </V3PreviewLayout>
+    </div>
   );
 }
 
@@ -156,7 +158,7 @@ function UploadTab() {
           file_size_bytes: file.size,
           mime_type: file.type || 'application/octet-stream',
           storage_path: path,
-          status: meta.v3Only ? 'archived' : 'uploaded',
+          status: meta.futurePhase ? 'archived' : 'uploaded',
           notes: notes || null,
           metadata: { client_uploaded_at: new Date().toISOString() },
         })
@@ -169,7 +171,7 @@ function UploadTab() {
         size: file.size,
         path,
         sourceType,
-        v3Only: !!meta.v3Only,
+        futurePhase: !!meta.futurePhase,
         rowId: rowData?.id,
       });
       setNotes('');
@@ -222,20 +224,20 @@ function UploadTab() {
           <select
             value={sourceType}
             onChange={(e) => setSourceType(e.target.value)}
-            className="w-full bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2.5 focus:border-purple-500 focus:outline-none"
+            className="w-full bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2.5 focus:border-green-500 focus:outline-none"
           >
             {SOURCE_TYPES.map(s => (
               <option key={s.value} value={s.value}>{s.icon}  {s.label}</option>
             ))}
           </select>
-          {meta.v3Only && (
+          {meta.futurePhase && (
             <p className="mt-2 text-[11px] text-amber-400">
-              ⚠️ This source type is V3-Trade-Hub scope. We'll archive your file safely; backend parsing lands in a future Phase 7 push.
+              ⚠️ This source type is Phase 7+ scope. We'll archive your file safely; backend parsing lands in a future push.
             </p>
           )}
           {meta.backend && (
             <p className="mt-2 text-[11px] text-gray-500">
-              Backend parser: <code className="text-purple-300">{meta.backend}</code> · target table: <code className="text-purple-300">{meta.table}</code>
+              Backend parser: <code className="text-green-300">{meta.backend}</code> · target table: <code className="text-green-300">{meta.table}</code>
             </p>
           )}
         </div>
@@ -247,8 +249,8 @@ function UploadTab() {
           onDrop={onDrop}
           className={`block cursor-pointer border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
             dragActive
-              ? 'border-purple-400 bg-purple-500/5'
-              : 'border-gray-700 hover:border-purple-600 bg-gray-900/40'
+              ? 'border-green-400 bg-green-500/5'
+              : 'border-gray-700 hover:border-green-600 bg-gray-900/40'
           }`}
         >
           <input
@@ -277,7 +279,7 @@ function UploadTab() {
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
             placeholder="e.g. November 2025 position report — March 2026 download from almonds.org"
-            className="w-full bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-purple-500 focus:outline-none placeholder-gray-600"
+            className="w-full bg-gray-950 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:border-green-500 focus:outline-none placeholder-gray-600"
           />
         </div>
 
@@ -294,8 +296,8 @@ function UploadTab() {
             <p className="text-green-200/80">
               {success.file} ({(success.size / 1024).toFixed(1)} KB) → <code className="text-green-200">{success.path}</code>
             </p>
-            {success.v3Only ? (
-              <p className="text-amber-300/80 text-xs mt-1">Archived. Backend parser lands in V3 Phase 7.</p>
+            {success.futurePhase ? (
+              <p className="text-amber-300/80 text-xs mt-1">Archived. Backend parser lands in Phase 7+.</p>
             ) : (
               <p className="text-green-200/60 text-xs mt-1">Status: <code>uploaded</code> · queued for backend parser on next scraper run.</p>
             )}
@@ -326,7 +328,7 @@ function UploadTab() {
                       r.status === 'parsed' ? 'bg-green-500/15 text-green-300 border border-green-500/30' :
                       r.status === 'failed' ? 'bg-red-500/15 text-red-300 border border-red-500/30' :
                       r.status === 'archived' ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' :
-                      'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                      'bg-green-500/15 text-green-300 border border-green-500/30'
                     }`}>
                       {r.status}
                     </span>

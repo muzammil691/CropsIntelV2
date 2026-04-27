@@ -38,12 +38,10 @@ const Settings = lazy(() => import('./pages/Settings'));
 const ProjectMap = lazy(() => import('./pages/ProjectMap'));
 const Brokers = lazy(() => import('./pages/Brokers'));
 const Suppliers = lazy(() => import('./pages/Suppliers'));
-
-// V3 Preview tree — opt-in redesign at /v3-preview/* (team-gated entry from
-// the sidebar pill). Lives in src/pages/v3preview/. See docs/V2_GAP_AUDIT.md
-// for the gap-by-gap plan and per-page approval cadence.
-const V3DataHub = lazy(() => import('./pages/v3preview/DataHub'));
-const V3ComingSoon = lazy(() => import('./pages/v3preview/ComingSoon'));
+// W7 (2026-04-27): Data Hub graduated from /v3-preview/data-hub to /data-hub.
+// V3-preview tree torn down in W8 — see commit notes. Page lives in
+// src/pages/DataHub.jsx and renders inside the regular V2 chrome.
+const DataHub = lazy(() => import('./pages/DataHub'));
 
 function PageLoader() {
   return (
@@ -64,6 +62,7 @@ const NAV_ITEMS = [
   { path: '/news', label: 'News & Intel', icon: '📰' },
   { path: '/intelligence', label: 'AI Intelligence', icon: '🧠' },
   { path: '/reports', label: 'Reports', icon: '📋' },
+  { path: '/data-hub', label: 'Data Hub', icon: '🗂️', requireTeam: true },
   { path: '/crm', label: 'CRM & Deals', icon: '🤝', requireTeam: true },
   { path: '/brokers', label: 'Brokers (BRM)', icon: '🗺️', requireTeam: true },
   { path: '/suppliers', label: 'Suppliers (SRM)', icon: '🏭', requireTeam: true },
@@ -99,7 +98,7 @@ const NAV_SECTIONS = [
   {
     label: 'AI & Intelligence',
     key: 'nav.section.aiIntelligence',
-    items: ['/intelligence', '/reports'],
+    items: ['/intelligence', '/reports', '/data-hub'],
   },
   {
     label: 'Relationships',
@@ -307,23 +306,8 @@ function Sidebar() {
         </div>
       </div>
 
-      {/* V3 Preview pill — team-only entry point to /v3-preview tree.
-          See docs/V2_GAP_AUDIT.md §9 for the per-page approval cadence. */}
-      {!profileLoading && isTeam && (
-        <div className="px-3 pt-3">
-          <Link
-            to="/v3-preview/data-hub"
-            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-gradient-to-br from-purple-500/10 to-fuchsia-500/10 hover:from-purple-500/15 hover:to-fuchsia-500/15 border border-purple-500/30 hover:border-purple-400/50 transition-all"
-          >
-            <span className="text-base">🧪</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-purple-300 leading-tight">View V3 preview</p>
-              <p className="text-[9px] text-purple-400/60 leading-tight">Data Hub & redesigned IA</p>
-            </div>
-            <span className="text-purple-400 group-hover:translate-x-0.5 transition-transform">↗</span>
-          </Link>
-        </div>
-      )}
+      {/* W8 (2026-04-27): V3-preview pill removed. Data Hub graduated to
+          /data-hub and now sits in the AI & Intelligence section above. */}
 
       {/* Navigation — grouped into labeled sections */}
       <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
@@ -560,16 +544,13 @@ function usePageTitle() {
 
 // Full-page routes (no sidebar/nav chrome)
 const STANDALONE_ROUTES = ['/', '/welcome', '/login', '/register', '/reset-password', '/set-password', '/map', '/accept-invite'];
-// V3 preview tree — its own self-contained sidebar/header lives in
-// src/pages/v3preview/Layout.jsx, so no main-app chrome is rendered.
-const STANDALONE_PREFIXES = ['/v3-preview'];
+// W8: STANDALONE_PREFIXES removed — V3-preview tree torn down. The only
+// fullscreen surfaces left are the auth flows above.
 
 export default function App() {
   usePageTitle();
   const location = useLocation();
-  const isStandalone =
-    STANDALONE_ROUTES.includes(location.pathname) ||
-    STANDALONE_PREFIXES.some(p => location.pathname.startsWith(p + '/') || location.pathname === p);
+  const isStandalone = STANDALONE_ROUTES.includes(location.pathname);
 
   // Standalone pages (Welcome, Login, Register) — no sidebar/nav
   if (isStandalone) {
@@ -584,12 +565,6 @@ export default function App() {
           <Route path="/set-password" element={<SetPassword />} />
           <Route path="/accept-invite" element={<AcceptInvite />} />
           <Route path="/map" element={<ProjectMap />} />
-          {/* V3 preview tree — TeamRoute gates each so buyers landing here are
-              kicked back to /dashboard. Each preview lives at
-              /v3-preview/<slug>; everything else falls through to ComingSoon. */}
-          <Route path="/v3-preview" element={<TeamRoute><V3ComingSoon /></TeamRoute>} />
-          <Route path="/v3-preview/data-hub" element={<TeamRoute><V3DataHub /></TeamRoute>} />
-          <Route path="/v3-preview/*" element={<TeamRoute><V3ComingSoon /></TeamRoute>} />
         </Routes>
       </Suspense>
     );
@@ -623,6 +598,8 @@ export default function App() {
               <Route path="/intelligence" element={<Intelligence />} />
               <Route path="/trading" element={<TeamRoute><Trading /></TeamRoute>} />
               <Route path="/reports" element={<Reports />} />
+              {/* W7: Data Hub — team-gated, replaces /v3-preview/data-hub */}
+              <Route path="/data-hub" element={<TeamRoute><DataHub /></TeamRoute>} />
               <Route path="/autonomous" element={<AdminRoute><Autonomous /></AdminRoute>} />
               <Route path="/settings" element={<AuthRoute><Settings /></AuthRoute>} />
               <Route path="*" element={<Dashboard />} />
