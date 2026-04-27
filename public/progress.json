@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-27T12:00:00Z",
-  "updatedBy": "Claude AI \u2014 V2 launch-worthiness sprint W1-W9 landed (2026-04-27). After user pivoted away from V3 with \"before moving to V3, did we make the V2 launch worthy?\", three Explore-agent audits confirmed code-anchored gaps in destinations, dashboard, and access control. Executed nine workstreams: W1 single-source-of-truth role taxonomy in src/lib/roleConstants.js (eliminated drift across ProtectedRoute/App.jsx/Settings.jsx/zyra-prompts that left super_admin denied admin access and 11 spec team roles denied team access); W2 Settings.jsx admin-vs-team panel separation tightened with isAdminUser/isTeamMember helpers; W3 sidebar role-gating cleanup (no infrastructure leakage to buyers); W4 Dashboard de-redundancy (dropped quad-redundant Key Metrics row, role-gated Pipeline Status + System Status + scraper copy behind isInternal, role-gated commit/uncommitted pulses behind sellerSide, ShipmentTrend backstop, Intel Alerts CTA empty state, PersonaInsights fallback covering all 14 spec internal roles); W5 SearchableMultiSelect.jsx component (190 LOC, no deps, full keyboard support) wired into Destinations with Top 5 / Top 10 / Top 20 / All quick actions, killed hardcoded slice(0,5) caps so the monthly-flow chart respects user picks, lifted continent grid cap; W6 EXPORT_DISTRIBUTION expanded from 20 to 45 countries (was silently dropping Indonesia/Thailand/Taiwan/Belgium/Chile/Brazil/Israel/Egypt/Poland/Russia/etc into the Other bucket); W7 Data Hub graduated from /v3-preview/data-hub to /data-hub with green V2 styling and team-gated route; W8 V3-preview tree torn down (deleted Layout.jsx + ComingSoon.jsx + sidebar pill + STANDALONE_PREFIXES + lazy imports). Five commits pushed sequentially with /map narrating live state: 961d3c0 (W1-W3 access spine), c61ea95 (W4 dashboard), c70615c (W5 country picker), 90ceace (W6 45 countries), af7f8a8 (W7+W8 data hub graduation + V3 teardown).",
+  "lastUpdated": "2026-04-27T13:00:00Z",
+  "updatedBy": "Claude AI \u2014 destinations/analysis/supply 11-year coverage fix landed (commit be65f79, 2026-04-27 13:00Z). User reported: \"the destinations table doesnt cover all the 11 years... it shows only 3 years\". Two parallel Explore-agent audits identified two independent root causes biting simultaneously: (1) Data layer \u2014 src/pages/Destinations.jsx supabase query had no .range(), so PostgREST applied its silent 1000-row default; with 45 countries \u00d7 12 months \u00d7 11 years \u2248 5,940 rows the cap silently truncated to ~3 visible crop years. Added .range(0, 49999) to fetch full table (50k headroom for backfill + multi-commodity expansion). (2) UI layer \u2014 three pages seeded their compare-FilterBar with only the last 3-5 years even after fetching the full set: Destinations.jsx:91 setComparedYears(crops.slice(-3)) \u2192 crops; Analysis.jsx:68 setSelectedCrops(crops.slice(-3)) \u2192 crops; Supply.jsx:109 setSelectedCrops(crops.slice(-5)) \u2192 crops. Quick-action Last 3 / Last 5 / All / Clear buttons stay as escape hatches. Aligned with hard memory rule \"No skipping \u2014 use everything\": V2 surfaces every report on first load. Prior context: V2 launch-worthiness sprint W1-W9 landed earlier today across commits 961d3c0 \u2192 af7f8a8 (access spine, dashboard de-redundancy, searchable country picker, 45-country EXPORT_DISTRIBUTION, Data Hub graduation, V3-preview teardown).",
   "v2Scope": "Welcome \u2192 CRM (full polish). Trade Hub full lifecycle (4 portals, offers/deals/contracts/shipments/payments, per-entity ledgers, WhatsApp catalogue, 6 shipment modes) = V3 / Phase 7+. Per user directive 2026-04-25.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 62,
@@ -997,6 +997,12 @@
     }
   ],
   "recentCommits": [
+    {
+      "sha": "be65f79",
+      "date": "2026-04-27",
+      "subject": "destinations/analysis/supply: load + display all 11 crop years",
+      "author": "Claude AI"
+    },
     {
       "sha": "af7f8a8",
       "date": "2026-04-27",
@@ -3124,7 +3130,8 @@
     "searchable-multiselect": 100,
     "destinations-country-picker": 100,
     "destinations-45-countries": 100,
-    "data-hub-v2": 90
+    "data-hub-v2": 90,
+    "destinations-11-year-coverage": 100
   },
   "offerBuilderRebuild": {
     "note": "User 2026-04-24 13:10Z: 'offer builder in v2 is not practical, check how we made it in V1, and have to make it cleanly better.'",
