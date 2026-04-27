@@ -9,6 +9,11 @@ import {
 import FilterBar, { CROP_YEAR_COLORS } from '../components/FilterBar';
 import MetricToggle from '../components/MetricToggle';
 import Card from '../components/Card';
+// W5 (2026-04-27): country picker switched from FilterBar (chips) to a
+// search + autocomplete dropdown. User asked for "multi selection of
+// countries with a drop down search and selection" multiple times — chips
+// don't scale to 40+ countries.
+import SearchableMultiSelect from '../components/SearchableMultiSelect';
 import {
   CONTINENT_ORDER, CONTINENT_COLORS, continentOf,
   VOLUME_METRICS, getMetric, CONTAINER_LBS,
@@ -181,25 +186,29 @@ export default function Destinations() {
     return destinationsInSelectedContinents.filter(d => d.country.toLowerCase().includes(q));
   }, [destinationsInSelectedContinents, countrySearch]);
 
-  // Monthly flow by top-5 in filtered view (continent-aware)
+  // Monthly flow driven by user's country picks (W5 — was hardcoded top-5).
+  // Falls back to the top of `topDestinations` if nothing has been selected yet
+  // so the chart still renders on first load before the seed-effect runs.
   const monthlyByDest = useMemo(() => {
-    const top5 = topDestinations.slice(0, 5).map(d => d.country);
+    const picks = comparedCountries.length > 0
+      ? comparedCountries
+      : topDestinations.slice(0, 5).map(d => d.country);
     const filtered = shipments.filter(
       r => r.crop_year === selectedCropYear &&
            r.destination_region === 'export' &&
-           top5.includes(r.destination_country)
+           picks.includes(r.destination_country)
     );
     const monthLabels = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
     return monthLabels.map((label, i) => {
       const month = ((i + 8 - 1) % 12) + 1;
       const row = { label };
-      for (const c of top5) {
+      for (const c of picks) {
         const r = filtered.find(rep => rep.report_month === month && rep.destination_country === c);
         row[c] = r?.monthly_lbs || 0;
       }
       return row;
     });
-  }, [shipments, selectedCropYear, topDestinations]);
+  }, [shipments, selectedCropYear, topDestinations, comparedCountries]);
 
   // Monthly flow grouped by CONTINENT (alternate view)
   const monthlyByContinent = useMemo(() => {
@@ -331,7 +340,10 @@ export default function Destinations() {
     );
   }
 
-  const top5Countries = topDestinations.slice(0, 5).map(d => d.country);
+  // W5: chart layers respect the user's selection rather than hardcoded top 5.
+  const flowCountries = comparedCountries.length > 0
+    ? comparedCountries
+    : topDestinations.slice(0, 5).map(d => d.country);
 
   const exportDestCSV = () => {
     const headers = ['Rank', 'Country', 'Continent', metric.csvLabel, 'Months Active', `Avg/Month (${metric.short})`, 'Share %'];
@@ -497,8 +509,9 @@ export default function Destinations() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          {/* W5: lifted slice(0, 8) — show every continent so the grid matches the chart. */}
           <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2">
-            {continentRollup.slice(0, 8).map(c => (
+            {continentRollup.map(c => (
               <div
                 key={c.continent}
                 className="bg-gray-900/60 border border-gray-800 rounded-lg p-2.5"
@@ -665,11 +678,11 @@ export default function Destinations() {
         </ChartCard>
       </div>
 
-      {/* Row 3: Monthly by top 5 countries */}
+      {/* Row 3: Monthly flow per selected country (W5: was hardcoded top-5) */}
       <div className="mb-6">
         <ChartCard
-          title={`Monthly Flow — Top 5 Countries${selectedContinents.length ? ` in ${selectedContinents.join(', ')}` : ''}`}
-          subtitle={`${selectedCropYear} — monthly exports per top country`}
+          title={`Monthly Flow — ${flowCountries.length} ${flowCountries.length === 1 ? 'Country' : 'Countries'}${selectedContinents.length ? ` in ${selectedContinents.join(', ')}` : ''}`}
+          subtitle={`${selectedCropYear} — monthly exports per selected country (pick countries above to change)`}
           insight="Country-level cadence. If one country disappears mid-season while others keep buying, that's a specific signal (financing gap? policy change?) rather than a market-wide shift."
         >
           <ResponsiveContainer width="100%" height={300}>
@@ -679,14 +692,14 @@ export default function Destinations() {
               <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} tickFormatter={metric.tickFormatter} />
               <Tooltip content={<CustomTooltip formatter={metric.tooltipFormatter} />} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              {top5Countries.map((c, i) => (
+              {flowCountries.map((c, i) => (
                 <Area
                   key={c}
                   type="monotone"
                   dataKey={c}
                   name={c}
-                  stroke={DEST_COLORS[i]}
-                  fill={DEST_COLORS[i]}
+                  stroke={DEST_COLORS[i % DEST_COLORS.length]}
+                  fill={DEST_COLORS[i % DEST_COLORS.length]}
                   fillOpacity={0.15}
                   strokeWidth={2}
                   stackId="1"
@@ -819,23 +832,29 @@ export default function Destinations() {
             emptyHint="Pick at least one year"
           />
 
-          <FilterBar
+          {/* W5: SearchableMultiSelect — type to filter the full country
+              list (40+), Enter or click to add as a chip. Replaces the
+              chip-only FilterBar that didn't scale. The dropdown shows the
+              continent as `meta` so users picking "India" can quickly tell
+              it's Asia at a glance. */}
+          <SearchableMultiSelect
             label={`Countries to compare${selectedContinents.length ? ` (filtered to ${selectedContinents.join(', ')})` : ''}`}
-            options={searchedDestinations.map((d, i) => ({
+            placeholder={`Type to search across ${destinationsInSelectedContinents.length} countries…`}
+            options={destinationsInSelectedContinents.map((d, i) => ({
               value: d.country,
               label: d.country,
+              meta: d.continent,
               color: CONTINENT_COLORS[d.continent] || DEST_COLORS[i % DEST_COLORS.length],
             }))}
             selected={comparedCountries}
-            onToggle={toggleCountry}
+            onChange={setComparedCountries}
             quickActions={[
               { label: 'Top 5',  action: () => setComparedCountries(destinationsInSelectedContinents.slice(0, 5).map(d => d.country)) },
               { label: 'Top 10', action: () => setComparedCountries(destinationsInSelectedContinents.slice(0, 10).map(d => d.country)) },
               { label: 'Top 20', action: () => setComparedCountries(destinationsInSelectedContinents.slice(0, 20).map(d => d.country)) },
               { label: 'All',    action: () => setComparedCountries(destinationsInSelectedContinents.map(d => d.country)) },
-              { label: 'Clear',  action: () => setComparedCountries([]) },
             ]}
-            emptyHint="Pick at least one country"
+            emptyHint="Pick at least one country to overlay on the chart"
           />
 
           {comparedYears.length > 0 && comparedCountries.length > 0 ? (
