@@ -1,5 +1,10 @@
 name: CropsIntelV2 Auto-Scrape Pipeline
 
+# 2026-04-27 (W2): extended from ABC-only to full multi-source pipeline.
+# New steps: Strata + Bountiful + News + IMAP + cycle-summary writing pipeline_runs.
+# Scrapers self-skip cleanly when their secrets aren't configured (logs 'skipped' to
+# scraping_logs, exits 0). No step-level `if:` gating needed.
+
 on:
   push:
       branches: [main]
@@ -27,7 +32,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ABC scraper
+      # ─── Pipeline cycle: open a pipeline_runs row in 'running' state ─────
+      - name: Open pipeline run
+        id: open_run
+        continue-on-error: true
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: |
+          node -e "
+          import('@supabase/supabase-js').then(async ({ createClient }) => {
+            const sb = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+            const trigger = process.env.GITHUB_EVENT_NAME === 'workflow_dispatch' ? 'manual'
+              : process.env.GITHUB_EVENT_NAME === 'schedule' ? 'scheduled' : 'webhook';
+            const { data, error } = await sb.from('pipeline_runs').insert({
+              run_type: 'autonomous_cycle',
+              status: 'running',
+              trigger_source: trigger,
+              steps_completed: [],
+              summary: 'GH Actions run #' + process.env.GITHUB_RUN_NUMBER + ' started',
+              errors: [],
+            }).select('id').single();
+            if (error) { console.error('open_run failed:', error.message); process.exit(0); }
+            console.log('PIPELINE_RUN_ID=' + data.id);
+            require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'run_id=' + data.id + '\n');
+          });
+          "
+
+      # ─── Source scrapers (each self-logs to scraping_logs) ───────────────
+      - name: Run ABC scraper (position + shipment + receipts + forecasts + acreage + almanac)
         continue-on-error: true
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -35,6 +71,49 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node src/scrapers/abc-scraper.js
 
+      - name: Run Strata pricing scraper
+        continue-on-error: true
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STRATA_USERNAME: ${{ secrets.STRATA_USERNAME }}
+          STRATA_PASSWORD: ${{ secrets.STRATA_PASSWORD }}
+          STRATA_BASE_URL: ${{ secrets.STRATA_BASE_URL }}
+          MAXONS_MARGIN_PERCENT: ${{ vars.MAXONS_MARGIN_PERCENT }}
+        run: node src/scrapers/strata-scraper.js
+
+      - name: Run Bountiful estimates scraper
+        continue-on-error: true
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BOUNTIFUL_EMAIL: ${{ secrets.BOUNTIFUL_EMAIL }}
+          BOUNTIFUL_PASSWORD: ${{ secrets.BOUNTIFUL_PASSWORD }}
+        run: node src/scrapers/bountiful-scraper.js
+
+      - name: Run industry news scraper
+        continue-on-error: true
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node src/scrapers/news-scraper.js
+
+      - name: Poll IMAP intel inbox
+        continue-on-error: true
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          INTEL_EMAIL: ${{ secrets.INTEL_EMAIL }}
+          INTEL_EMAIL_PASSWORD: ${{ secrets.INTEL_EMAIL_PASSWORD }}
+          INTEL_IMAP_HOST: ${{ secrets.INTEL_IMAP_HOST }}
+          INTEL_IMAP_PORT: ${{ secrets.INTEL_IMAP_PORT }}
+        run: node src/autonomous/imap-reader.js
+
+      # ─── Downstream processors (run after all sources have ingested) ────
       - name: Backfill shipment + receipt data
         continue-on-error: true
         env:
@@ -60,6 +139,80 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: node src/processors/ai-analyst.js
 
+      # ─── Pipeline cycle: close the pipeline_runs row with summary ────────
+      - name: Close pipeline run
+        if: always()
+        continue-on-error: true
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PIPELINE_RUN_ID: ${{ steps.open_run.outputs.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          node -e "
+          import('@supabase/supabase-js').then(async ({ createClient }) => {
+            const sb = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+            const runId = process.env.PIPELINE_RUN_ID;
+            // Fetch all scraping_logs rows from the last 30 minutes (covers this run)
+            const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+            const { data: logs } = await sb.from('scraping_logs')
+              .select('scraper_name, status, records_inserted, records_found, error_message, duration_ms')
+              .gte('started_at', since)
+              .order('started_at', { ascending: true });
+            const steps = (logs || []).map(l => ({
+              scraper: l.scraper_name,
+              status: l.status,
+              records_inserted: l.records_inserted || 0,
+              records_found: l.records_found || 0,
+              duration_ms: l.duration_ms || 0,
+              error: l.error_message || null,
+            }));
+            const failed = steps.filter(s => s.status === 'failed').length;
+            const skipped = steps.filter(s => s.status === 'skipped').length;
+            const succeeded = steps.filter(s => ['success','parsed','no_data'].includes(s.status)).length;
+            const totalInserted = steps.reduce((sum, s) => sum + (s.records_inserted || 0), 0);
+            const summary = 'GH Actions #' + process.env.GITHUB_RUN_NUMBER + ': '
+              + succeeded + ' ok, ' + skipped + ' skipped, ' + failed + ' failed; '
+              + totalInserted + ' records inserted across all sources.';
+            const status = failed > 0 ? 'failed' : 'completed';
+            const errors = steps.filter(s => s.error).map(s => ({ scraper: s.scraper, error: s.error }));
+            const url = 'https://github.com/' + process.env.GITHUB_REPOSITORY + '/actions/runs/' + process.env.GITHUB_RUN_ID;
+            if (runId) {
+              const { error } = await sb.from('pipeline_runs').update({
+                status,
+                steps_completed: steps,
+                summary,
+                errors,
+                completed_at: new Date().toISOString(),
+              }).eq('id', runId);
+              if (error) console.error('close_run update failed:', error.message);
+              else console.log('Pipeline run', runId, 'closed:', status, '—', summary, '—', url);
+            } else {
+              // Fallback: insert a fresh row if open_run didn't capture an id
+              const { error } = await sb.from('pipeline_runs').insert({
+                run_type: 'autonomous_cycle',
+                status,
+                trigger_source: 'unknown',
+                steps_completed: steps,
+                summary,
+                errors,
+                completed_at: new Date().toISOString(),
+              });
+              if (error) console.error('close_run fallback insert failed:', error.message);
+            }
+            // Update last_full_cycle_at in system_config
+            await sb.from('system_config').upsert({
+              key: 'last_full_cycle_at',
+              value: JSON.stringify(new Date().toISOString()),
+              description: 'Timestamp of most recent end-to-end pipeline cycle completion',
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'key' });
+          });
+          "
+
+      # ─── Rebuild + deploy site ───────────────────────────────────────────
       - name: Rebuild and deploy to gh-pages
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
