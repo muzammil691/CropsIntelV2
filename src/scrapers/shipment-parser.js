@@ -199,12 +199,35 @@ export async function generateShipmentDataFromPositionReports() {
     return 0;
   }
 
+  // EXPORT_DISTRIBUTION — synthetic per-country share of the monthly export
+  // total. Until the parser can extract real per-destination volumes from the
+  // ABC Shipment Report PDF body (Phase B2 — page-2/3 scrape), we model
+  // every entry of TOP_EXPORT_DESTINATIONS so the Destinations page can show
+  // all 45 countries instead of the 20 that previously had non-zero shares.
+  //
+  // W6 (2026-04-27): added the bottom 25 countries with token shares (0.3–
+  // 0.8% each) summing to ~11%. Top-20 trimmed down by ~8 pp so the table
+  // sums to ~0.93, leaving ~0.07 for the "Other" residual bucket.
+  // Roughly tracks USDA FAS world-market shape: Asia tail (Indonesia /
+  // Malaysia / Thailand / Taiwan) > Europe tail (Belgium / Portugal /
+  // Poland / Sweden / Denmark) > MENA tail (Egypt / Israel / Algeria) >
+  // Latam tail (Chile / Brazil) > smaller European markets.
   const EXPORT_DISTRIBUTION = {
-    'Spain': 0.12, 'India': 0.11, 'China/Hong Kong': 0.09, 'Germany': 0.07,
-    'United Arab Emirates': 0.06, 'Netherlands': 0.05, 'Italy': 0.04, 'Turkey': 0.04,
-    'Japan': 0.04, 'South Korea': 0.03, 'United Kingdom': 0.03, 'France': 0.03,
-    'Canada': 0.03, 'Morocco': 0.025, 'Vietnam': 0.025, 'Saudi Arabia': 0.02,
-    'Australia': 0.02, 'Mexico': 0.015, 'Pakistan': 0.015, 'Jordan': 0.015,
+    // Top 20 — anchor markets
+    'Spain': 0.115, 'India': 0.105, 'China/Hong Kong': 0.085, 'Germany': 0.065,
+    'United Arab Emirates': 0.055, 'Netherlands': 0.045, 'Italy': 0.038,
+    'Turkey': 0.036, 'Japan': 0.036, 'South Korea': 0.028,
+    'United Kingdom': 0.028, 'France': 0.028, 'Canada': 0.028,
+    'Morocco': 0.024, 'Vietnam': 0.024, 'Saudi Arabia': 0.020,
+    'Australia': 0.018, 'Mexico': 0.014, 'Pakistan': 0.014, 'Jordan': 0.014,
+    // Tail 25 — modeled small markets (was 0 / silently bucketed into Other)
+    'Indonesia': 0.008, 'Malaysia': 0.007, 'Thailand': 0.007, 'Taiwan': 0.007,
+    'Belgium': 0.006, 'Chile': 0.005, 'Philippines': 0.005, 'Brazil': 0.005,
+    'Israel': 0.004, 'Algeria': 0.003, 'Egypt': 0.004, 'Iraq': 0.003,
+    'Lebanon': 0.003, 'Poland': 0.005, 'Russia': 0.004,
+    'Portugal': 0.005, 'Greece': 0.003, 'Norway': 0.003, 'Sweden': 0.004,
+    'Denmark': 0.004, 'Switzerland': 0.003, 'Austria': 0.003,
+    'Czech Republic': 0.003, 'Romania': 0.003, 'Ukraine': 0.003,
   };
   const topShare = Object.values(EXPORT_DISTRIBUTION).reduce((a, b) => a + b, 0);
 
