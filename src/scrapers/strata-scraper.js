@@ -503,6 +503,16 @@ export async function scrapeStrata(options = {}) {
   console.log(`Max pages: ${maxPages}`);
   console.log('========================================\n');
 
+  // Pre-flight: skip cleanly when creds aren't configured (no false-alarm 'failed').
+  // GH Actions step gating is best-effort but env may still leak through; double-check here.
+  if (!STRATA_USER || !STRATA_PASS) {
+    console.log('Strata credentials not configured (STRATA_USERNAME/STRATA_PASSWORD missing). Skipping cleanly.');
+    await logScrape('strata-scraper', 'skipped', {
+      metadata: { reason: 'missing_credentials', secret_hint: 'Add STRATA_USERNAME + STRATA_PASSWORD to GH Actions repo secrets to activate.' }
+    });
+    return { found: 0, inserted: 0, skipped: true };
+  }
+
   await logScrape('strata-scraper', 'started');
 
   // Step 1: Login

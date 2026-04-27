@@ -175,6 +175,16 @@ export async function pollInbox() {
   console.log(`Time:  ${new Date().toISOString()}`);
   console.log('========================================\n');
 
+  // Pre-flight: skip cleanly when creds aren't configured. GH Actions step gating
+  // is best-effort but env may still leak through; double-check here.
+  if (!IMAP_CONFIG.auth.pass) {
+    console.log('IMAP credentials not configured (INTEL_EMAIL_PASSWORD missing). Skipping cleanly.');
+    await logActivity('poll', 'skipped', {
+      metadata: { reason: 'missing_credentials', secret_hint: 'Add INTEL_EMAIL + INTEL_EMAIL_PASSWORD to GH Actions repo secrets to activate.' }
+    });
+    return { found: 0, inserted: 0, errors: 0, skipped: true };
+  }
+
   await logActivity('poll', 'started');
 
   const client = createClient();

@@ -1,20 +1,46 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth';
+import { isAdminUser } from '../lib/permissions';
 import { ingestReport, getLatestInsights, getKnowledgeStats } from '../lib/intel-processor';
 
 function StatusBadge({ status }) {
   const colors = {
     success: 'bg-green-500/20 text-green-400',
+    parsed: 'bg-green-500/20 text-green-400',
+    no_data: 'bg-gray-500/20 text-gray-400',
     failed: 'bg-red-500/20 text-red-400',
     started: 'bg-yellow-500/20 text-yellow-400 animate-pulse',
-    skipped: 'bg-gray-500/20 text-gray-400',
+    skipped: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
     running: 'bg-blue-500/20 text-blue-400 animate-pulse',
+    completed: 'bg-green-500/20 text-green-400',
   };
   return (
     <span className={`text-[10px] px-2 py-0.5 rounded-full ${colors[status] || colors.skipped}`}>
       {status}
     </span>
   );
+}
+
+// ─── Source Catalog (drives the Last-Pipeline-Run table) ─────────
+const SCRAPER_CATALOG = [
+  {
+    key: 'abc-position', label: 'ABC position + ship + receipt + forecasts + acreage + almanac',
+    secret: null, source_url: 'almonds.org',
+  },
+  { key: 'strata-scraper', label: 'Strata pricing', secret: 'STRATA_USERNAME / STRATA_PASSWORD', source_url: 'online.stratamarkets.com' },
+  { key: 'bountiful-scraper', label: 'Bountiful estimates', secret: null, source_url: 'bountiful.ag' },
+  { key: 'news-scraper', label: 'Industry news', secret: null, source_url: 'almonds.org/about-us/press-room' },
+  { key: 'imap-reader-poll', label: 'IMAP intel inbox', secret: 'INTEL_EMAIL / INTEL_EMAIL_PASSWORD', source_url: 'intel@cropsintel.com' },
+];
+
+function fmtTimeAgo(iso) {
+  if (!iso) return '—';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000) return `${Math.floor(ms / 1000)}s ago`;
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+  return new Date(iso).toLocaleString();
 }
 
 // ─── Source Presets ───────────────────────────────────────────────
@@ -31,6 +57,126 @@ const SOURCE_PRESETS = {
   'USDA': { type: 'government', icon: '🇺🇸' },
   'Other': { type: 'other', icon: '📄' },
 };
+
+// ─── Last Pipeline Run (per-source status from pipeline_runs.steps_completed) ──
+function LastPipelineRunPanel({ run, polling, logs }) {
+  // Build a per-scraper view. Prefer `run.steps_completed` (canonical: that's what the
+  // GH Actions cycle-summary step writes). Fall back to recent `scraping_logs` rows if
+  // steps_completed is empty (e.g. on first migration before any cycle has run yet).
+  const stepsByScraper = new Map();
+  const stepsArr = Array.isArray(run?.steps_completed) ? run.steps_completed : [];
+  for (const s of stepsArr) {
+    stepsByScraper.set(s.scraper, s);
+  }
+  // Logs fallback — pick the latest entry per scraper_name from the last 24h
+  if (stepsByScraper.size === 0 && Array.isArray(logs)) {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    for (const l of logs) {
+      const t = new Date(l.started_at || l.completed_at || 0).getTime();
+      if (t < cutoff) continue;
+      if (!stepsByScraper.has(l.scraper_name)) {
+        stepsByScraper.set(l.scraper_name, {
+          scraper: l.scraper_name,
+          status: l.status,
+          records_inserted: l.records_inserted,
+          records_found: l.records_found,
+          duration_ms: l.duration_ms,
+          error: l.error_message,
+        });
+      }
+    }
+  }
+
+  const overallStatus = run?.status || (polling ? 'running' : 'idle');
+  const overallSummary = run?.summary || (polling ? 'Cycle running on GitHub Actions…' : 'No pipeline run recorded yet — first run lands when the 15th-monthly cron fires (or when you click Trigger Full Cycle).');
+
+  return (
+    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5 mb-6">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-white">Last Pipeline Run</h3>
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            {run ? (
+              <>
+                Run <code className="text-gray-300">#{run.id}</code> · {run.trigger_source || 'scheduled'} ·
+                started {fmtTimeAgo(run.started_at)}
+                {run.completed_at && <> · completed {fmtTimeAgo(run.completed_at)}</>}
+              </>
+            ) : 'awaiting first cycle'}
+          </p>
+        </div>
+        <StatusBadge status={overallStatus} />
+      </div>
+
+      {polling && (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+          <p className="text-xs text-blue-300">
+            Cycle running on GitHub Actions — polling pipeline_runs every 15s. The table below auto-updates as each step completes.
+          </p>
+        </div>
+      )}
+
+      {overallSummary && (
+        <p className="text-xs text-gray-400 mb-3">{overallSummary}</p>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-left text-gray-500 border-b border-gray-800">
+              <th className="py-2 pr-3 font-medium">Source</th>
+              <th className="py-2 pr-3 font-medium">Status</th>
+              <th className="py-2 pr-3 font-medium text-right">Records</th>
+              <th className="py-2 pr-3 font-medium text-right">Duration</th>
+              <th className="py-2 font-medium">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {SCRAPER_CATALOG.map((cat) => {
+              const step = stepsByScraper.get(cat.key);
+              const status = step?.status || (polling ? 'running' : 'pending');
+              const inserted = step?.records_inserted || 0;
+              const found = step?.records_found || 0;
+              const duration = step?.duration_ms ? `${(step.duration_ms / 1000).toFixed(1)}s` : '—';
+              const note = step?.error
+                ? <span className="text-red-300">⚠ {step.error.substring(0, 80)}</span>
+                : status === 'skipped' && cat.secret
+                  ? <span className="text-amber-400/90">Add <code className="text-amber-300">{cat.secret}</code> to GH Actions secrets to activate</span>
+                  : status === 'pending'
+                    ? <span className="text-gray-600">awaiting next cycle</span>
+                    : <span className="text-gray-500">{cat.source_url}</span>;
+              return (
+                <tr key={cat.key} className="border-b border-gray-900/50 last:border-b-0">
+                  <td className="py-2 pr-3 text-gray-300">{cat.label}</td>
+                  <td className="py-2 pr-3"><StatusBadge status={status} /></td>
+                  <td className="py-2 pr-3 text-right text-gray-300">
+                    {inserted > 0 ? `+${inserted.toLocaleString()}` : found > 0 ? `${found.toLocaleString()} found` : '—'}
+                  </td>
+                  <td className="py-2 pr-3 text-right text-gray-400">{duration}</td>
+                  <td className="py-2 text-gray-400">{note}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {Array.isArray(run?.errors) && run.errors.length > 0 && (
+        <div className="mt-3 bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+          <p className="text-[11px] text-red-400 font-medium mb-1">Cycle errors ({run.errors.length})</p>
+          <ul className="space-y-1">
+            {run.errors.slice(0, 3).map((e, i) => (
+              <li key={i} className="text-[11px] text-red-300/90">
+                <code className="text-red-200">{e.scraper}</code>: {String(e.error).substring(0, 200)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Intel Upload Panel ──────────────────────────────────────────
 function IntelUploadPanel({ onIngested }) {
@@ -325,6 +471,9 @@ function IntelUploadPanel({ onIngested }) {
 }
 
 export default function Autonomous() {
+  const { profile: authProfile } = useAuth();
+  const isAdmin = isAdminUser(authProfile);
+
   const [logs, setLogs] = useState([]);
   const [config, setConfig] = useState({});
   const [reportCount, setReportCount] = useState(0);
@@ -332,15 +481,24 @@ export default function Autonomous() {
   const [intelCount, setIntelCount] = useState(0);
   const [knowledgeFacts, setKnowledgeFacts] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
   const [runLog, setRunLog] = useState([]);
 
+  // ─── Real cycle (GitHub Actions via edge fn) ────────────────────
+  const [triggering, setTriggering] = useState(false);
+  const [triggerError, setTriggerError] = useState(null);
+  const [triggerSuccess, setTriggerSuccess] = useState(null);
+  const [latestPipelineRun, setLatestPipelineRun] = useState(null);
+  const [polling, setPolling] = useState(false);
+  const pollTimeoutRef = useRef(null);
+
   const loadData = useCallback(async () => {
-    const [logRes, configRes, reportRes, analysisRes] = await Promise.all([
+    const [logRes, configRes, reportRes, analysisRes, pipelineRes] = await Promise.all([
       supabase.from('scraping_logs').select('*').order('started_at', { ascending: false }).limit(20),
       supabase.from('system_config').select('*'),
       supabase.from('abc_position_reports').select('id', { count: 'exact', head: true }),
       supabase.from('ai_analyses').select('id', { count: 'exact', head: true }),
+      supabase.from('pipeline_runs').select('*').order('started_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     if (logRes.data) setLogs(logRes.data);
@@ -351,6 +509,7 @@ export default function Autonomous() {
     }
     setReportCount(reportRes.count || 0);
     setAnalysisCount(analysisRes.count || 0);
+    setLatestPipelineRun(pipelineRes.data || null);
 
     // Load intel system stats (graceful if tables don't exist yet)
     try {
@@ -365,11 +524,66 @@ export default function Autonomous() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // ─── Polling: while a manual cycle is running, refresh pipeline_runs every 15s ──
+  // Caps at 40 ticks (10 min) so a stuck row doesn't poll forever.
+  useEffect(() => {
+    if (!polling || !latestPipelineRun?.id) return;
+    let ticks = 0;
+    const tick = async () => {
+      ticks++;
+      const { data } = await supabase
+        .from('pipeline_runs')
+        .select('*')
+        .eq('id', latestPipelineRun.id)
+        .maybeSingle();
+      if (data) setLatestPipelineRun(data);
+      // Stop when terminal or after ~10 min
+      if (data && (data.status === 'completed' || data.status === 'failed') || ticks >= 40) {
+        setPolling(false);
+        loadData(); // pull fresh scraping_logs + counts
+        return;
+      }
+      pollTimeoutRef.current = setTimeout(tick, 15000);
+    };
+    pollTimeoutRef.current = setTimeout(tick, 15000);
+    return () => {
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
+  }, [polling, latestPipelineRun?.id, loadData]);
+
+  // ─── Trigger Full Cycle: REAL scraping via edge fn → GH Actions ──
+  const triggerFullCycle = async () => {
+    setTriggering(true);
+    setTriggerError(null);
+    setTriggerSuccess(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('trigger-scrape-cycle', {
+        body: {},
+      });
+      if (error) throw new Error(error.message || 'Edge function error');
+      if (data?.error) throw new Error(`${data.error}: ${data.detail || data.hint || ''}`);
+
+      setTriggerSuccess({
+        message: `Cycle queued — running on GitHub Actions (ETA ~${data.eta_minutes || 8} min). Watch the table below for live updates.`,
+        runId: data.pipeline_run_id,
+        runsUrl: data.workflow_runs_url,
+      });
+      // Refresh pipeline_runs so the new 'running' row becomes the latest, then start polling.
+      await loadData();
+      setPolling(true);
+    } catch (err) {
+      setTriggerError(err.message || String(err));
+    } finally {
+      setTriggering(false);
+    }
+  };
+
   const log = (msg) => setRunLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
 
-  // Browser-based autonomous cycle (reads via anon key, writes via supabase client)
-  const runCycle = async () => {
-    setRunning(true);
+  // ─── Recompute Analyses: browser-side YoY/anomaly math on EXISTING data ──
+  // (Renamed from runCycle. Does NOT scrape new data — just re-derives insights.)
+  const recomputeAnalyses = async () => {
+    setRecomputing(true);
     setRunLog([]);
     const startTime = Date.now();
 
@@ -502,7 +716,7 @@ export default function Autonomous() {
         error_message: err.message, completed_at: new Date().toISOString()
       });
     } finally {
-      setRunning(false);
+      setRecomputing(false);
       loadData();
     }
   };
@@ -517,23 +731,67 @@ export default function Autonomous() {
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold text-white">Autonomous Systems</h2>
-          <p className="text-gray-500 text-sm mt-1">Self-maintaining data pipeline — scrape, process, analyze</p>
+          <p className="text-gray-500 text-sm mt-1">Multi-source data pipeline — ABC + Strata + Bountiful + News + IMAP intel</p>
         </div>
-        <button
-          onClick={runCycle}
-          disabled={running}
-          className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-            running
-              ? 'bg-blue-500/20 text-blue-400 cursor-wait'
-              : 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
-          }`}
-        >
-          {running ? 'Running...' : 'Run Cycle Now'}
-        </button>
+        {isAdmin && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={triggerFullCycle}
+              disabled={triggering || polling}
+              title="Triggers GitHub Actions to run every scraper end-to-end. Real scraping — not browser math."
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                triggering || polling
+                  ? 'bg-blue-500/20 text-blue-400 cursor-wait'
+                  : 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
+              }`}
+            >
+              {triggering ? 'Queueing…' : polling ? 'Cycle running…' : '⚡ Trigger Full Cycle'}
+            </button>
+            <button
+              onClick={recomputeAnalyses}
+              disabled={recomputing}
+              title="Re-derives YoY + anomaly insights from data ALREADY in the DB. Does NOT scrape new data."
+              className={`px-4 py-2.5 rounded-lg text-xs font-medium transition-all ${
+                recomputing
+                  ? 'bg-gray-700 text-gray-400 cursor-wait'
+                  : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'
+              }`}
+            >
+              {recomputing ? 'Recomputing…' : '🧮 Recompute Analyses'}
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Trigger feedback */}
+      {triggerError && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4">
+          <p className="text-sm font-medium text-red-400">Trigger failed</p>
+          <p className="text-xs text-red-300 mt-1 break-words">{triggerError}</p>
+          {triggerError.includes('not_configured') || triggerError.includes('GITHUB_DISPATCH_TOKEN') ? (
+            <p className="text-[11px] text-red-400/80 mt-2">
+              Setup needed: add a fine-grained GitHub PAT (actions:write) as <code className="text-amber-300">GITHUB_DISPATCH_TOKEN</code> in
+              Supabase Dashboard → Project Settings → Edge Functions → Secrets.
+            </p>
+          ) : null}
+        </div>
+      )}
+      {triggerSuccess && !triggerError && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
+          <p className="text-sm font-medium text-green-400">{triggerSuccess.message}</p>
+          {triggerSuccess.runsUrl && (
+            <p className="text-[11px] text-green-300 mt-1">
+              Workflow runs:{' '}
+              <a href={triggerSuccess.runsUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-200">
+                {triggerSuccess.runsUrl}
+              </a>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
@@ -564,6 +822,9 @@ export default function Autonomous() {
           <p className="text-[10px] text-gray-600">YoY + anomalies + signals</p>
         </div>
       </div>
+
+      {/* ─── Last Pipeline Run (per-source status table) ─── */}
+      <LastPipelineRunPanel run={latestPipelineRun} polling={polling} logs={logs} />
 
       {/* Intel Ingestion */}
       <IntelUploadPanel onIngested={() => loadData()} />
@@ -615,12 +876,12 @@ export default function Autonomous() {
         </div>
       </div>
 
-      {/* Run Log (live output) */}
+      {/* Run Log (live output for Recompute Analyses) */}
       {runLog.length > 0 && (
         <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 mb-6 font-mono text-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-[10px] uppercase tracking-wider">Run Output</span>
-            {running && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+            <span className="text-gray-400 text-[10px] uppercase tracking-wider">Recompute Output</span>
+            {recomputing && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
           </div>
           <div className="max-h-48 overflow-y-auto space-y-0.5">
             {runLog.map((line, i) => (
@@ -663,7 +924,11 @@ export default function Autonomous() {
       ) : (
         <div className="border border-gray-800 rounded-xl p-8 text-center">
           <p className="text-gray-500">No activity yet</p>
-          <p className="text-xs text-gray-600 mt-1">Click "Run Cycle Now" to trigger the autonomous pipeline</p>
+          <p className="text-xs text-gray-600 mt-1">
+            {isAdmin
+              ? 'Click "Trigger Full Cycle" to run all scrapers via GitHub Actions'
+              : 'Scheduled cycles run on the 15th of each month and every Monday'}
+          </p>
         </div>
       )}
 
