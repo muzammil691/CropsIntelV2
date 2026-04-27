@@ -78,17 +78,21 @@ export default function Destinations() {
 
   useEffect(() => {
     async function load() {
+      // Lift Supabase's silent 1000-row default — 45 countries × 12 months × 11 years
+      // ≈ 5,940 rows; without .range() we silently truncate to ~3 visible crop years.
       const { data } = await supabase
         .from('abc_shipment_reports')
         .select('*')
         .order('report_year', { ascending: true })
-        .order('report_month', { ascending: true });
+        .order('report_month', { ascending: true })
+        .range(0, 49999);
       if (data) {
         const normalized = data.map(r => ({ ...r, crop_year: normalizeCropYear(r.crop_year) }));
         setShipments(normalized);
         const crops = [...new Set(normalized.map(r => r.crop_year))].sort();
         setSelectedCropYear(crops[crops.length - 1]);
-        setComparedYears(crops.slice(-3));
+        // Show every crop year by default — user can narrow via "Last 3 / 5 / All" quick actions.
+        setComparedYears(crops);
       }
       setLoading(false);
     }

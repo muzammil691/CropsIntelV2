@@ -65,7 +65,8 @@ export default function Analysis() {
       if (data) {
         setReports(data);
         const crops = [...new Set(data.map(r => r.crop_year))].sort();
-        setSelectedCrops(crops.slice(-3));
+        // Show every crop year by default — user can narrow via "Last 3 / 5 / All" quick actions.
+        setSelectedCrops(crops);
       }
       setLoading(false);
     }

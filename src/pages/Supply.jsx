@@ -103,10 +103,9 @@ export default function Supply() {
       if (data) {
         setReports(data);
         const crops = [...new Set(data.map(r => r.crop_year))].sort();
-        // F3: Default to the last 5 crop years (was 3). Users have quick
-        // actions for Last 3 / Last 5 / All below if they want to widen
-        // or narrow the comparison window.
-        setSelectedCrops(crops.slice(-5));
+        // Show every crop year by default — user can narrow via "Last 3 / 5 / All" quick actions.
+        // Per "no skipping — use everything" rule: V2 must surface every report on first load.
+        setSelectedCrops(crops);
       }
       setLoading(false);
     }
