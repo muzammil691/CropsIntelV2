@@ -117,10 +117,16 @@ export const LANG_INSTRUCTION = {
  * Resolve the userTier string from auth + profile shape. Keeps the logic
  * in one place so bubble, full-page, and any future surface agree.
  */
+// W1 (2026-04-27): admin / super_admin / access_tier='admin' all collapse to
+// 'maxons' tier here so Zyra exposes the full internal-team prompt suffix
+// (margin, cost basis, supplier names). Previously this only matched legacy
+// role='admin', leaving super_admin accounts on the 'registered' prompt.
+import { isAdminUser } from './roleConstants';
+
 export function resolveUserTier(user, profile) {
   if (!user) return 'guest';
   if (profile?.tier === 'maxons' || profile?.access_tier === 'maxons_team') return 'maxons';
-  if (profile?.role === 'admin') return 'maxons';
+  if (isAdminUser(profile)) return 'maxons';
   if (profile?.tier) return profile.tier;
   return 'registered';
 }

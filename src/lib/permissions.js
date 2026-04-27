@@ -165,29 +165,14 @@ export function canAccess(profile, resource) {
 }
 
 // ─── Team-member capabilities ────────────────────────────────────────
-// F6 (2026-04-24): MAXONS team members (analyst/broker/sales/trader/seller/
-// maxons_team/admin role OR access_tier='maxons_team'|'admin') can verify
-// newly-registered users (promote access_tier 'registered' → 'verified').
-// Enforced at the DB level by the "Team can verify registered users" RLS
-// policy + lock_team_column_writes trigger (migration 20260424_team_can_verify_users).
-// This helper is for FRONTEND gating only — the DB is the source of truth.
-const TEAM_ROLE_VALUES = ['admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team'];
-
-export function isTeamMember(profile) {
-  if (!profile) return false;
-  return TEAM_ROLE_VALUES.includes(profile.role)
-    || profile.access_tier === 'maxons_team'
-    || profile.access_tier === 'admin';
-}
-
-export function canVerifyUsers(profile) {
-  // Same cohort as isTeamMember — team members + admins can verify.
-  // Distinguishing the name makes call sites read intentionally
-  // ("this button is for verifying users" vs. "this panel is team-only").
-  return isTeamMember(profile);
-}
-
-export function isAdminUser(profile) {
-  if (!profile) return false;
-  return profile.role === 'admin' || profile.access_tier === 'admin';
-}
+// F6 (2026-04-24): MAXONS team members can verify newly-registered users
+// (promote access_tier 'registered' → 'verified'). Enforced at the DB
+// level by the "Team can verify registered users" RLS policy + the
+// lock_team_column_writes trigger (migration 20260424_team_can_verify_users).
+// These helpers are for FRONTEND gating only — the DB is the source of truth.
+//
+// 2026-04-27 (W1): the actual role lists + helpers live in roleConstants.js
+// so EVERY caller (ProtectedRoute, App.jsx, Settings.jsx, Dashboard, this
+// file) shares one 21-role definition. We re-export from there so existing
+// `import { isAdminUser } from './permissions'` call sites keep working.
+export { isAdminUser, isTeamMember, canVerifyUsers } from './roleConstants.js';

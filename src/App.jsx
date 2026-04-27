@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import { useLocale } from './contexts/LocaleContext';
+import { isAdminUser, isTeamMember } from './lib/roleConstants';
 import GuestOverlay from './components/GuestOverlay';
 import ProfileCompletionBanner from './components/ProfileCompletionBanner';
 import ProtectedRoute, { AdminRoute, TeamRoute, AuthRoute } from './components/ProtectedRoute';
@@ -193,26 +194,11 @@ function UserMenu() {
   );
 }
 
-// Admin-level roles — have every privilege across the app.
-// `admin` is the legacy alias for the spec's `super_admin` (§12.1).
-const ADMIN_ROLES = ['admin', 'super_admin'];
-
-// Internal-team roles — see team-only pages (CRM, Brokers, Suppliers,
-// Trading, Team & Users). Includes ALL 14 spec §12.1 internal roles PLUS
-// legacy V2 values so existing team members keep access. See
-// docs/TRADE_HUB_SPEC_v1.md §12 and docs/TRADE_HUB_CROSSWALK_v1.md §3.
-const TEAM_ROLES = [
-  // Legacy V2 values (kept for back-compat with existing user_profiles rows)
-  'admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team',
-  // Spec §12.1 — 14 Maxons internal roles
-  'super_admin',
-  'procurement_head', 'procurement_officer',
-  'sales_lead', 'sales_handler',
-  'documentation_lead', 'documentation_officer',
-  'logistics_head', 'logistics_officer', 'warehouse_manager',
-  'finance_head', 'finance_officer',
-  'compliance_officer',
-];
+// ADMIN_ROLES + TEAM_ROLES are imported from src/lib/roleConstants.js
+// (single source of truth for role taxonomy across the app — see W1 of
+// docs/V2_LAUNCH_WORTHINESS notes). The same lists were previously
+// duplicated here, in ProtectedRoute.jsx and in permissions.js, with
+// drift between them; the imported versions are the spec-correct copy.
 
 // Role → paths this role cares about most (shown first). Everything else
 // stays visible but drops below. Extended to cover every spec §12 role so
@@ -274,9 +260,10 @@ function Sidebar() {
   // placeholder nav (no team-gating decision yet).
   const profileLoading = isAuthenticated && profile === null;
   const userRole = profile?.role || (isAuthenticated ? null : 'buyer');
-  const userTier = profile?.access_tier || profile?.tier;
-  const isAdmin = userRole ? ADMIN_ROLES.includes(userRole) || userTier === 'admin' : false;
-  const isTeam = isAdmin || (userRole ? TEAM_ROLES.includes(userRole) : false) || userTier === 'maxons_team';
+  // Profile-aware helpers — accept role OR access_tier overrides. See
+  // src/lib/roleConstants.js. False during profileLoading (profile is null).
+  const isAdmin = isAdminUser(profile);
+  const isTeam = isTeamMember(profile);
 
   // Index nav items by path so section render can look them up.
   const byPath = Object.fromEntries(NAV_ITEMS.map(i => [i.path, i]));
@@ -460,13 +447,12 @@ function MobileNav() {
   const userRole = profile?.role || (isAuthenticated ? null : 'buyer');
   const [showMore, setShowMore] = React.useState(false);
 
-  const userTier = profile?.access_tier || profile?.tier;
-  const isTeam = userRole
-    ? (ADMIN_ROLES.includes(userRole) || TEAM_ROLES.includes(userRole) || userTier === 'admin' || userTier === 'maxons_team')
-    : false;
+  // Profile-aware helpers (same pattern as desktop Sidebar).
+  const isAdmin = isAdminUser(profile);
+  const isTeam = isTeamMember(profile);
 
   const moreItems = MOBILE_MORE.filter(item => {
-    if (item.requireAdmin && !ADMIN_ROLES.includes(userRole) && userTier !== 'admin') return false;
+    if (item.requireAdmin && !isAdmin) return false;
     if (item.requireTeam && !isTeam) return false;
     if (item.requireAuth && !isAuthenticated) return false;
     return true;
@@ -483,7 +469,10 @@ function MobileNav() {
             <div className="w-10 h-1 bg-gray-700 rounded-full mx-auto mb-3" />
             {moreItems.map(item => {
               const isActive = location.pathname === item.path;
-              const isLocked = item.requireTeam && !TEAM_ROLES.includes(userRole);
+              // isTeam (computed above) accepts role in TEAM_ROLES, role in
+              // ADMIN_ROLES, OR access_tier='admin'/'maxons_team'. Using it
+              // here keeps mobile + desktop gating in lockstep.
+              const isLocked = item.requireTeam && !isTeam;
               return (
                 <Link
                   key={item.path}

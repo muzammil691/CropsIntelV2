@@ -3,6 +3,10 @@ import { supabase } from '../lib/supabase';
 import { loadAPIKeys, getAIStatus } from '../lib/ai-engine';
 import { syncWhatsAppTemplates, createWhatsAppTemplate } from '../lib/whatsapp';
 import { useAuth } from '../lib/auth';
+// W1 (2026-04-27): single-source-of-truth role taxonomy. Replaces the
+// previously-local TEAM_ROLE_VALUES + raw `role === 'admin'` check that
+// silently denied access to super_admin and access_tier='admin' users.
+import { isAdminUser, isTeamMember } from '../lib/roleConstants';
 // Locale UI parked behind feature flag — see LocaleContext appLocaleLocked.
 // Restore these two imports (and the Language section below) when the
 // app-wide multilingual rollout is approved.
@@ -63,20 +67,8 @@ const ALL_ROLES = [
   { value: 'maxons_team',              label: 'MAXONS Team (generic)',           group: 'team',    spec: false },
 ];
 
-// Canonical internal-team role set — includes ALL spec §12.1 internal roles
-// plus legacy V2 team roles. Any role in this list (or access_tier === one
-// of the elevated tiers) counts as "internal team" for verify-users and
-// team-only UI gates.
-const TEAM_ROLE_VALUES = [
-  // Legacy
-  'admin', 'analyst', 'broker', 'seller', 'trader', 'sales', 'maxons_team',
-  // Spec §12.1 internal (14)
-  'super_admin', 'procurement_head', 'procurement_officer',
-  'sales_lead', 'sales_handler',
-  'documentation_lead', 'documentation_officer',
-  'logistics_head', 'logistics_officer', 'warehouse_manager',
-  'finance_head', 'finance_officer', 'compliance_officer',
-];
+// Internal-team taxonomy now lives in src/lib/roleConstants.js (W1).
+// Use isTeamMember(profile) instead of TEAM_ROLE_VALUES.includes(role).
 
 const AI_SYSTEMS = [
   { key: 'anthropic', name: 'Claude (Anthropic)', role: 'Primary Brain', desc: 'Deep reasoning, document analysis, trade synthesis', color: 'orange' },
@@ -133,15 +125,13 @@ export default function Settings() {
   const [invLoading, setInvLoading] = useState(false);
   const [invMsg, setInvMsg] = useState('');
 
-  const isAdmin = authProfile?.role === 'admin';
-  // Team capability: role is in TEAM_ROLE_VALUES or tier is elevated.
-  const isTeam = Boolean(
-    authProfile && (
-      TEAM_ROLE_VALUES.includes(authProfile.role) ||
-      authProfile.access_tier === 'maxons_team' ||
-      authProfile.access_tier === 'admin'
-    )
-  );
+  // W1 (2026-04-27): admin = role in ADMIN_ROLES OR access_tier='admin'.
+  // The previous `role === 'admin'` denied the admin panel to super_admin
+  // accounts and to team members elevated via access_tier — both of which
+  // should reach the full user-management UI.
+  const isAdmin = isAdminUser(authProfile);
+  // Team capability: admin OR role in TEAM_ROLES OR access_tier elevated.
+  const isTeam = isTeamMember(authProfile);
   // Team members who are NOT admin get the slimmed-down verify-only panel
   const isTeamOnly = isTeam && !isAdmin;
 
@@ -1194,7 +1184,7 @@ export default function Settings() {
                       ))}
                     </select>
                     {/* Per-row "Make team" preset */}
-                    {TEAM_ROLE_VALUES.includes(u.role) || u.access_tier === 'maxons_team' || u.access_tier === 'admin' ? (
+                    {isTeamMember(u) ? (
                       <button
                         onClick={async () => { await updateUserRole(u.id, 'buyer'); await updateUserTier(u.id, 'verified'); }}
                         className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600 rounded text-[10px] font-medium transition-colors"
