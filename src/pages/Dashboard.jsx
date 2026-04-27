@@ -10,7 +10,7 @@ import PersonaInsights from '../components/PersonaInsights';
 import MarketPulseBand from '../components/MarketPulseBand';
 import Card from '../components/Card';
 import { useAuth } from '../lib/auth';
-import { isInternal } from '../lib/permissions';
+import { isInternal, familyFor } from '../lib/permissions';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts';
@@ -396,7 +396,20 @@ function SupplyPositionWidget({ current, prior }) {
 function ShipmentTrend({ reports }) {
   const [windowSize, setWindowSize] = React.useState('all'); // 'last3' | 'last5' | 'all'
 
-  if (!reports || reports.length < 2) return null;
+  // W4: previously returned null silently when there weren't enough reports,
+  // leaving an unexplained gap on the dashboard. Show a placeholder instead.
+  if (!reports || reports.length < 2) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center p-6">
+        <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-500 mb-3">📈</div>
+        <p className="text-sm text-gray-400 font-medium mb-1">Shipment trend</p>
+        <p className="text-xs text-gray-600">
+          Need ≥ 2 monthly reports to render the trend chart.
+          {reports?.length === 1 && ' Currently 1 loaded.'}
+        </p>
+      </div>
+    );
+  }
 
   // Build annual cumulative shipments by crop year (sum of monthly totals = final shipped)
   // NOTE: BIGINT columns come from Supabase as strings — must parse to Number
@@ -484,6 +497,10 @@ export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const internal = isInternal(profile);
+  // W4: pricing-power pulses (Commit Rate + Uncommitted) are relevant to
+  // sellers (their own inventory tightness signal) and internal team.
+  // Buyers + brokers don't need these — they're a supply-side handler view.
+  const sellerSide = internal || familyFor(profile?.role) === 'supplier';
 
   // Post-invite welcome banner. AcceptInvite navigates here with state
   // describing the role the user was invited as. We surface this prominently
@@ -718,36 +735,39 @@ export default function Dashboard() {
 
     // 2. Commit rate — a key pricing-power indicator. Rising commit rate
     // means the handler's unsold position is shrinking = sellers tighten.
-    const commitRate = toNum(lr.total_supply_lbs) > 0
-      ? (toNum(lr.total_committed_lbs) / toNum(lr.total_supply_lbs)) * 100
-      : null;
-    const pyCommitRate = py && toNum(py.total_supply_lbs) > 0
-      ? (toNum(py.total_committed_lbs) / toNum(py.total_supply_lbs)) * 100
-      : null;
-    const commitDelta = (commitRate != null && pyCommitRate != null)
-      ? (commitRate - pyCommitRate) : null;
-    pulses.push({
-      label: 'Commit Rate',
-      value: commitRate != null ? `${commitRate.toFixed(1)}%` : '--',
-      delta: commitDelta != null ? `${commitDelta > 0 ? '+' : ''}${commitDelta.toFixed(1)}pp` : null,
-      deltaLabel: 'YoY',
-      tone: commitDelta == null ? 'neutral' : commitDelta > 0 ? 'bullish' : 'bearish',
-      hint: 'Higher = tighter supply (bullish)',
-      href: '/supply',
-    });
+    // Seller-side only (internal + supplier-family); buyers don't need it.
+    if (sellerSide) {
+      const commitRate = toNum(lr.total_supply_lbs) > 0
+        ? (toNum(lr.total_committed_lbs) / toNum(lr.total_supply_lbs)) * 100
+        : null;
+      const pyCommitRate = py && toNum(py.total_supply_lbs) > 0
+        ? (toNum(py.total_committed_lbs) / toNum(py.total_supply_lbs)) * 100
+        : null;
+      const commitDelta = (commitRate != null && pyCommitRate != null)
+        ? (commitRate - pyCommitRate) : null;
+      pulses.push({
+        label: 'Commit Rate',
+        value: commitRate != null ? `${commitRate.toFixed(1)}%` : '--',
+        delta: commitDelta != null ? `${commitDelta > 0 ? '+' : ''}${commitDelta.toFixed(1)}pp` : null,
+        deltaLabel: 'YoY',
+        tone: commitDelta == null ? 'neutral' : commitDelta > 0 ? 'bullish' : 'bearish',
+        hint: 'Higher = tighter supply (bullish)',
+        href: '/supply',
+      });
 
-    // 3. Uncommitted YoY — the "what's left to sell" number.
-    const unYoy = yoyPct(lr.uncommitted_lbs, py?.uncommitted_lbs);
-    pulses.push({
-      label: 'Uncommitted',
-      value: formatLbs(lr.uncommitted_lbs),
-      delta: unYoy != null ? `${unYoy > 0 ? '+' : ''}${unYoy}%` : null,
-      deltaLabel: 'YoY',
-      // Counter-intuitive: LESS uncommitted is BULLISH (pricing power)
-      tone: unYoy == null ? 'neutral' : unYoy < 0 ? 'bullish' : 'bearish',
-      hint: 'Available inventory — lower = tighter',
-      href: '/supply',
-    });
+      // 3. Uncommitted YoY — the "what's left to sell" number.
+      const unYoy = yoyPct(lr.uncommitted_lbs, py?.uncommitted_lbs);
+      pulses.push({
+        label: 'Uncommitted',
+        value: formatLbs(lr.uncommitted_lbs),
+        delta: unYoy != null ? `${unYoy > 0 ? '+' : ''}${unYoy}%` : null,
+        deltaLabel: 'YoY',
+        // Counter-intuitive: LESS uncommitted is BULLISH (pricing power)
+        tone: unYoy == null ? 'neutral' : unYoy < 0 ? 'bullish' : 'bearish',
+        hint: 'Available inventory — lower = tighter',
+        href: '/supply',
+      });
+    }
   }
 
   // 4. Price pulse — Nonpareil variety, latest vs ~7 days ago.
@@ -870,37 +890,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Key Metrics Row (tighter gap) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <StatCard
-          title="Total Shipments"
-          value={formatLbs(lr?.total_shipped_lbs)}
-          subtitle={`Dom ${formatLbs(lr?.domestic_shipped_lbs)} / Exp ${formatLbs(lr?.export_shipped_lbs)}`}
-          trend={yoyPct(lr?.total_shipped_lbs, py?.total_shipped_lbs)}
-          color="green"
-        />
-        <StatCard
-          title="Committed"
-          value={formatLbs(lr?.total_committed_lbs)}
-          subtitle={lr?.domestic_committed_lbs ? `Dom ${formatLbs(lr?.domestic_committed_lbs)} / Exp ${formatLbs(lr?.export_committed_lbs)}` : 'Sold but not yet shipped'}
-          trend={yoyPct(lr?.total_committed_lbs, py?.total_committed_lbs)}
-          color="blue"
-        />
-        <StatCard
-          title="Uncommitted"
-          value={formatLbs(lr?.uncommitted_lbs)}
-          subtitle="Available inventory"
-          trend={yoyPct(lr?.uncommitted_lbs, py?.uncommitted_lbs)}
-          color="amber"
-        />
-        <StatCard
-          title="Total Supply"
-          value={formatLbs(lr?.total_supply_lbs)}
-          subtitle={`Carry ${formatLbs(lr?.carry_in_lbs)} + Recv ${formatLbs(lr?.receipts_lbs)}`}
-          trend={yoyPct(lr?.total_supply_lbs, py?.total_supply_lbs)}
-          color="green"
-        />
-      </div>
+      {/* W4 (2026-04-27): the 4-StatCard "Key Metrics" row was dropped here.
+          Total Shipped, Committed, Uncommitted and Total Supply were a
+          quad-redundant copy of what Market Pulse Band + Supply Position
+          Widget already render below — leaving them in pushed every other
+          widget below the fold. Keep this comment as a tombstone so the
+          row doesn't get re-added by accident. */}
 
       {/* Market Pulse — momentum indicators (2026-04-24 redesign) */}
       <MarketPulseBand pulses={pulses} />
@@ -957,10 +952,16 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* AI Insights + System Status (tighter gap) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* AI Insights (2 columns) */}
-        <div className="lg:col-span-2">
+      {/* AI Insights + System Status (tighter gap)
+          W4 (2026-04-27): System Status was previously rendered for every
+          authenticated user, leaking infrastructure (data coverage %, AI
+          engine connectivity, scraper logs) to buyers/brokers who have
+          no use for it. Now gated behind `internal` (isInternal helper).
+          When externals view this row the grid collapses to full-width
+          AI Insights so the layout stays balanced. */}
+      <div className={`grid grid-cols-1 ${internal ? 'lg:grid-cols-3' : ''} gap-4`}>
+        {/* AI Insights (2 columns when System Status visible, full otherwise) */}
+        <div className={internal ? 'lg:col-span-2' : ''}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-semibold text-white">
               AI Insights
@@ -974,12 +975,17 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="border border-gray-800 rounded-lg p-4 text-center">
-              <p className="text-xs text-gray-500">No additional insights yet &mdash; scraper will generate more on next run.</p>
+              <p className="text-xs text-gray-500">
+                {internal
+                  ? 'No additional insights yet — scraper will generate more on next run.'
+                  : 'More insights coming soon.'}
+              </p>
             </div>
           )}
         </div>
 
-        {/* System Status */}
+        {/* System Status — internal-only (W4 gating) */}
+        {internal && (
         <div>
           <h3 className="text-base font-semibold text-white mb-3">System Status</h3>
           <div className="space-y-2">
@@ -1044,10 +1050,35 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        )}
       </div>
 
-      {/* Intel Alerts — from forwarded market reports */}
-      {intelInsights.length > 0 && (
+      {/* Intel Alerts — from forwarded market reports.
+          W4 (2026-04-27): when there are 0 alerts the section used to
+          disappear silently, leaving a confusing gap. Now we render a
+          single CTA card pointing the user to /intelligence. */}
+      {intelInsights.length === 0 ? (
+        <div className="mt-6">
+          <Link
+            to="/intelligence"
+            className="block bg-gray-900/50 border border-gray-800 hover:border-purple-500/30 rounded-xl p-5 transition-colors group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 text-lg shrink-0 group-hover:bg-purple-500/20 transition-colors">
+                🧠
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-white">Market Intel</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  No alerts yet — open AI Intelligence to curate signals from
+                  market reports, news and Zyra.
+                </p>
+              </div>
+              <span className="text-purple-400 text-sm group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </Link>
+        </div>
+      ) : (
         <div className="mt-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -1073,8 +1104,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Live Pricing, News Feed, System Pipeline (tighter gap) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+      {/* Live Pricing, News Feed, [internal-only] Pipeline Status (tighter gap)
+          W4 (2026-04-27): Pipeline Status widget exposed scraper schedules,
+          email-system status and "Next scheduled run" — devops detail that
+          buyers/brokers/external customers should not see. The widget is
+          now gated to internal users; for externals the row falls back to
+          a 2-column layout (Live Pricing + News). */}
+      <div className={`grid grid-cols-1 ${internal ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4 mt-4`}>
         {/* Live Pricing Widget */}
         <Card>
           <div className="flex items-center justify-between mb-4">
@@ -1177,7 +1213,8 @@ export default function Dashboard() {
           )}
         </Card>
 
-        {/* Autonomous Pipeline Status Widget */}
+        {/* Autonomous Pipeline Status Widget — internal-only (W4) */}
+        {internal && (
         <Card>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Pipeline Status</h3>
@@ -1241,6 +1278,7 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
+        )}
       </div>
     </div>
   );

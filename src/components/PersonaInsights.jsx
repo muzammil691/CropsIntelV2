@@ -12,6 +12,13 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { toNum } from '../lib/utils';
+// W4 (2026-04-27): isTeamMember is the canonical "is this user internal
+// MAXONS staff?" check. Previously the fallback used only `tier === 'admin'
+// || tier === 'maxons_team'` which silently rendered nothing for the 14
+// spec §12.1 roles (procurement_head, sales_handler, logistics_officer…)
+// when their access_tier wasn't elevated. Now those users get the generic
+// "MAXONS internal — full position view" card.
+import { isTeamMember } from '../lib/roleConstants';
 
 function Stat({ label, value, sub, accent = 'green' }) {
   const colorMap = {
@@ -85,8 +92,9 @@ export default function PersonaInsights() {
   if (loading || !latest) return null;
 
   const role = profile?.role || 'buyer';
-  const tier = profile?.access_tier || profile?.tier;
-  const isInternal = tier === 'admin' || tier === 'maxons_team';
+  // W4: profile-aware (role OR access_tier) — covers 14 spec internal roles
+  // even when their access_tier hasn't been promoted yet.
+  const isInternal = isTeamMember(profile);
 
   const soldPct = toNum(latest.total_supply_lbs) > 0
     ? ((toNum(latest.total_supply_lbs) - toNum(latest.uncommitted_lbs)) / toNum(latest.total_supply_lbs)) * 100
