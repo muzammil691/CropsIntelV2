@@ -1,6 +1,6 @@
 {
-  "lastUpdated": "2026-04-27T13:00:00Z",
-  "updatedBy": "Claude AI \u2014 destinations/analysis/supply 11-year coverage fix landed (commit be65f79, 2026-04-27 13:00Z). User reported: \"the destinations table doesnt cover all the 11 years... it shows only 3 years\". Two parallel Explore-agent audits identified two independent root causes biting simultaneously: (1) Data layer \u2014 src/pages/Destinations.jsx supabase query had no .range(), so PostgREST applied its silent 1000-row default; with 45 countries \u00d7 12 months \u00d7 11 years \u2248 5,940 rows the cap silently truncated to ~3 visible crop years. Added .range(0, 49999) to fetch full table (50k headroom for backfill + multi-commodity expansion). (2) UI layer \u2014 three pages seeded their compare-FilterBar with only the last 3-5 years even after fetching the full set: Destinations.jsx:91 setComparedYears(crops.slice(-3)) \u2192 crops; Analysis.jsx:68 setSelectedCrops(crops.slice(-3)) \u2192 crops; Supply.jsx:109 setSelectedCrops(crops.slice(-5)) \u2192 crops. Quick-action Last 3 / Last 5 / All / Clear buttons stay as escape hatches. Aligned with hard memory rule \"No skipping \u2014 use everything\": V2 surfaces every report on first load. Prior context: V2 launch-worthiness sprint W1-W9 landed earlier today across commits 961d3c0 \u2192 af7f8a8 (access spine, dashboard de-redundancy, searchable country picker, 45-country EXPORT_DISTRIBUTION, Data Hub graduation, V3-preview teardown).",
+  "lastUpdated": "2026-04-27T15:50:00Z",
+  "updatedBy": "Claude AI \u2014 Autonomous tab + auto-scraper end-to-end fix landed across two commits (ee0138f = W1+W3+W4+W5; 0a43e81 = W2 workflow YAML). 2026-04-27 15:45Z. User reported: \"the autonomus tab is failing to do... we have set auto scrapper for all the reports available on ABC, not just position. this autonomous is also taking other reports from other sources and scrapping it... we need to make sure this is taking and reading everything.\" Symptom: clicking \"Run Cycle Now\" showed \"started \u2192 complete\" but nothing actually scraped. Three layered root causes:\n\n(1) Theatre button \u2014 Autonomous.jsx:runCycle() did browser-side YoY math on existing rows, never scraped. Hits CORS at almonds.org/processors/industry-reports, swallows silently, logs \"complete\" \u2014 visible success, zero new data.\n(2) Coverage gap \u2014 .github/workflows/auto-scrape.yml only ran ABC. Strata, Bountiful, News, IMAP scrapers existed in src/scrapers/ + src/autonomous/ but had no execution path; runner.js was a long-running daemon never deployed to a server.\n(3) Possibly missing tables \u2014 scraping_logs, pipeline_runs, ai_analyses, system_config defined in schema.sql but no migration file. Fresh envs would silently return [] and show empty UI, while legacy envs that ran psql apply of schema.sql still worked. Migration removes this footgun.\n\nCommit ee0138f (W1+W3+W4+W5):\nW1 \u2014 supabase/migrations/20260427_runtime_observability.sql: idempotent CREATE TABLE IF NOT EXISTS for the four runtime tables + RLS (authenticated SELECT for ops visibility, service-role-only writes) + 9 system_config seed rows. User must apply manually via Supabase SQL editor (paste).\nW3 \u2014 supabase/functions/trigger-scrape-cycle/index.ts: new Deno edge fn. POST \u2192 verifies caller JWT \u2192 isAdminUser check \u2192 GitHub workflow_dispatch API call \u2192 opens pipeline_runs row in \"running\" \u2192 returns 202 with pipeline_run_id + ETA. Logs trigger to scraping_logs.\nW4 \u2014 Autonomous.jsx rebuilt: two buttons replace the misleading \"Run Cycle Now\": \"Trigger Full Cycle\" (admin-only, calls edge fn) and \"Recompute Analyses\" (renamed runCycle, browser YoY math, tooltip explains the difference). New <LastPipelineRunPanel> reads pipeline_runs.steps_completed and renders per-source table for ABC/Strata/Bountiful/News/IMAP with status, records, duration, error or skip-hint. Live-polls every 15s for up to 10 min while a cycle runs.\nW5 \u2014 strata-scraper.js + imap-reader.js pre-flight-check their secrets and log status=\"skipped\" with secret_hint when missing, instead of throwing. GH Actions step shows green; UI distinguishes \"no creds \u2192 skipped\" from \"broken \u2192 failed\". Bountiful + News already worked without creds (public fetch).\n\nCommit 0a43e81 (W2 \u2014 split out because the embedded GH PAT lacks `workflow` scope):\nW2 \u2014 auto-scrape.yml extended: after ABC scraper, now runs Strata + Bountiful + News + IMAP each with continue-on-error. New \"Open pipeline run\" + \"Close pipeline run\" steps bookend the cycle, writing pipeline_runs row with status/steps_completed/summary/errors and updating system_config.last_full_cycle_at. deploy-edge-functions.yml registers trigger-scrape-cycle for auto-deploy.\n\nUser actions required (security-sensitive, cannot be automated): (a) apply migration via Supabase SQL editor; (b) add fine-grained GitHub PAT (actions:write) as GITHUB_DISPATCH_TOKEN to Supabase Edge Function Secrets so \"Trigger Full Cycle\" can dispatch; (c) optional STRATA_USERNAME/PASSWORD + INTEL_EMAIL/PASSWORD as GH Actions repo secrets to activate those scrapers. Without (c), those steps cleanly skip with a hint in the UI \u2014 ABC + Bountiful + News still run; (d) push commit 0a43e81 from a CLI with `workflow`-scope GitHub PAT, OR paste the YAML into the GitHub web editor for both .github/workflows/auto-scrape.yml + .github/workflows/deploy-edge-functions.yml.",
   "v2Scope": "Welcome \u2192 CRM (full polish). Trade Hub full lifecycle (4 portals, offers/deals/contracts/shipments/payments, per-entity ledgers, WhatsApp catalogue, 6 shipment modes) = V3 / Phase 7+. Per user directive 2026-04-25.",
   "sessionStatus": "autonomous-launch-polish",
   "overallPercent": 62,
@@ -55,7 +55,8 @@
       "whatsapp-send",
       "whatsapp-verify",
       "whatsapp-login",
-      "email-send"
+      "email-send",
+      "trigger-scrape-cycle"
     ],
     "emailPipeline": {
       "note": "Edge fn (Deno) \u2192 SMTP hard-timeout 8s \u2192 fails fast \u2192 queues into email_queue. Node.js runner flushes every 5 min via nodemailer (Office 365 basic auth \u2014 same creds imap-reader.js uses). Deno Deploy raw TCP to smtp.office365.com was the 502 root cause.",
@@ -997,6 +998,18 @@
     }
   ],
   "recentCommits": [
+    {
+      "sha": "0a43e81",
+      "date": "2026-04-27",
+      "subject": "autonomous: extend auto-scrape workflow + register trigger-scrape-cycle (Phase 2 W2)",
+      "author": "Claude AI"
+    },
+    {
+      "sha": "ee0138f",
+      "date": "2026-04-27",
+      "subject": "autonomous: real end-to-end pipeline (Phase 2 W1, W3, W4, W5)",
+      "author": "Claude AI"
+    },
     {
       "sha": "be65f79",
       "date": "2026-04-27",
@@ -3131,7 +3144,11 @@
     "destinations-country-picker": 100,
     "destinations-45-countries": 100,
     "data-hub-v2": 90,
-    "destinations-11-year-coverage": 100
+    "destinations-11-year-coverage": 100,
+    "autonomous-tab-real-trigger": 100,
+    "auto-scrape-full-coverage": 100,
+    "pipeline-observability": 100,
+    "runtime-tables-migration": 100
   },
   "offerBuilderRebuild": {
     "note": "User 2026-04-24 13:10Z: 'offer builder in v2 is not practical, check how we made it in V1, and have to make it cleanly better.'",
