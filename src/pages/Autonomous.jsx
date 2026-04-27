@@ -498,7 +498,7 @@ export default function Autonomous() {
       supabase.from('system_config').select('*'),
       supabase.from('abc_position_reports').select('id', { count: 'exact', head: true }),
       supabase.from('ai_analyses').select('id', { count: 'exact', head: true }),
-      supabase.from('pipeline_runs').select('*').order('started_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('pipeline_runs').select('*').eq('run_type', 'autonomous_cycle').order('started_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     if (logRes.data) setLogs(logRes.data);
