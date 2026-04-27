@@ -48,3 +48,9 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           supabase functions deploy email-send --project-ref eywsfmixzrdfcywmdaaw --no-verify-jwt
+
+      - name: Deploy trigger-scrape-cycle
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy trigger-scrape-cycle --project-ref eywsfmixzrdfcywmdaaw
